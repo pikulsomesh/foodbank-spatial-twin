@@ -111,7 +111,7 @@ Also worth confirming before a public showcase: permission from the Central Texa
 |---|---|
 | S3 bucket (static website) | Public read for `public/` (viewer, `factory.usdz`, `factory.spz`). Website hosting is HTTP only. |
 | Lambda `python3.12`, arm64, 128 MB, 3 s timeout | `src/telemetry/app.py`. Stateless and deterministic, so there is no database. |
-| HTTP API | `GET /telemetry`, `GET /health`, CORS open, throttled to 5 rps / 10 burst by default. |
+| HTTP API | `GET /telemetry`, `GET /operations`, `GET /health`, CORS open, throttled to 5 rps / 10 burst by default. |
 | Log group | 7-day retention. |
 
 `GET /telemetry` returns freezer, cooler and dry-storage temperature, humidity, door state, alarm status, and a forklift looping through the building. Positions are in metres in the twin's frame, so the viewer can pin badges to them. Calibrate `ZONES` and `FORKLIFT_PATH` once the real `factory.usdz` extents are known.
@@ -133,6 +133,7 @@ Open it on any laptop or phone, no install. Drag to orbit, pinch or scroll to zo
 |---|---|
 | `public/index.html`, `public/css/`, `public/js/app.js` | Viewer: three.js + [Spark](https://sparkjs.dev) 2.2 from jsDelivr, HTML badges pinned to telemetry positions, forklift and zone rings. |
 | `public/js/placeholder.js` | Procedural splat layout of a plausible food bank (freezer, cooler, racking, dock doors, sorting, staging) in the telemetry frame. It is the whole twin when no capture is published, and the surrounding building when one is. |
+| `public/operations.html`, `public/js/operations.js`, `public/js/ops-overlay.js` | The whole operation as data: supply chain flow, site plan, inventory, docks and the community kitchen. `operations.js` ports `src/telemetry/operations.py` (`GET /operations`) for offline use; the overlay draws each area's footprint and the kitchen annex in the 3D view. See [docs/OPERATIONS.md](docs/OPERATIONS.md). |
 | `public/js/telemetry.js` | Polls `GET /telemetry`; when the API is unset or unreachable it runs a JS port of `src/telemetry/app.py` and re-tries the API every 30 s. `tests/telemetry.test.mjs` keeps the two in sync. |
 | `public/twin.config.json` | The one file to edit: where each captured zone sits in the building, its crop box, what generated scenery it replaces, and the API URL. |
 

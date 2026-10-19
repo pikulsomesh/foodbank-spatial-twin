@@ -44,7 +44,7 @@
   "channels": [
     {"id": "partners", "label": "Partner agencies (pantries, shelters)", "share": 0.74, "zone": "staging", "est": true, "src": ["ctfb-impact-fy24"]},
     {"id": "mobile", "label": "Mobile pantries and direct distribution", "share": 0.2, "zone": "staging", "est": true},
-    {"id": "market", "label": "On-site client market", "share": 0.06, "zone": "market", "est": true},
+    {"id": "clients", "label": "On-site client market", "share": 0.06, "zone": "market", "est": true},
     {"id": "meals", "label": "Kids and senior meal sites", "share": 0, "zone": "kitchen", "from_kitchen": true, "src": ["ctfb-kids-cafe"]}
   ],
   "flow": {
