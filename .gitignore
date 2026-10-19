@@ -4,3 +4,11 @@ __pycache__/
 build/
 input_images/
 .venv/
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.fls
+paper/*.fdb_latexmk
+paper/main.pdf
