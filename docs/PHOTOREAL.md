@@ -6,6 +6,7 @@ The Marble 2 (Atlas) zones in `public/zones/*.spz` fuse 6 to 8 RGBD frames each.
 tour video ──ffmpeg──► frames (4 to 6 fps, 960 px)
            ──MediaPipe DeepLab v3──► person masks + broadcast-graphic boxes
            ──blur + optical-flow keyframing──► 79 to 142 moving frames
+           ──homography warps from nearby frames──► background plates under the masks
            ──COLMAP (CPU SIFT, masks)──► camera poses + sparse points
            ──scripts/splat_train.py (PyTorch, CPU or CUDA)──► trained 3DGS .ply
            ──level, floor at y = 0, metric scale, crop──► public/zones/<zone>-3dgs.spz
@@ -22,6 +23,7 @@ for z in racking market sorting; do
   .venv/bin/python scripts/photoreal_twin.py frames --zone $z --video Inside-the-NEW-SnapYT.App.mp4
   .venv/bin/python scripts/photoreal_twin.py masks  --zone $z
   .venv/bin/python scripts/photoreal_twin.py select --zone $z
+  .venv/bin/python scripts/photoreal_twin.py fill   --zone $z
   .venv/bin/python scripts/photoreal_twin.py pose   --zone $z   # sorting: add --matcher exhaustive --init-tri-angle 3
   .venv/bin/python scripts/photoreal_twin.py train  --zone $z --iters 6000
   .venv/bin/python scripts/photoreal_twin.py export --zone $z
@@ -38,7 +40,7 @@ The usual 3DGS trainers (the reference code, gsplat, Nerfstudio splatfacto) rast
 
 - EWA projection of each anisotropic Gaussian to a 2D conic.
 - Sparse rasterisation: one (pixel, Gaussian) pair per pixel inside the Gaussian's visible extent, pairs below 1/255 alpha dropped, a stable sort by pixel to keep depth order, and front-to-back compositing with a segmented cumulative sum of log(1 − alpha). Work scales with real coverage, which makes CPU training practical (about 1 s per step at 480 px on 4 cores).
-- L1 + 0.2 D-SSIM loss, both masked so the hosts and the broadcast lower-third never become splats.
+- L1 + 0.2 D-SSIM loss, both masked so the hosts and the broadcast lower-third never become splats. Under the masks the loss sees a background plate at 0.3 weight (`fill` stage): pixels warped in from frames up to 15 s away where the hosts had moved, with a blurred inpaint only where no frame saw the background. Without plates that region trains to haze; pruning it leaves holes, because nothing behind the hosts gets reconstructed.
 - Adaptive density control: clone small and split large Gaussians with high screen-space gradient, prune transparent ones, reset opacity every 3,000 steps, with Adam state carried across.
 - Coarse to fine: half resolution for the first quarter of the steps.
 
@@ -61,6 +63,6 @@ The Atlas files are left in place. [`public/photoreal.html`](../public/photoreal
 
 ## Limits
 
-- Only what the camera saw is reconstructed. The video is an interview walk-through: shallow depth of field, mostly forward motion, and two people in most frames. Expect soft areas behind where the hosts stood and thin coverage at the edges of each zone.
+- Only what the camera saw is reconstructed. The video is an interview walk-through: shallow depth of field, mostly forward motion, and two people in most frames. Behind where the hosts stood the result is built from warped neighbouring frames, so it is softer than the rest; thin coverage at the edges of each zone is expected too.
 - The sorting room is white walls and a grey floor, so COLMAP needs exhaustive matching and a lower initial triangulation angle there.
 - CC0 texture libraries (Poly Haven, ambientCG) are blocked from the build box, so the generated building is not textured by this layer.

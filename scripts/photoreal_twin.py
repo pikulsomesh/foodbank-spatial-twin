@@ -12,6 +12,8 @@ camera moves.
   masks   MediaPipe person segmentation + broadcast-graphic boxes; masked
           pixels are ignored by SfM and by training (the hosts never become splats)
   select  drop blurred frames and keep a frame only when the camera has moved
+  fill    background plates for the masked pixels, warped in from frames where
+          the people had moved (trained at reduced weight, so no haze or holes)
   pose    COLMAP on CPU: SIFT with masks, sequential matching, incremental mapping
   train   scripts/splat_train.py (PyTorch; CPU here, CUDA on a GPU box or Colab)
   export  level the scene with the cameras, put the floor at y = 0, scale to
@@ -23,6 +25,7 @@ Usage:
   scripts/photoreal_twin.py frames --zone racking --video /mnt/project-files/Inside-the-NEW-SnapYT.App.mp4
   scripts/photoreal_twin.py masks  --zone racking
   scripts/photoreal_twin.py select --zone racking
+  scripts/photoreal_twin.py fill   --zone racking
   scripts/photoreal_twin.py pose   --zone racking
   scripts/photoreal_twin.py train  --zone racking --iters 7000
   scripts/photoreal_twin.py export --zone racking
@@ -176,24 +179,90 @@ def stage_select(args, cfg: dict) -> None:
         if d.exists():
             shutil.rmtree(d)
         d.mkdir(parents=True)
-    fill_dir = args.work_dir / "fill"
-    if fill_dir.exists():
-        shutil.rmtree(fill_dir)
-    fill_dir.mkdir()
     for i in keep:
         p = frames[i]
         shutil.copy(p, img_dir / p.name)
         shutil.copy(masks / f"{p.stem}.png", mask_dir / f"{p.name}.png")  # COLMAP naming: <image>.png
-        # Where people stood, the video never shows the background. Training sees a
-        # soft inpainted guess there at low weight, so the gap fills with nearby colours
-        # instead of a ghost of the hosts or a hole.
-        img, m = cv2.imread(str(p)), cv2.imread(str(mask_dir / f"{p.name}.png"), 0)
-        small = cv2.resize(img, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
-        hole = cv2.resize((m < 128).astype(np.uint8), (small.shape[1], small.shape[0]), interpolation=cv2.INTER_NEAREST)
-        filled = cv2.resize(cv2.inpaint(small, hole, 9, cv2.INPAINT_TELEA), (img.shape[1], img.shape[0]),
-                            interpolation=cv2.INTER_CUBIC)
-        cv2.imwrite(str(fill_dir / p.name), cv2.GaussianBlur(filled, (0, 0), 6), [cv2.IMWRITE_JPEG_QUALITY, 90])
     log(f"kept {len(keep)} of {len(frames)} frames (blur floor {blur_floor:.0f}) in {img_dir}")
+
+
+# ----------------------------------------------------------------------- fill
+
+def stage_fill(args, cfg: dict) -> None:
+    """Background plates for the masked pixels, from frames where the people had moved.
+
+    The hosts stand in front of the same shelves for most of a segment. Left
+    unsupervised, that region trains to haze; pruned, it is a hole. Instead, for
+    each kept frame, warp nearby raw frames onto it with a homography fitted to
+    unmasked features (good for the far shelving that the hosts hide) and copy the
+    pixels that were visible there. What no neighbour saw falls back to a blurred
+    inpaint. splat_train.py trains on these plates under the masks at reduced weight.
+    """
+    import cv2
+    import numpy as np
+
+    w = args.work_dir
+    raw = sorted((w / "raw").glob("*.jpg"))
+    index = {p.name: i for i, p in enumerate(raw)}
+    out = w / "fill"
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir()
+    sift = cv2.SIFT_create(3000)
+    matcher = cv2.BFMatcher(cv2.NORM_L2)
+    cache: dict[int, tuple] = {}
+
+    def feats(i: int):
+        if i not in cache:
+            img = cv2.imread(str(raw[i]))
+            m = cv2.imread(str(w / "masks_all" / f"{raw[i].stem}.png"), 0)
+            kp, des = sift.detectAndCompute(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (m > 128).astype(np.uint8))
+            cache[i] = (img, m, kp, des)
+            if len(cache) > 3 * args.fill_window:
+                cache.pop(next(iter(cache)))
+        return cache[i]
+
+    from_video = []
+    for p in sorted((w / "images").glob("*.jpg")):
+        i = index[p.name]
+        img, m, kp, des = feats(i)
+        hole = m < 128
+        filled = img.copy()
+        todo = hole.copy()
+        order = sorted((j for j in range(max(0, i - args.fill_window), min(len(raw), i + args.fill_window + 1)) if j != i),
+                       key=lambda j: abs(j - i))
+        for j in order:
+            if todo.mean() < 0.002 or des is None:
+                break
+            img2, m2, kp2, des2 = feats(j)
+            if des2 is None or len(kp2) < 20:
+                continue
+            pairs = [a for a, b in (x for x in matcher.knnMatch(des2, des, k=2) if len(x) == 2)
+                     if a.distance < 0.75 * b.distance]
+            if len(pairs) < 40:
+                continue
+            src = np.float32([kp2[a.queryIdx].pt for a in pairs])
+            dst = np.float32([kp[a.trainIdx].pt for a in pairs])
+            H, inl = cv2.findHomography(src, dst, cv2.RANSAC, 3.0)
+            if H is None or inl.sum() < 30:
+                continue
+            size = (img.shape[1], img.shape[0])
+            warped = cv2.warpPerspective(img2, H, size)
+            valid = cv2.warpPerspective((m2 > 128).astype(np.uint8), H, size, flags=cv2.INTER_NEAREST) > 0
+            valid = cv2.erode(valid.astype(np.uint8), np.ones((15, 15), np.uint8)) > 0  # stay clear of mask edges
+            take = todo & valid
+            filled[take] = warped[take]
+            todo &= ~take
+        from_video.append(1 - todo.sum() / max(1, hole.sum()))
+        if todo.any():  # nobody saw it: soft inpaint, as before
+            small = cv2.resize(filled, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
+            sh = cv2.resize(todo.astype(np.uint8), (small.shape[1], small.shape[0]), interpolation=cv2.INTER_NEAREST)
+            soft = cv2.GaussianBlur(cv2.resize(cv2.inpaint(small, sh, 9, cv2.INPAINT_TELEA), (img.shape[1], img.shape[0]),
+                                               interpolation=cv2.INTER_CUBIC), (0, 0), 6)
+            filled[todo] = soft[todo]
+        cv2.imwrite(str(out / p.name), filled, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    log(f"wrote {len(from_video)} background plates to {out}; {100 * np.mean(from_video):.0f}% of masked "
+        f"pixels came from other frames, the rest is inpainted")
 
 
 # ----------------------------------------------------------------------- pose
@@ -359,7 +428,7 @@ def stage_export(args, cfg: dict) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[1])
-    ap.add_argument("stage", choices=["frames", "masks", "select", "pose", "train", "export"])
+    ap.add_argument("stage", choices=["frames", "masks", "select", "fill", "pose", "train", "export"])
     ap.add_argument("--zone", required=True)
     ap.add_argument("--config", type=Path, default=ROOT / "data/photoreal/zones.json")
     ap.add_argument("--work-dir", type=Path, help="default build/photoreal/<zone>")
@@ -372,6 +441,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--min-free", type=float, default=0.35, help="select: need this fraction of unmasked pixels")
     ap.add_argument("--min-flow", type=float, default=14, help="select: median motion in px (at 960 wide)")
     ap.add_argument("--max-frames", type=int, default=150)
+    ap.add_argument("--fill-window", type=int, default=60, help="fill: search this many raw frames either side")
     ap.add_argument("--colmap", default="colmap")
     ap.add_argument("--overlap", type=int, default=12, help="pose: sequential matching window")
     ap.add_argument("--matcher", choices=["sequential", "exhaustive"], default="sequential",

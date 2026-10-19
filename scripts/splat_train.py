@@ -545,7 +545,7 @@ def main(argv=None) -> int:
     ap.add_argument("--save-every", type=int, default=1000)
     ap.add_argument("--preview-every", type=int, default=500)
     ap.add_argument("--threads", type=int, default=0)
-    ap.add_argument("--fill-weight", type=float, default=0.15,
+    ap.add_argument("--fill-weight", type=float, default=0.3,
                     help="loss weight of the inpainted fill/ images under the masks (0 = ignore masked pixels)")
     ap.add_argument("--cpu", action="store_true", help="ignore a GPU even if one is present")
     args = ap.parse_args(argv)
