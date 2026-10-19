@@ -5,7 +5,9 @@ Auto-Twin | a small 3D Gaussian Splatting trainer in plain PyTorch (CPU or CUDA)
 Optimises anisotropic Gaussians against posed video frames, following Kerbl et
 al. 2023 (3DGS): EWA projection, depth-sorted front-to-back alpha compositing
 per pixel, L1 + D-SSIM loss, and adaptive density control (clone, split,
-prune, opacity reset). People and broadcast graphics are excluded with masks.
+prune, opacity reset). People and broadcast graphics are masked; under the masks
+the loss sees an inpainted guess at low weight, so unseen gaps fill with nearby
+colour instead of ghosts or holes.
 
 It exists because the CUDA rasterisers (gsplat, the reference 3DGS code) do not
 run without a GPU. Everything here is vectorised tensor code, so the same
@@ -313,7 +315,7 @@ def ssim(a, b, mask):
 
 # ------------------------------------------------------------------- training
 
-def load_views(scene: Path, cams: list[dict], width: int, device):
+def load_views(scene: Path, cams: list[dict], width: int, device, fill_weight: float = 0.0):
     import cv2
     import torch
     views = []
@@ -321,19 +323,28 @@ def load_views(scene: Path, cams: list[dict], width: int, device):
         img = cv2.imread(str(scene / "images" / c["name"]))
         mpath = scene / "masks" / f"{c['name']}.png"
         mask = cv2.imread(str(mpath), 0) if mpath.exists() else np.full(img.shape[:2], 255, np.uint8)
+        fpath = scene / "fill" / c["name"]
+        fill = cv2.imread(str(fpath)) if fill_weight > 0 and fpath.exists() else None
         K = np.array([[c["fx"], 0, c["cx"]], [0, c["fy"], c["cy"]], [0, 0, 1]])
         if c["k1"]:
             dist = np.array([c["k1"], 0, 0, 0])
             img = cv2.undistort(img, K, dist)
             mask = cv2.undistort(mask, K, dist)
+            fill = cv2.undistort(fill, K, dist) if fill is not None else None
         s = width / img.shape[1]
         H = int(round(img.shape[0] * s))
         img = cv2.resize(img, (width, H), interpolation=cv2.INTER_AREA)
         mask = cv2.resize(mask, (width, H), interpolation=cv2.INTER_AREA)
+        keep = mask > 200
+        weight = keep.astype(np.float32)
+        if fill is not None:  # masked pixels: inpainted guess at low weight instead of nothing
+            fill = cv2.resize(fill, (width, H), interpolation=cv2.INTER_AREA)
+            img = np.where(keep[..., None], img, fill)
+            weight = np.where(keep, 1.0, fill_weight).astype(np.float32)
         views.append(dict(
             name=c["name"], H=H, W=width,
             img=torch.tensor(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), dtype=torch.float32, device=device) / 255.0,
-            mask=torch.tensor(mask > 200, dtype=torch.float32, device=device),
+            mask=torch.tensor(weight, dtype=torch.float32, device=device),
             Rt=torch.tensor(c["R"], dtype=torch.float32, device=device),
             tt=torch.tensor(c["t"], dtype=torch.float32, device=device),
             K=(c["fx"] * s, c["fy"] * s, c["cx"] * s, c["cy"] * s)))
@@ -444,7 +455,7 @@ def train(args) -> None:
     extent = float(np.linalg.norm(centres - centres.mean(0), axis=1).max() * 1.1) or 1.0
     width = args.width or (cams[0]["width"] if device.type == "cuda" else 480)
     log(f"{len(cams)} cameras, {len(xyz):,} SfM points, extent {extent:.2f}, device {device}, width {width}px")
-    views = load_views(args.scene, cams, width, device)
+    views = load_views(args.scene, cams, width, device, args.fill_weight)
     tr = Trainer(xyz, rgb, extent, device, args.max_splats)
     bg = torch.zeros(3, device=device)
     densify_until = int(args.iters * 0.6)
@@ -459,7 +470,7 @@ def train(args) -> None:
         if it < args.iters // 4:
             H, W, K = v["H"] // 2, v["W"] // 2, tuple(k / 2 for k in v["K"])
             gt = torch.nn.functional.interpolate(v["img"].permute(2, 0, 1)[None], (H, W), mode="area")[0].permute(1, 2, 0)
-            mk = (torch.nn.functional.interpolate(v["mask"][None, None], (H, W), mode="area")[0, 0] > 0.99).float()
+            mk = torch.nn.functional.interpolate(v["mask"][None, None], (H, W), mode="area")[0, 0]
         else:
             H, W, K, gt, mk = v["H"], v["W"], v["K"], v["img"], v["mask"]
         cam = {"Rt": v["Rt"], "tt": v["tt"], "K": K}
@@ -534,6 +545,8 @@ def main(argv=None) -> int:
     ap.add_argument("--save-every", type=int, default=1000)
     ap.add_argument("--preview-every", type=int, default=500)
     ap.add_argument("--threads", type=int, default=0)
+    ap.add_argument("--fill-weight", type=float, default=0.15,
+                    help="loss weight of the inpainted fill/ images under the masks (0 = ignore masked pixels)")
     ap.add_argument("--cpu", action="store_true", help="ignore a GPU even if one is present")
     args = ap.parse_args(argv)
     train(args)

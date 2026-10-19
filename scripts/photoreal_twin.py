@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import shutil
 import subprocess
 import sys
@@ -103,7 +104,7 @@ def stage_masks(args, cfg: dict) -> None:
     out.mkdir(parents=True, exist_ok=True)
     frames = sorted((args.work_dir / "raw").glob("*.jpg"))
     kernel = np.ones((args.mask_dilate, args.mask_dilate), np.uint8)
-    covered = []
+    covered, masks = [], []
     for p in frames:
         img = cv2.imread(str(p))
         h, w = img.shape[:2]
@@ -113,6 +114,12 @@ def stage_masks(args, cfg: dict) -> None:
         keep = np.where(person > 0, 0, 255).astype(np.uint8)
         for x0, y0, x1, y1 in cfg.get("overlay_boxes", []):
             keep[int(y0 * h):int(y1 * h), int(x0 * w):int(x1 * w)] = 0
+        masks.append(keep)
+    # The segmenter misses a hand or a dark jacket now and then; a miss in one frame
+    # becomes a ghost in the splat. People barely move between neighbouring frames, so
+    # also mask what the frames either side of this one marked as a person.
+    for i, p in enumerate(frames):
+        keep = np.minimum.reduce(masks[max(0, i - args.mask_window):i + args.mask_window + 1])
         cv2.imwrite(str(out / f"{p.stem}.png"), keep)
         covered.append(1 - keep.mean() / 255)
     log(f"masked {len(frames)} frames; mean masked area {100 * np.mean(covered):.0f}%")
@@ -169,10 +176,23 @@ def stage_select(args, cfg: dict) -> None:
         if d.exists():
             shutil.rmtree(d)
         d.mkdir(parents=True)
+    fill_dir = args.work_dir / "fill"
+    if fill_dir.exists():
+        shutil.rmtree(fill_dir)
+    fill_dir.mkdir()
     for i in keep:
         p = frames[i]
         shutil.copy(p, img_dir / p.name)
         shutil.copy(masks / f"{p.stem}.png", mask_dir / f"{p.name}.png")  # COLMAP naming: <image>.png
+        # Where people stood, the video never shows the background. Training sees a
+        # soft inpainted guess there at low weight, so the gap fills with nearby colours
+        # instead of a ghost of the hosts or a hole.
+        img, m = cv2.imread(str(p)), cv2.imread(str(mask_dir / f"{p.name}.png"), 0)
+        small = cv2.resize(img, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
+        hole = cv2.resize((m < 128).astype(np.uint8), (small.shape[1], small.shape[0]), interpolation=cv2.INTER_NEAREST)
+        filled = cv2.resize(cv2.inpaint(small, hole, 9, cv2.INPAINT_TELEA), (img.shape[1], img.shape[0]),
+                            interpolation=cv2.INTER_CUBIC)
+        cv2.imwrite(str(fill_dir / p.name), cv2.GaussianBlur(filled, (0, 0), 6), [cv2.IMWRITE_JPEG_QUALITY, 90])
     log(f"kept {len(keep)} of {len(frames)} frames (blur floor {blur_floor:.0f}) in {img_dir}")
 
 
@@ -269,7 +289,16 @@ def stage_export(args, cfg: dict) -> None:
     # Crop: within --radius of the camera path, between the floor and the roof.
     d = np.min(np.linalg.norm(pts[:, None, [0, 2]] - cam_new[None, ::max(1, len(cam_new) // 64), [0, 2]],
                               axis=2), axis=1)
-    keep = (d < args.radius) & (pts[:, 1] > -0.15) & (pts[:, 1] < args.ceiling) & (op > 0.02)
+    # Splats seen by only a few cameras sit at the edges of the frames, where nothing
+    # constrains their depth; from any other viewpoint they read as floaters.
+    seen = np.zeros(len(pts), int)
+    for c in cams:
+        pc = g["xyz"] @ c["R"].T + c["t"]
+        z = np.maximum(pc[:, 2], 1e-6)
+        u, v = c["fx"] * pc[:, 0] / z + c["cx"], c["fy"] * pc[:, 1] / z + c["cy"]
+        seen += (pc[:, 2] > 0.05) & (u > 0) & (u < c["width"]) & (v > 0) & (v < c["height"])
+    keep = (d < args.radius) & (pts[:, 1] > -0.15) & (pts[:, 1] < args.ceiling) & (op > 0.02) & \
+        (seen >= args.min_views)
     log(f"kept {keep.sum():,} of {len(pts):,} splats inside the crop")
 
     rot = st.quat_mul_np(st.rotmat_to_quat_np(R), g["rot"])
@@ -300,8 +329,14 @@ def stage_export(args, cfg: dict) -> None:
 
     # A few source cameras as viewer presets: position and a point 3 m ahead (metres, Y-up).
     fwd_new = np.stack([R @ c["R"][2] for c in cams])
-    pick = np.linspace(0, len(cams) - 1, min(6, len(cams))).astype(int)
+    # One preset per stretch of the walk: the camera that saw the fewest people.
+    import cv2
+    masked = np.array([(cv2.imread(str(w / "masks" / f"{c['name']}.png"), 0) < 128).mean()
+                       if (w / "masks" / f"{c['name']}.png").exists() else 0.0 for c in cams])
+    bins = np.array_split(np.arange(len(cams)), min(6, len(cams)))
+    pick = [int(b[np.argmin(masked[b])]) for b in bins]
     views = [{"position": cam_new[i].round(2).tolist(), "target": (cam_new[i] + 3 * fwd_new[i]).round(2).tolist(),
+              "fov_deg": round(math.degrees(2 * math.atan(cams[i]["height"] / (2 * cams[i]["fy"]))), 1),
               "frame": cams[i]["name"]} for i in pick]
 
     public = args.public_dir
@@ -331,7 +366,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--video", type=Path, help="frames: the tour video (default: config 'video' in the repo root)")
     ap.add_argument("--width", type=int, default=960, help="frames: output width in px")
     ap.add_argument("--seg-model", type=Path, default=ROOT / "build/models/deeplab_v3.tflite")
-    ap.add_argument("--mask-dilate", type=int, default=25, help="masks: grow person masks by this many px")
+    ap.add_argument("--mask-dilate", type=int, default=35, help="masks: grow person masks by this many px")
+    ap.add_argument("--mask-window", type=int, default=1, help="masks: also mask people seen this many frames either side")
     ap.add_argument("--blur-percentile", type=float, default=20, help="select: drop the blurriest N%%")
     ap.add_argument("--min-free", type=float, default=0.35, help="select: need this fraction of unmasked pixels")
     ap.add_argument("--min-flow", type=float, default=14, help="select: median motion in px (at 960 wide)")
@@ -345,7 +381,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--iters", type=int, default=7000, help="train: optimisation steps")
     ap.add_argument("--train-args", nargs=argparse.REMAINDER, help="train: extra splat_train.py flags")
     ap.add_argument("--camera-height", type=float, default=1.6, help="export: camera height in metres")
-    ap.add_argument("--radius", type=float, default=7.0, help="export: keep splats within this of the path (m)")
+    ap.add_argument("--radius", type=float, default=30.0, help="export: keep splats within this of the path (m)")
+    ap.add_argument("--min-views", type=int, default=6, help="export: drop splats inside fewer camera frustums")
     ap.add_argument("--ceiling", type=float, default=9.0, help="export: drop splats above this (m)")
     ap.add_argument("--public-dir", type=Path, default=ROOT / "public/zones")
     ap.add_argument("--usdz-dir", type=Path, default=ROOT / "public/zones")

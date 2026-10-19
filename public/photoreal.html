@@ -83,6 +83,8 @@ async function load() {
 
 function setView(i) {
   const v = zone.trained.views[i];
+  camera.fov = v.fov_deg || 55;  // match the source camera, so the preset frames what the video saw
+  camera.updateProjectionMatrix();
   camera.position.set(...v.position);
   controls.target.set(...v.target);
   controls.update();
