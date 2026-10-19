@@ -12,3 +12,6 @@ paper/*.blg
 paper/*.fls
 paper/*.fdb_latexmk
 paper/main.pdf
+paper/*.bcf
+paper/*.run.xml
+paper/*-blx.bib
