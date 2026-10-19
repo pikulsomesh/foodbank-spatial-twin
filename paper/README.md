@@ -28,7 +28,7 @@ The template uses biblatex with `backend=bibtex`, so it runs BibTeX rather than 
 
 ## Placeholders
 
-Every value not yet measured is a red `\TBD{...}` in the PDF (43 at present). None are estimates. To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
+Every value not yet measured is a red `\TBD{...}` in the PDF (40 at present). None are estimates. To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
 
 | Where | What it needs | Comes from |
 |---|---|---|
@@ -38,12 +38,12 @@ Every value not yet measured is a red `\TBD{...}` in the PDF (43 at present). No
 | Results 2.6, Figure 4, Methods: Visualization | Omniverse version, splat rendering check, screenshot, Blender spike result | Renderer work |
 | Figure 3 | Renders of observed vs. extrapolated regions | Video-to-twin thread |
 | Methods: Statistical Analysis | Number of held-out frames, dispersion statistic, pose estimation method | Evaluation run |
-| Back matter | Confirm the AI-use declaration, funding and competing-interests statements; acknowledgements with permission; supplementary movie | Somesh |
+| Back matter | Acknowledgements with permission; supplementary movie | Somesh |
 | Introduction | Cited sentences on food bank operations; Kit license confirmation | Literature check |
 
 ## Before submitting
 
 1. Verify every entry in `refs.bib` against its source (authors, venue, pages, DOI), and add access dates to the web entries that lack one.
 2. Get permission from the Central Texas Food Bank and the video's rights holder (25 News KXXV) before publishing renders of the reconstruction.
-3. Confirm the AI-use declaration in the Acknowledgments. AI tools cannot be listed as authors on arXiv or in most journals.
+3. The AI-use declaration in the Acknowledgments is confirmed by the author. AI tools cannot be listed as authors on arXiv or in most journals.
 4. For arXiv, suggested categories are primary `cs.CV`, cross-listed to `cs.GR` and `cs.CY`. A first-time submitter in a category may need an endorsement. Upload `main.tex`, `refs.bib`, the generated `main.bbl` and `figures/`. The line numbers are a journal-review convention; remove `\linenumbers` for the arXiv version if preferred.
