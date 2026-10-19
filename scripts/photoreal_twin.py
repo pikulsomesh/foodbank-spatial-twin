@@ -340,14 +340,15 @@ def stage_export(args, cfg: dict) -> None:
     pts = (g["xyz"] - centres.mean(0)) @ R.T
     cam_new = (centres - centres.mean(0)) @ R.T
 
-    # Floor: the densest low horizontal slab of confident splats.
+    # Floor: the bottom of the SfM point cloud below the cameras, taken as the lowest
+    # height band with real support (3% of the busiest band). SfM points are stable
+    # across training runs, so the metric scale does not drift between retrains.
     op = 1 / (1 + np.exp(-g["opacity"]))
-    solid = op > 0.5 if (op > 0.5).sum() > 1000 else op >= np.median(op)
-    y = pts[solid, 1]
-    lo, hi = np.percentile(y, 0.5), cam_new[:, 1].mean()
-    hist, edges = np.histogram(y[(y > lo) & (y < hi)], bins=200)
-    low = edges[:-1] < lo + 0.6 * (hi - lo)
-    floor = float(edges[np.argmax(np.where(low, hist, 0))] + (edges[1] - edges[0]) / 2)
+    sfm, _ = st.read_points(w / "model")
+    y = ((sfm - centres.mean(0)) @ R.T)[:, 1]
+    y = y[y < cam_new[:, 1].mean()]
+    hist, edges = np.histogram(y, bins=40, range=(np.percentile(y, 0.5), np.percentile(y, 60)))
+    floor = float(edges[np.argmax(hist >= 0.03 * hist.max())])
     cam_h = float(cam_new[:, 1].mean() - floor)
     scale = args.camera_height / cam_h
     log(f"floor {floor:.3f}, cameras {cam_h:.3f} units above it; scale {scale:.3f} m/unit "

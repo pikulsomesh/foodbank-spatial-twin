@@ -442,6 +442,30 @@ class Trainer:
             st["exp_avg_sq"].zero_()
 
 
+def hull_mask(P: dict, views, min_views: int = 5, frac: float = 0.5):
+    """True for Gaussians inside the people's visual hull: their centre lands on a
+    masked pixel in most of the views that see it. Nothing real can sit there (the
+    hosts were there), so such Gaussians only explain the masked pixels as haze in
+    front of the shelving; carving them forces the background plates to be
+    explained at the depth of the background instead."""
+    import torch
+    with torch.no_grad():
+        xyz = P["means"]
+        hit = torch.zeros(len(xyz), device=xyz.device)
+        seen = torch.zeros(len(xyz), device=xyz.device)
+        for v in views:
+            pc = xyz @ v["Rt"].T + v["tt"]
+            z = pc[:, 2].clamp(min=1e-6)
+            fx, fy, cx, cy = v["K"]
+            u = (fx * pc[:, 0] / z + cx).long()
+            w = (fy * pc[:, 1] / z + cy).long()
+            ok = (pc[:, 2] > 0.05) & (u >= 0) & (u < v["W"]) & (w >= 0) & (w < v["H"])
+            masked = v["mask"][w[ok], u[ok]] < 0.999
+            seen[ok] += 1
+            hit[ok] += masked.float()
+        return (seen >= min_views) & (hit / seen.clamp(min=1) > frac)
+
+
 def train(args) -> None:
     import torch
     torch.manual_seed(0)
@@ -491,6 +515,11 @@ def train(args) -> None:
         if it >= args.densify_from and it < densify_until and it % args.densify_every == 0:
             c, s, p = tr.densify(args.grad_thresh, prune_big=it > args.opacity_reset)
             log(f"it {it}: cloned {c:,}, split {s:,}, pruned {p:,} -> {len(tr.P['means']):,} splats")
+        if args.carve and it >= args.densify_from and it % args.carve_every == 0:
+            inside = hull_mask(tr.P, views)
+            if inside.any():
+                tr._replace(~inside, {k: v.detach()[:0] for k, v in tr.P.items()})
+                log(f"it {it}: carved {int(inside.sum()):,} splats inside the people's visual hull")
         if it % args.opacity_reset == 0 and it < densify_until:
             tr.reset_opacity()
         if it % 100 == 0 or it == 1:
@@ -504,6 +533,8 @@ def train(args) -> None:
     # Final prune of near-transparent splats.
     with torch.no_grad():
         keep = torch.sigmoid(tr.P["opac"]) > 0.01
+        if args.carve:
+            keep &= ~hull_mask(tr.P, views)
     tr._replace(keep, {k: v.detach()[:0] for k, v in tr.P.items()})
     save(tr, args.out)
     preview(tr, views, args, bg, args.iters)
@@ -547,6 +578,9 @@ def main(argv=None) -> int:
     ap.add_argument("--threads", type=int, default=0)
     ap.add_argument("--fill-weight", type=float, default=0.3,
                     help="loss weight of the inpainted fill/ images under the masks (0 = ignore masked pixels)")
+    ap.add_argument("--carve", action=argparse.BooleanOptionalAction, default=True,
+                    help="remove Gaussians inside the people's visual hull while training")
+    ap.add_argument("--carve-every", type=int, default=250)
     ap.add_argument("--cpu", action="store_true", help="ignore a GPU even if one is present")
     args = ap.parse_args(argv)
     train(args)
