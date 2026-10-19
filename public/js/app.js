@@ -10,8 +10,8 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const phone = matchMedia("(max-width: 720px)").matches || navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820;
 
-const DEFAULTS = { splat: "factory.spz", meta: "factory.meta.json", usdz: "factory.usdz",
-  placement: { position: [0, 0, 0], yaw_deg: 0 }, telemetryApi: "" };
+const DEFAULTS = { zones: "zones/zones.json", splat: "factory.spz", meta: "factory.meta.json", usdz: "factory.usdz",
+  captures: {}, telemetryApi: "" };
 
 async function getJSON(url) {
   try { const r = await fetch(url, { cache: "no-cache" }); return r.ok ? await r.json() : null; } catch { return null; }
@@ -161,55 +161,25 @@ async function initScene(cfg) {
   controls.maxDistance = 60;
   controls.autoRotateSpeed = 0.6;
 
-  // Twin: the World Labs SPZ when it's published next to this page, otherwise the procedural stand-in.
-  const twinRoot = new THREE.Group();
-  const pl = cfg.placement || {};
-  twinRoot.position.fromArray(pl.position || [0, 0, 0]);
-  twinRoot.rotation.y = THREE.MathUtils.degToRad(pl.yaw_deg || 0);
-  scene.add(twinRoot);
-
-  let twinKind = "placeholder";
+  // Twin: the World Labs captures placed into the procedural building, or the building alone.
   const loadingText = $("loading-text");
-  if (cfg.splat && !params.has("placeholder")) {
-    try {
-      const r = await fetch(cfg.splat);
-      const type = r.headers.get("content-type") || "";
-      if (r.ok && !type.includes("text/html")) {
-        loadingText.textContent = "Downloading the world-model splat…";
-        const bytes = new Uint8Array(await r.arrayBuffer());
-        const meta = (await getJSON(cfg.meta)) || {};
-        const sem = meta.semantics_metadata || {};
-        const s = Number(sem.metric_scale_factor) || 1, g = Number(sem.ground_plane_offset) || 0;
-        // Same correction as the USD wrapper: rotateX(180) · translate(0, -g, 0) · scale(s).
-        const flip = new THREE.Group(); flip.rotation.x = Math.PI;
-        const lift = new THREE.Group(); lift.position.y = -g;
-        let mesh = new SplatMesh({ fileBytes: bytes, fileName: cfg.splat.split("/").pop() });
-        await mesh.initialized;
-        if (cfg.crop) mesh = await cropSplats(mesh, cfg.crop, s, g);
-        mesh.scale.setScalar(s);
-        lift.add(mesh); flip.add(lift); twinRoot.add(flip);
-        twinKind = "world";
-      }
-    } catch (e) {
-      console.warn("Could not load the twin splat, showing the placeholder:", e);
-    }
-  }
-  // The procedural building is the whole twin until a capture exists, then the context around it.
-  const withContext = twinKind === "placeholder" || cfg.context;
+  const captures = params.has("placeholder") ? [] : await loadCaptures(cfg, scene, loadingText);
+  const withContext = !captures.length || cfg.context !== false;
   if (withContext) {
     loadingText.textContent = "Building the facility layout…";
-    const clear = twinKind === "world" ? cfg.context?.clear : null;
+    const clear = captures.map((c) => c.clear).filter(Boolean);
     const mesh = new SplatMesh({ constructSplats: (splats) => { buildPlaceholder(splats, { density: phone ? 1.45 : 1, clear }); } });
     scene.add(mesh);
     await mesh.initialized;
   }
   const pill = $("twin-pill");
-  if (twinKind === "world") {
-    pill.textContent = withContext ? "World Labs capture + layout" : "World Labs capture";
-    pill.title = "Gaussian splat from a World Labs world model, built from the walkthrough video.";
-    $("about-text").textContent = withContext
-      ? "The racking aisle is a Gaussian splat from a World Labs world model, built from walkthrough video. The rest of the building is a schematic layout in the same metric frame, until more of the facility is captured."
-      : "The building is a Gaussian splat from a World Labs world model, built from walkthrough video. Readings are pinned to it in metres, in the same frame as the OpenUSD twin.";
+  if (captures.length) {
+    const names = captures.map((c) => c.title || c.name);
+    const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
+    pill.textContent = withContext ? `${captures.length} captured zone${captures.length > 1 ? "s" : ""} + layout` : "World Labs capture";
+    pill.title = "Gaussian splats from World Labs world models, built from the walkthrough video.";
+    $("about-text").textContent = `The ${list} ${names.length > 1 ? "are" : "is a"} Gaussian splat${names.length > 1 ? "s" : ""} built from walkthrough video with World Labs world models.` +
+      (withContext ? " The rest of the building is a schematic layout in the same metric frame, until more of the facility is captured." : "");
   } else {
     pill.textContent = "Placeholder layout";
     pill.title = "Procedural splat stand-in until the World Labs capture is published.";
@@ -267,6 +237,21 @@ async function initScene(cfg) {
     goTo(...VIEWS.overview, 2200);
   }
 
+  // One button per capture, looking the way its source cameras looked (-Z in the capture frame).
+  if (captures.length) {
+    document.querySelector('#views [data-view="aisle"]')?.remove();
+    const followBtn = document.querySelector('#views [data-view="follow"]');
+    captures.forEach((c, i) => {
+      const yaw = THREE.MathUtils.degToRad(c.yaw_deg || 0), dir = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+      const o = new THREE.Vector3(...c.position);
+      VIEWS[`capture-${i}`] = c.view || [o.clone().addScaledVector(dir, -1).setY(2).toArray(), o.clone().addScaledVector(dir, 7).setY(1.4).toArray()];
+      const btn = document.createElement("button");
+      btn.dataset.view = `capture-${i}`;
+      btn.textContent = c.button || c.name;
+      btn.title = c.label || "";
+      followBtn.before(btn);
+    });
+  }
   for (const btn of document.querySelectorAll("#views [data-view]")) {
     btn.addEventListener("click", () => {
       document.querySelectorAll("#views [data-view]").forEach((b) => b.classList.toggle("on", b === btn));
@@ -356,6 +341,60 @@ async function initScene(cfg) {
       if (!follow) goTo([a.x - 2, a.y + 4, a.z + 9], [a.x, a.y - 1.5, a.z]);
     },
   };
+}
+
+async function fetchSplat(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok || (r.headers.get("content-type") || "").includes("text/html")) return null;
+    return new Uint8Array(await r.arrayBuffer());
+  } catch { return null; }
+}
+
+// Which captures to show: every zone in zones.json (written by the pipeline) that twin.config.json
+// knows where to put, or else the single factory.spz as the racking aisle.
+async function captureList(cfg) {
+  const placed = cfg.captures || {};
+  const zj = cfg.zones ? await getJSON(cfg.zones) : null;
+  if (zj?.zones?.length) {
+    return zj.zones.filter((z) => placed[z.name] || console.info(`No placement for captured zone ${z.name}; skipping it.`))
+      .map((z) => ({ name: z.name, label: z.label, url: z.url, ground: Number(z.ground_plane_offset) || 0,
+        scale: Number(z.metric_scale_factor) || 1, ...placed[z.name] }));
+  }
+  if (!cfg.splat) return [];
+  const sem = ((await getJSON(cfg.meta)) || {}).semantics_metadata || {};
+  const fallback = Object.values(placed).find((p) => p.factory) || {};
+  return [{ name: "Racking", label: "Racking aisle", url: cfg.splat, ground: Number(sem.ground_plane_offset) || 0,
+    scale: Number(sem.metric_scale_factor) || 1, ...fallback }];
+}
+
+async function loadCaptures(cfg, scene, loadingText) {
+  const list = await captureList(cfg);
+  if (!list.length) return [];
+  loadingText.textContent = `Downloading ${list.length > 1 ? `${list.length} captured zones` : "the captured zone"}…`;
+  const loaded = await Promise.all(list.map(async (c) => {
+    const bytes = await fetchSplat(c.url);
+    if (!bytes) return null;
+    try {
+      let mesh = new SplatMesh({ fileBytes: bytes, fileName: c.url.split("/").pop() });
+      await mesh.initialized;
+      if (c.crop) mesh = await cropSplats(mesh, c.crop, c.scale, c.ground);
+      // Same correction as the USD wrapper: rotateX(180) · translate(0, -ground, 0) · scale(s),
+      // then the capture's place in the building.
+      const root = new THREE.Group();
+      root.position.fromArray(c.position || [0, 0, 0]);
+      root.rotation.y = THREE.MathUtils.degToRad(c.yaw_deg || 0);
+      const flip = new THREE.Group(); flip.rotation.x = Math.PI;
+      const lift = new THREE.Group(); lift.position.y = -c.ground;
+      mesh.scale.setScalar(c.scale);
+      lift.add(mesh); flip.add(lift); root.add(flip); scene.add(root);
+      return c;
+    } catch (e) {
+      console.warn(`Could not load capture ${c.name}:`, e);
+      return null;
+    }
+  }));
+  return loaded.filter(Boolean);
 }
 
 // Keeps the splats inside crop.min/max, given in metres in the corrected (Y-up, floor at 0) frame,

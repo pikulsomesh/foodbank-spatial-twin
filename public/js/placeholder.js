@@ -18,8 +18,10 @@ function mulberry32(seed) {
 }
 
 // density > 1 means coarser sampling (fewer splats) for phones.
-// `clear` ({ x: [x0, x1], z: [z0, z1] }) leaves out racking there, to make room for a captured splat.
-export function buildPlaceholder(splats, { density = 1, clear = null } = {}) {
+// `clear` is a list of { x: [x0, x1], z: [z0, z1] } floor areas where captured splats go; racking,
+// sorting tables and staging pallets inside them are left out.
+export function buildPlaceholder(splats, { density = 1, clear = [] } = {}) {
+  const cleared = (x0, x1, z0, z1) => clear.some((c) => x0 < c.x[1] && x1 > c.x[0] && z0 < c.z[1] && z1 > c.z[0]);
   const rand = mulberry32(7);
   const c = new THREE.Vector3(), s = new THREE.Vector3(), q = new THREE.Quaternion(), col = new THREE.Color();
   const OTHER = { x: ["y", "z"], y: ["x", "z"], z: ["x", "y"] };
@@ -111,7 +113,7 @@ export function buildPlaceholder(splats, { density = 1, clear = null } = {}) {
 
   // Selective pallet racking: red uprights, grey beams, 3 bays deep in z, 4 levels.
   function rackRow(x0, depth, z0, z1) {
-    if (clear && x0 < clear.x[1] && x0 + depth > clear.x[0] && z0 < clear.z[1] && z1 > clear.z[0]) return;
+    if (cleared(x0, x0 + depth, z0, z1)) return;
     const levels = [0, 1.7, 3.4, 5.1], top = 6.4, bays = Math.round((z1 - z0) / 2.7);
     const bayLen = (z1 - z0) / bays;
     for (let b = 0; b <= bays; b++) {
@@ -136,6 +138,7 @@ export function buildPlaceholder(splats, { density = 1, clear = null } = {}) {
 
   // Volunteer sorting area: two lines of tables with roller conveyors and produce bins.
   for (const z of [15.2, 17.6]) {
+    if (cleared(7, 15.5, z, z + 1)) continue;
     box(v(7, 0.85, z), v(15.5, 0.95, z + 1.0), 0.06, (x) => (Math.floor(x / 0.12) % 2 ? 0x9aa3ab : 0x7d868e), { skip: [] });
     for (let x = 7.2; x < 15.5; x += 2.1) box(v(x, 0, z + 0.1), v(x + 0.06, 0.85, z + 0.16), 0.04, 0x5b6268, { skip: [] });
     for (let x = 7.5; x < 14.9; x += 1.4) {
@@ -145,8 +148,9 @@ export function buildPlaceholder(splats, { density = 1, clear = null } = {}) {
   }
 
   // Donation staging by the docks: loose pallets waiting to be sorted or put away.
-  for (let i = 0; i < 9; i++) pallet(2 + (i % 3) * 1.4, 0, 16.2 + Math.floor(i / 3) * 1.25, 1.1, 1.0);
-  for (let i = 0; i < 6; i++) pallet(16.5 + (i % 3) * 1.5, 0, 14 + Math.floor(i / 3) * 1.4, 1.1, 1.1);
+  const staged = (x, z, w, d) => { if (!cleared(x, x + w, z, z + d)) pallet(x, 0, z, w, d); };
+  for (let i = 0; i < 9; i++) staged(2 + (i % 3) * 1.4, 16.2 + Math.floor(i / 3) * 1.25, 1.1, 1.0);
+  for (let i = 0; i < 6; i++) staged(16.5 + (i % 3) * 1.5, 14 + Math.floor(i / 3) * 1.4, 1.1, 1.1);
 
   return splats.numSplats;
 }
