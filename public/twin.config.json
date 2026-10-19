@@ -1,5 +1,6 @@
 {
   "zones": "zones/zones.json",
+  "photoreal": "zones/photoreal.json",
   "splat": "factory.spz",
   "meta": "factory.meta.json",
   "usdz": "site.usdz",
@@ -36,7 +37,39 @@
           10
         ]
       },
-      "dilate": 1.6
+      "dilate": 1.6,
+      "photoreal": {
+        "position": [
+          20,
+          0,
+          13
+        ],
+        "yaw_deg": 0,
+        "dilate": 1,
+        "crop": {
+          "min": [
+            -4.5,
+            -0.5,
+            -28
+          ],
+          "max": [
+            4.5,
+            7,
+            1.5
+          ]
+        },
+        "clear": {
+          "x": [
+            15.5,
+            24.5
+          ],
+          "z": [
+            -0.5,
+            10
+          ],
+          "walls": true
+        }
+      }
     },
     "Sorting": {
       "title": "volunteer sorting room",
