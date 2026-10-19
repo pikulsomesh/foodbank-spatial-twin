@@ -386,7 +386,26 @@ computed from the clock and one master-data file, with no database; a
 JavaScript port returns identical payloads offline, which a test enforces. For
 Omniverse, a script writes the layer as \code{operations.usda}, with one prim
 per area (8), kitchen station (7) and flow (16), keyed by the same identifiers
-as the API so that an extension can bind live values to them.
+as the API so that an extension can bind live values to them. One stage,
+\code{twin.usda}, composes the captured zones with this layer: it references
+each capture from the site package and places it with the same configuration
+file the browser uses, so Omniverse, the browser and the API share one frame
+(Fig.~\ref{fig:alignment}). Each capture is cropped to its area by a sublayer
+that only overrides the opacities of splats outside the crop box (0.5\,MB,
+against about 37\,MB for copying the cropped splats), so the capture library
+is never copied or edited, and a test fails if the placements in the stage and
+in the browser configuration drift apart.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\linewidth]{twin_alignment.jpg}
+\caption{Top view of the composed OpenUSD stage, rendered on the CPU from
+\code{twin.usda}, with the operations-layer footprints drawn over it (pink: areas;
+yellow: building). The sorting room, dry racking and market captures land in
+their areas; the racking capture extends slightly past its footprint. The other
+areas have no capture and exist only in the operations layer.}
+\label{fig:alignment}
+\end{figure}
 
 The kitchen is modeled as a small factory, with a bill of materials and a
 routing per recipe: ingredients are picked from storage, and each batch of 250
@@ -567,11 +586,12 @@ The twin is also a composite. Its geometry comes from a video that appears to
 show the food bank's Waco hub, while its operating volumes come from published
 figures for the 135{,}000\,sq\,ft Austin facility, and the building layout is
 a stand-in; this is acceptable for a demonstration but must be stated wherever
-the twin is shown. A related gap is technical: the operations layer uses the
-browser viewer's placement of each zone, while the composed site stage still
-uses an earlier site plan, so the two USD files cannot yet be referenced
-together without re-composing the captures with the viewer's placements or
-adding a transform per zone.
+the twin is shown. Keeping these sources in one frame is what lets the twin be
+used at all: one USD stage composes the captured zones (by reference, placed
+by the same configuration as the browser) with the operations layer, and
+cropping is a non-destructive opacity override, so the capture library is never
+copied. A new capture or a new data feed therefore changes one layer rather
+than the whole stage.
 
 Applying the approach also needs care outside the software. Walkthrough
 videos capture staff, volunteers and clients, so faces should be removed or the
@@ -732,7 +752,13 @@ Sunday is closed. The weekday ranges in Results were computed by evaluating the
 model at the end of each day from 1 September to 26 October 2026.
 
 \subsection{Visualization}
-In Omniverse, a small extension is planned that polls \code{/telemetry} and
+The stage to open in Omniverse is \code{twin.usda}. A script writes it from
+the browser configuration: one reference per capture into the site package with
+the viewer's translation, rotation and scale, a crop sublayer that sets the
+opacity of every splat outside the capture's crop box to zero, and a reference
+to \code{operations.usda}; a test compares the stage's placements with the
+configuration. A second script renders the stage on the CPU with the area
+footprints drawn over it as a visual check. In Omniverse, a small extension is planned that polls \code{/telemetry} and
 updates prims under the twin: zone markers change color with alarm status,
 labels show temperatures, and the forklift prim follows its reported position
 and heading. The plan is to open the same stage on a rented RTX GPU, where
