@@ -67,34 +67,30 @@ backend=bibtex]{biblatex}
 
 %%%%%% Abstract %%%%%%
 \begin{abstract}
-Digital twins, virtual copies of a physical site kept in sync with its live
-data, help warehouses plan layouts and catch equipment failures early, but
-building one usually requires laser scans, 3D models drawn by hand and
-simulation specialists. That cost puts twins out of reach for small operators
-and almost all non-profits. We asked whether an ordinary walkthrough video is
-enough to start one. We present an open pipeline that works in three steps.
-First, a world model, an AI system that infers the 3D structure of a scene
-from a few images and can generate views the camera never captured, estimates
-camera positions and real-world depth for a handful of video frames, which are
-fused into a 3D Gaussian-splat scene, a cloud of soft colored points that
-renders in real time. Second, the scene is connected to existing operational
-data, such as freezer temperatures and forklift positions, through a small
-serverless backend on Amazon Web Services that costs nothing when idle. Third,
-NVIDIA Omniverse displays the twin with its live data, while a web browser and
-Blender can show the same twin as alternatives. Universal Scene Description,
-an open 3D file standard that now stores Gaussian splats natively, is the only
-interface between the steps, so each step can be replaced without changing the
-others. We applied the pipeline to three areas of a food bank modeled on the
-Central Texas Food Bank, using a public news walkthrough video as input. Twenty
-video frames produced a twin of about 747,000 splats in a single 48.5-megabyte
-Universal Scene Description file, and the world-model calls cost 200 credits,
-or 20 US cents, plus up to 800 more if two failed generation requests are
-billed. Generating views of unfilmed areas failed on the provider's side both
-times it was tried, so the current twin shows only what the camera saw, and
-its monthly cloud cost is \TBD{measure once deployed}. The results suggest that
-a phone video and a world model can bring a first facility twin within reach of
-charitable and small organizations, while filling in unseen space remains the
-open step.
+Digital twins, virtual copies of a site kept in sync with its live data, help
+warehouses plan layouts and catch failures, but building one
+usually takes laser scans, hand-drawn 3D models and simulation specialists,
+which puts twins out of reach for most non-profits. We asked whether an
+ordinary walkthrough video is enough to start one, and built an open pipeline
+in three steps. First, a world model, an AI system that infers the 3D structure
+of a scene from a few images and can generate views the camera never captured,
+estimates camera positions and real-world depth for a handful of frames, which
+are fused into a 3D Gaussian-splat scene. Second,
+the scene is connected to operational data, such as freezer temperatures and
+forklift positions, through a serverless backend on Amazon Web Services that
+costs nothing when idle. Third, NVIDIA Omniverse displays the twin with its
+live data, with a web browser and Blender as alternatives. Universal Scene
+Description, an open 3D file standard that now stores Gaussian splats natively,
+is the only interface between the steps. Applied to three areas of a food bank
+from a public news video, twenty frames produced a twin of about 747,000 splats
+in one 48.5-megabyte file for 200 world-model credits (20 US cents), plus up to
+800 more if two failed requests are billed. Generating views of unfilmed areas
+failed on the provider's side both times, so the twin shows only what the
+camera saw. A conventional splat model trained locally from 72
+frames of the same video, at no credit cost, made one area photorealistic near
+the filmed path. Cloud cost is \TBD{pending AWS deployment}. A phone video and
+a world model can bring a first facility twin within reach of charitable
+organizations; filling in unseen space is the open step.
 \end{abstract}
 
 %%%%%% Main Text %%%%%%
@@ -135,8 +131,10 @@ viewer-specific file. It can sit in the same stage as sensors, equipment and
 annotations. NVIDIA Omniverse \cite{omniverse} is a USD-native platform for
 real-time RTX rendering and simulation. Its licensing is mixed: some
 components are open source, while the Kit SDK is distributed under NVIDIA's
-own license terms \cite{kit_app_template}. \TBD{confirm the Kit runtime license
-text and cite the license file}.
+own license terms: the Kit App Template states that its software and materials
+are governed by the NVIDIA Software License Agreement and the Product-Specific
+Terms for NVIDIA Omniverse \cite{kit_app_template}, not an open-source
+license.
 
 Surveys of digital twins identify geometry acquisition, data integration and
 interoperability as the recurring barriers \cite{tao2019digital,fuller2020digital}.
@@ -168,8 +166,13 @@ only interfaces between reconstruction, data and rendering, with a serverless
 backend that has no standing cost; cost controls that make paid world-model
 generation safe to run unattended; and a Tech-for-Good case study of a food
 bank, with an account of what the world model recovered, what it was asked
-to invent and where that step failed. \TBD{one or two cited sentences on food bank operations and
-cold-chain loss; no statistics without a source}.
+to invent and where that step failed. Food banks are logistics operations: when
+the Central Texas Food Bank moved into its 135,000-square-foot Austin
+facility in 2016, the new building held seven times the refrigeration and
+freezer capacity of the old one \cite{ctfb2016facility}, and its newer Waco
+hub combines a warehouse and distribution hub, a kitchen, a food market and a
+training center in 64,000 square feet \cite{kxxv2026waco}. Cold storage at that
+scale is exactly what a twin with live temperatures is meant to watch.
 
 \section{Results}
 
@@ -210,8 +213,9 @@ Boundary & Artifact & Rules \\
 \end{table}
 
 \subsection{A walkthrough news video yields usable input for three zones}
-The input was a public news walkthrough of the Central Texas Food Bank
-(18\,min\,32\,s, 1920\,$\times$\,1080 at 59.94 frames per second)
+The input was a public news walkthrough of a new Central Texas Food Bank
+facility, which by its broadcaster and on-screen campaign appears to be the
+Waco hub \cite{kxxv2026waco} (18\,min\,32\,s, 1920\,$\times$\,1080 at 59.94 frames per second)
 \cite{kxxv2026ctfb}. Two people appear in almost every shot and a lower-third
 graphic is burned into each frame, which makes it a realistic rather than a
 curated input. A multi-image world needs overlapping views of one space, so we
@@ -307,6 +311,39 @@ viewpoints. No generated views are included.}
 \label{fig:results}
 \end{figure}
 
+\subsection{Locally trained splats make one zone photorealistic at no credit cost}
+To separate what the world model contributes from what Gaussian splatting
+contributes, the racking aisle was also reconstructed the conventional way,
+without any paid call. A 100\,s segment of the tour (from 6:08) was sampled at
+4 frames per second and 960 pixels wide; people were masked automatically,
+together with the broadcast graphic; and sharp frames in which the camera had
+moved were kept, leaving 72 frames, nine times as many as the world-model
+capture used. Camera poses came from structure-from-motion on the CPU
+\cite{schoenberger2016sfm,colmap}, and a 3D Gaussian Splatting model
+\cite{kerbl20233d} was trained on the CPU with a trainer written for this work.
+The exported zone holds 181{,}556 splats spanning about
+28\,$\times$\,9\,$\times$\,33\,m, in a 2.9\,MB SPZ file and an 11.9\,MB USDZ
+package with the same contract as the world-model zones, and cost 0 credits.
+Near the filmed path, the racking, wrapped pallets, shelf labels and the bottle
+bin read photographically, where the world-model capture shows sparse
+fragments (Figure~\ref{fig:photoreal}). Two trade-offs remain. Structure from
+motion has no metric scale, so the scene was scaled by assuming the camera was
+held 1.6\,m above the floor, where the world model measured depth directly
+from eight frames. And the areas behind the presenters, who stand in the same
+place through most of the segment, were never filmed and train to a soft grey
+fill. \TBD{training steps and wall-clock time for the racking zone; results for
+the sorting room and market}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{photoreal_before_after.jpg}
+\caption{The racking aisle in the browser viewer. Left: the world-model capture,
+posed and fused from 8 frames. Right: a 3D Gaussian Splatting model trained
+locally from 72 frames of the same video, from a source camera. The grey haze
+on the right is where the masked presenters stood.}
+\label{fig:photoreal}
+\end{figure}
+
 \subsection{World-model output becomes a valid, metric OpenUSD asset}
 Converting the splat world to OpenUSD required four corrections, described in
 Materials and Methods: a coordinate transform from the world model's camera
@@ -331,8 +368,8 @@ and $21^\circ$C) and one forklift on a closed path from the dock through the
 storage aisles. It has no virtual private cloud, NAT gateway, database or
 provisioned capacity, so an idle twin costs nothing beyond storage.
 No real data connector is deployed yet, so all telemetry in this paper is
-simulated. \TBD{measured monthly cost at demo traffic, from the AWS bill, and
-client-side latency}.
+simulated. \TBD{pending AWS deployment: monthly cost at demo traffic, from the
+AWS bill, and client-side latency}.
 
 \subsection{The browser shows the twin with live telemetry}
 The browser viewer renders all three zones with Spark from their SPZ files,
@@ -421,10 +458,13 @@ Splats, racking / sorting / market & 270k / 282k / 195k & fused files \\
 SPZ size, racking / sorting / market (MB) & 2.1 / 2.2 / 1.6 & committed files \\
 USDZ size, racking / site (MB) & 17.5 / 48.5 & committed files \\
 World-model generation time (min) & \TBD{measure} & operation start to completion \\
-Fusion and conversion time (s) & \TBD{measure} & wall clock \\
+SPZ to USDZ, 270k / 182k splats (s) & 5.2 / 3.9 & wall clock, 4 cores \\
+Fusion time (s) & \TBD{measure} & wall clock \\
+Local 3DGS racking: frames; splats & 72; 181{,}556 & export metadata \\
+Local 3DGS racking: SPZ; USDZ (MB) & 2.9; 11.9 & committed files \\
 Hold-out PSNR (dB) / SSIM / LPIPS & \TBD{measure} & frames not used as input \\
-Telemetry latency, p50 / p95 (ms) & \TBD{measure} & client side, 1{,}000 requests \\
-Monthly AWS cost (USD) & \TBD{measure} & billing, demo traffic \\
+Telemetry latency, p50 / p95 (ms) & \TBD{pending AWS} & client side, 1{,}000 requests \\
+Monthly AWS cost (USD) & \TBD{pending AWS} & billing, demo traffic \\
 Browser frame rate (fps) & \TBD{measure} & reference laptop and phone \\
 Omniverse frame rate (fps) & \TBD{measure} & reference GPU \\
 \bottomrule
@@ -455,7 +495,9 @@ what the camera did not see. That is useful for a planning or communication
 twin and unsafe if someone reads a generated aisle as the real one. Generated
 regions should be marked in the stage, for example with an attribute on splats
 or a separate USD layer, so renderers can show them differently.
-\TBD{whether this was implemented}. Scale comes from the world model's metric
+No generated regions exist in the twin yet, so no such marking has been
+implemented; the browser viewer draws its procedural building as a neutral grey
+massing model so it cannot be mistaken for a capture. Scale comes from the world model's metric
 estimate rather than a survey, so absolute dimensions should be checked
 against at least one known measurement before the twin informs layout
 decisions. People, motion blur, reflective steel and repetitive racking remain
@@ -467,9 +509,11 @@ videos capture staff, volunteers and clients, so faces should be removed or the
 space filmed when empty, and a facility's permission obtained before a
 reconstruction is published. The next steps are a first real data connector,
 most cheaply temperature loggers publishing over MQTT to AWS IoT Core
-\cite{awsiotcore}, a person-aware frame picker, and a comparison against a
-conventional splat reconstruction from the same frames to separate the effect
-of the world model from that of splatting.
+\cite{awsiotcore}, a person-aware frame picker, and training the locally reconstructed zones at full resolution on a GPU. The
+first comparison with a conventional splat reconstruction already shows the
+division of labor: the world model gives metric scale and usable geometry from
+eight frames, while local training needs about nine times as many frames and a
+scale assumption but delivers photorealism.
 
 \section{Materials and Methods}
 
@@ -521,6 +565,26 @@ $+26$\,m and the market at $-24$\,m on $x$) and writes one USD stage that
 references each zone's layer. The layout is inspired by the Central Texas Food
 Bank and is not a survey.
 
+\subsection{Locally trained zones}
+The photoreal route uses no paid service. Frames from a zone's segment of the
+video are extracted at 4 to 6 frames per second and 960 pixels wide. People are
+masked with a DeepLab v3 segmentation model run through MediaPipe, the masks
+are grown by 35 pixels and unioned with neighboring frames, and the broadcast
+graphic is masked by a fixed box. Frames are kept if they are not in the
+blurriest 20\%, at least 35\% of their pixels are unmasked, and the median
+optical flow since the last kept frame is at least 14 pixels. COLMAP 3.9
+estimates poses with masked SIFT features on the CPU. The trainer implements
+3D Gaussian Splatting \cite{kerbl20233d} in plain PyTorch with a sparse
+per-pixel rasterizer, so that it runs without a GPU (about 1\,s per step at
+480 pixels on four cores): elliptical weighted average projection, front-to-back
+compositing, an L1 plus 0.2 D-SSIM loss with masked pixels down-weighted against
+a soft inpainted fill, adaptive cloning, splitting and pruning, and opacity
+resets every 3{,}000 steps, at half resolution for the first quarter of the
+steps. Export levels the scene to the mean camera up direction, places the
+floor at the densest low slab of opaque splats, scales so that the cameras sit
+1.6\,m above it, keeps splats seen by at least six cameras within 30\,m of the
+path, and writes the same SPZ, USDZ and index files as the world-model zones.
+
 \subsection{Conversion to OpenUSD}
 The splat world is converted with \code{usd-convert-gsplat} 0.1.15
 \cite{usdconvertgsplat} into a
@@ -540,8 +604,10 @@ authors \code{/World/FoodBank} as the transforming \code{Xform} and
 converter's direct USDZ output is an ASCII layer zipped without the 64-byte
 alignment the USDZ specification requires, so we convert to binary
 \code{.usdc} and package with OpenUSD's \code{UsdUtils.CreateNewUsdzPackage}.
-The schema defines half-precision attributes that would roughly halve file
-size; the converter does not yet write them.
+Conversion took 5.2\,s for the 270{,}423-splat world-model racking zone and
+3.9\,s for the 181{,}556-splat locally trained one on four CPU cores. The schema
+defines half-precision attributes that would roughly halve file size; the
+converter does not yet write them.
 
 \subsection{Cost controls for paid generation}
 World-model calls are the only paid, non-idempotent steps, so they are
@@ -576,7 +642,8 @@ exceeds the zone's band. Responses are cacheable for 2\,s and every payload
 carries \code{simulated: true}. Zone and asset anchors are in meters in the
 twin frame. In the browser viewer, each capture's placement, crop box and the
 area of generated geometry it replaces are set by hand in a configuration file.
-\TBD{calibration against the reconstructed stage and its residual error}.
+The simulated zone anchors have not yet been calibrated against the captures,
+so their residual error is not measured.
 
 \subsection{Visualization}
 In Omniverse, a small extension is planned that polls \code{/telemetry} and
@@ -647,16 +714,19 @@ files (SPZ), the composed USD site and the per-zone placements are in the same
 repository; public release of renders is subject to the facility's permission.
 
 \section*{Supplementary Materials}
-Movie S1. Recorded tour of the browser twin with live telemetry. \TBD{add
-when recorded}
+Movie S1. Recorded tour of the browser twin with simulated telemetry, rendered
+frame by frame in a headless browser. \TBD{replace the draft recording with the
+final cut}
 
 Movie S2. A 24\,s 1080p flythrough of the OpenUSD stage, rendered with the CPU
 Gaussian-splat renderer.
 
 Movie S3. The twin in NVIDIA Omniverse with live telemetry. \TBD{record}
 
-Data file S1. Commands to reproduce the pipeline end to end. \TBD{final
-commands for the route used}
+Data file S1. Commands to reproduce the pipeline end to end, in three files in
+the repository's \code{docs} folder: \code{CTFB\_WAREHOUSE\_RUN.md}
+(world-model zones), \code{PHOTOREAL.md} (locally trained zones) and
+\code{RENDERING.md} (CPU, Blender and planned Omniverse renders).
 
 \printbibliography
 

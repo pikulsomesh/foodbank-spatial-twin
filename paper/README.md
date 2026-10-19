@@ -16,8 +16,9 @@ The content is organised around the project's three steps: video to twin with a 
 | `figures/overview.tikz` | Figure 1, the pipeline diagram (TikZ, included with `\input`) |
 | `figures/contact_sheet.jpg` | Figure 2, the eight input frames, copied from `data/ctfb-warehouse/` in PR 2 |
 | `figures/racking_preview.jpg`, `site_preview.jpg` | Figure 3, Spark renders of the fused zones, from PR 2 |
-| `figures/demo_overview.jpg`, `demo_aisle.jpg` | Figure 4, demo-site screenshots from PR 4 |
-| `figures/splat_vs_blender.jpg` | Figure 5, CPU splat renderer vs. Blender Cycles from the same cameras, from PR 5 |
+| `figures/demo_overview.jpg`, `demo_aisle.jpg` | Figure 5, demo-site screenshots from PR 4 |
+| `figures/photoreal_before_after.jpg` | Figure 4, world-model capture vs. locally trained 3DGS, from PR 6 |
+| `figures/splat_vs_blender.jpg` | Figure 6, CPU splat renderer vs. Blender Cycles from the same cameras, from PR 5 |
 
 ## Build
 
@@ -31,20 +32,22 @@ The template uses biblatex with `backend=bibtex`, so it runs BibTeX rather than 
 
 ## Placeholders
 
-Every value not yet measured is a red `\TBD{...}` in the PDF (26 at present). None are estimates. To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
+Every value not yet measured is a red `\TBD{...}` in the PDF (20 at present). None are estimates. Items that wait on AWS say "pending AWS". To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
 
 | Where | What it needs | Comes from |
 |---|---|---|
-| Abstract, Results 2.5, Table 3 | Monthly AWS cost and telemetry latency | Deployed backend |
-| Table 3 | Generation time, fusion and conversion time, hold-out fidelity, frame rates | A successful generate run; a timed fuse; a hardware-GPU browser test |
-| Results 2.6 | Public URL, load time and frame rate | Live demo site once deployed |
-| Results 2.7, Figure 6, Methods: Visualization | Omniverse version, splat rendering check, screenshot, frame rate | Rented RTX GPU (plan in PR 5's `docs/RENDERING.md`) |
-| Methods: Serverless data backend | Anchor calibration against the stage | Backend and renderer work |
+| Abstract, Results 2.6, Table 3 | Monthly AWS cost and telemetry latency (marked "pending AWS") | Deployed backend |
+| Results 2.4 | Training steps and time for the racking 3DGS zone; sorting room and market results | Photoreal thread (PR 6) |
+| Table 3 | Generation time, fusion time, hold-out fidelity, frame rates | A successful generate run; a timed fuse; a hardware-GPU browser test |
+| Results 2.7 | Public URL, load time and frame rate | Live demo site once deployed |
+| Results 2.8, Figure 7, Methods: Visualization | Omniverse version, splat rendering check, screenshot, frame rate | Rented RTX GPU (plan in PR 5's `docs/RENDERING.md`) |
 | Methods: Statistical Analysis | Held-out frame count, dispersion statistic, pose method | Evaluation run |
-| Back matter | Acknowledgements with permission; Movies S1 and S2 | Somesh, demo video |
-| Introduction | Cited sentences on food bank operations; Kit license confirmation | Literature check |
+| Human Studies, Acknowledgments | Permission from the food bank and KXXV | Somesh |
+| Supplementary | Final demo recording (a draft exists in `demo-site/demo-draft.mp4`); Omniverse movie | Demo and renderer work |
 
-Filled from measured facts on 2026-10-19: frame counts, splat counts, SPZ and USDZ sizes and credit costs (from PR 2's `docs/CTFB_WAREHOUSE_RUN.md` and committed files), frame extraction time (re-run locally, 88 s), Figures 3 and 4 (Spark previews from PR 2, demo-site screenshots from PR 4), and the CPU splat and Blender renders with their timings (Figure 5, from PR 5).
+Filled from measured facts on 2026-10-19: frame counts, splat counts, SPZ and USDZ sizes and credit costs (PR 2), frame extraction time (88 s, re-run locally), SPZ to USDZ conversion time (5.2 s and 3.9 s, re-run locally), Figures 3 to 6 (PR 2 previews, PR 6 before/after, PR 4 screenshots, PR 5 renders), the locally trained racking zone (PR 6), the Kit license wording (kit-app-template README) and two cited sentences on food bank operations.
+
+The source video appears to be KXXV's tour of the Central Texas Food Bank's new Waco hub (KXXV is a Waco station and the lower-third reads "Feed the Need"); the paper says "appears to be". Confirm before submission.
 
 ## Before submitting
 
