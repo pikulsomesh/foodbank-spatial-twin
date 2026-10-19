@@ -163,8 +163,10 @@ Omniverse-ready OpenUSD Gaussian-splat twin, including the coordinate and
 packaging corrections needed to make world-model output a valid metric USD
 asset; an architecture in which OpenUSD and a small telemetry contract are the
 only interfaces between reconstruction, data and rendering, with a serverless
-backend that has no standing cost; cost controls that make paid world-model
-generation safe to run unattended; and a Tech-for-Good case study of a food
+backend that has no standing cost; an operations layer that models
+inventory, flows, docks and a community kitchen behind the same API and as
+OpenUSD prims; cost controls that make paid world-model generation safe to
+run unattended; and a Tech-for-Good case study of a food
 bank, with an account of what the world model recovered, what it was asked
 to invent and where that step failed. Food banks are logistics operations: when
 the Central Texas Food Bank moved into its 135,000-square-foot Austin
@@ -371,6 +373,63 @@ No real data connector is deployed yet, so all telemetry in this paper is
 simulated. \TBD{pending AWS deployment: monthly cost at demo traffic, from the
 AWS bill, and client-side latency}.
 
+\subsection{An operations layer turns the geometry into a working food bank}
+The captured zones show what the building looks like; an operations layer
+models what it does, and it follows the same three steps. In the twin's metric
+frame, eight operational areas (receiving, product recovery or sorting,
+freezer, cooler, dry racking, order staging, the client market and the
+community kitchen) are footprints tagged with the capture that covers them. On
+the data side, the same stateless function that serves telemetry also answers
+\code{GET /operations} with inventory by product family, flows between
+sources, areas and outbound channels, dock schedules and kitchen batches, all
+computed from the clock and one master-data file, with no database; a
+JavaScript port returns identical payloads offline, which a test enforces. For
+Omniverse, a script writes the layer as \code{operations.usda}, with one prim
+per area (8), kitchen station (7) and flow (16), keyed by the same identifiers
+as the API so that an extension can bind live values to them.
+
+The kitchen is modeled as a small factory, with a bill of materials and a
+routing per recipe: ingredients are picked from storage, and each batch of 250
+meals moves through prep, cooking on a kettle, tilt skillet or combi oven,
+blast chilling, portioning and packing, and cold holding until dispatch. The
+same stance extends to the whole distribution center: inbound loads from five
+source types either pass through the sorting room or go straight to put-away,
+stock waits in its temperature zone with a days-of-supply target, and outbound
+pounds leave for partner agencies, mobile pantries, the market and the kitchen.
+Volumes are anchored to published figures for the Central Texas Food Bank's
+main facility (Table~\ref{tab:published}); every other parameter, including
+source and channel shares, product mixes, pallet weights, capacities, time
+windows, equipment counts, recipes and step times, is an estimate and is
+flagged as one in the master data.
+
+Over eight simulated weeks, a weekday received 231{,}000 to 296{,}000\,lb
+(median 258{,}000) and distributed 220{,}000 to 300{,}000\,lb (median 260{,}000,
+about 217{,}000 meal equivalents), with 4.49 to 4.63 million lb on hand, or
+22.1 to 22.8 days of supply. Each weekday had 13 to 17 inbound trucks and 59 to
+80 partner pickups, and the kitchen produced 912 to 997 meals; Saturdays run
+at reduced volume and Sundays are closed. These numbers follow from the
+published annual volume and the estimated parameters; they are a plausible
+operating rhythm for the twin to display, not a measurement of the food bank.
+
+\begin{table}[t]
+\caption{Published figures that anchor the operations model. All other parameters are estimates.}
+\centering\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}Xl@{}}
+\toprule
+Figure & Source \\
+\midrule
+74 million lb distributed per year, 26.6 million lb of it produce (fiscal year 2024) & \cite{ctfb_impact_fy24} \\
+251 partner agencies in 21 counties & \cite{ctfb_impact_fy24,ctfb2016facility} \\
+135{,}000\,sq\,ft facility & \cite{ctfb2016facility} \\
+More than 7{,}000 pallet positions, more than 35{,}000\,sq\,ft of cooler and freezer, 15 docks & \cite{cfs_processing} \\
+4{,}200\,sq\,ft production kitchen with kettles, combi ovens, blast chillers and tilt skillets & \cite{ctfb_kitchen_volunteer} \\
+About 950 kitchen meals per day for after-school, summer and child-care meal programs & \cite{ctfb_kids_cafe,ctfb_kitchen_history} \\
+1.2\,lb of food per meal & \cite{fa_meal} \\
+\bottomrule
+\end{tabularx}
+\label{tab:published}
+\end{table}
+
 \subsection{The browser shows the twin with live telemetry}
 The browser viewer renders all three zones with Spark from their SPZ files,
 5.9\,MB in total (2.1, 2.2 and 1.6\,MB), placed by the same site plan as the
@@ -503,6 +562,16 @@ against at least one known measurement before the twin informs layout
 decisions. People, motion blur, reflective steel and repetitive racking remain
 hard inputs; masking people before reconstruction would help, and the world
 model's API exposes masked inputs that we have not yet evaluated.
+
+The twin is also a composite. Its geometry comes from a video that appears to
+show the food bank's Waco hub, while its operating volumes come from published
+figures for the 135{,}000\,sq\,ft Austin facility, and the building layout is
+a stand-in; this is acceptable for a demonstration but must be stated wherever
+the twin is shown. A related gap is technical: the operations layer uses the
+browser viewer's placement of each zone, while the composed site stage still
+uses an earlier site plan, so the two USD files cannot yet be referenced
+together without re-composing the captures with the viewer's placements or
+adding a transform per zone.
 
 Applying the approach also needs care outside the software. Walkthrough
 videos capture staff, volunteers and clients, so faces should be removed or the
@@ -645,6 +714,23 @@ area of generated geometry it replaces are set by hand in a configuration file.
 The simulated zone anchors have not yet been calibrated against the captures,
 so their residual error is not measured.
 
+\subsection{Operations model}
+The master data lists areas with footprints and positions in meters, six
+inventory families with a home temperature zone, pallet weight, shelf life and
+days-of-supply target, five inbound source types and four outbound channels
+with their shares and product mixes, and the kitchen's programs, equipment,
+recipes with per-meal bills of materials, and routing. Each value is either
+tied to a reference or marked as an estimate. Daily inbound follows the annual
+volume, a weekday profile and deterministic noise; outbound is set so stock
+tracks a slow target curve, so one day's closing stock is the next day's
+opening stock. Areas whose cold-chain sensor is in alarm report their stock as
+at risk; the kitchen walk-in is a fourth cold-chain sensor in the telemetry
+feed. Kitchen batches of 250 meals start at 06:00 local time, staggered by 45
+minutes, and are dispatched between 13:00 and 15:30. Tests check that the
+Python and JavaScript payloads agree, that stock carries over midnight and that
+Sunday is closed. The weekday ranges in Results were computed by evaluating the
+model at the end of each day from 1 September to 26 October 2026.
+
 \subsection{Visualization}
 In Omniverse, a small extension is planned that polls \code{/telemetry} and
 updates prims under the twin: zone markers change color with alarm status,
@@ -707,7 +793,8 @@ The author declares that there is no conflict of interest regarding the
 publication of this article.
 
 \subsection*{Data Availability}
-Code, the AWS template and the eight case-study input frames are available at
+Code, the AWS template, the operations master data and the case-study input
+frames are available at
 \url{https://github.com/pikulsomesh/foodbank-spatial-twin}. The source video
 is publicly available from its publisher \cite{kxxv2026ctfb}. The fused zone
 files (SPZ), the composed USD site and the per-zone placements are in the same

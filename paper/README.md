@@ -45,13 +45,13 @@ Every value not yet measured is a red `\TBD{...}` in the PDF (20 at present). No
 | Human Studies, Acknowledgments | Permission from the food bank and KXXV | Somesh |
 | Supplementary | Final demo recording (a draft exists in `demo-site/demo-draft.mp4`); Omniverse movie | Demo and renderer work |
 
-Filled from measured facts on 2026-10-19: frame counts, splat counts, SPZ and USDZ sizes and credit costs (PR 2), frame extraction time (88 s, re-run locally), SPZ to USDZ conversion time (5.2 s and 3.9 s, re-run locally), Figures 3 to 6 (PR 2 previews, PR 6 before/after, PR 4 screenshots, PR 5 renders), the locally trained racking zone (PR 6), the Kit license wording (kit-app-template README) and two cited sentences on food bank operations.
+Filled from measured facts on 2026-10-19: frame counts, splat counts, SPZ and USDZ sizes and credit costs (PR 2), frame extraction time (88 s, re-run locally), SPZ to USDZ conversion time (5.2 s and 3.9 s, re-run locally), Figures 3 to 6 (PR 2 previews, PR 6 before/after, PR 4 screenshots, PR 5 renders), the locally trained racking zone (PR 6), the Kit license wording (kit-app-template README) and two cited sentences on food bank operations, and the operations layer (Results 2.7, Table 4, Methods: Operations model) from PR 8, with weekday ranges computed by running its simulator over 1 September to 26 October 2026.
 
 The source video appears to be KXXV's tour of the Central Texas Food Bank's new Waco hub (KXXV is a Waco station and the lower-third reads "Feed the Need"); the paper says "appears to be". Confirm before submission.
 
 ## Before submitting
 
-1. Verify every entry in `refs.bib` against its source (authors, venue, pages, DOI), and add access dates to the web entries that lack one.
+1. Verify every entry in `refs.bib`, especially `ctfb_impact_fy24` and `fa_meal`, which point at home pages rather than the specific report pages, against its source (authors, venue, pages, DOI), and add access dates to the web entries that lack one.
 2. Get permission from the Central Texas Food Bank and the video's rights holder (25 News KXXV) before publishing renders of the reconstruction.
 3. The AI-use declaration in the Acknowledgments is confirmed by the author. AI tools cannot be listed as authors on arXiv or in most journals.
 4. For arXiv, suggested categories are primary `cs.CV`, cross-listed to `cs.GR` and `cs.CY`. A first-time submitter in a category may need an endorsement. Upload `main.tex`, `refs.bib`, the generated `main.bbl` and `figures/`. The line numbers are a journal-review convention; remove `\linenumbers` for the arXiv version if preferred.
