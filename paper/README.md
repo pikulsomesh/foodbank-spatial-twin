@@ -17,6 +17,7 @@ The content is organised around the project's three steps: video to twin with a 
 | `figures/contact_sheet.jpg` | Figure 2, the eight input frames, copied from `data/ctfb-warehouse/` in PR 2 |
 | `figures/racking_preview.jpg`, `site_preview.jpg` | Figure 3, Spark renders of the fused zones, from PR 2 |
 | `figures/demo_overview.jpg`, `demo_aisle.jpg` | Figure 4, demo-site screenshots from PR 4 |
+| `figures/splat_vs_blender.jpg` | Figure 5, CPU splat renderer vs. Blender Cycles from the same cameras, from PR 5 |
 
 ## Build
 
@@ -30,20 +31,20 @@ The template uses biblatex with `backend=bibtex`, so it runs BibTeX rather than 
 
 ## Placeholders
 
-Every value not yet measured is a red `\TBD{...}` in the PDF (27 at present). None are estimates. To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
+Every value not yet measured is a red `\TBD{...}` in the PDF (26 at present). None are estimates. To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
 
 | Where | What it needs | Comes from |
 |---|---|---|
 | Abstract, Results 2.5, Table 3 | Monthly AWS cost and telemetry latency | Deployed backend |
 | Table 3 | Generation time, fusion and conversion time, hold-out fidelity, frame rates | A successful generate run; a timed fuse; a hardware-GPU browser test |
 | Results 2.6 | Public URL, load time and frame rate | Live demo site once deployed |
-| Results 2.7, Figure 5, Methods: Visualization | Omniverse version, splat rendering check, screenshot, Blender result | Renderer work |
+| Results 2.7, Figure 6, Methods: Visualization | Omniverse version, splat rendering check, screenshot, frame rate | Rented RTX GPU (plan in PR 5's `docs/RENDERING.md`) |
 | Methods: Serverless data backend | Anchor calibration against the stage | Backend and renderer work |
 | Methods: Statistical Analysis | Held-out frame count, dispersion statistic, pose method | Evaluation run |
 | Back matter | Acknowledgements with permission; Movies S1 and S2 | Somesh, demo video |
 | Introduction | Cited sentences on food bank operations; Kit license confirmation | Literature check |
 
-Filled from measured facts on 2026-10-19: frame counts, splat counts, SPZ and USDZ sizes and credit costs (from PR 2's `docs/CTFB_WAREHOUSE_RUN.md` and committed files), frame extraction time (re-run locally, 88 s), and Figures 3 and 4 (Spark previews from PR 2, demo-site screenshots from PR 4).
+Filled from measured facts on 2026-10-19: frame counts, splat counts, SPZ and USDZ sizes and credit costs (from PR 2's `docs/CTFB_WAREHOUSE_RUN.md` and committed files), frame extraction time (re-run locally, 88 s), Figures 3 and 4 (Spark previews from PR 2, demo-site screenshots from PR 4), and the CPU splat and Blender renders with their timings (Figure 5, from PR 5).
 
 ## Before submitting
 

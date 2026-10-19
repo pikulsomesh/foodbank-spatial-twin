@@ -365,11 +365,35 @@ the racking on the right belong to the generated building.}
 \label{fig:browser}
 \end{figure}
 
-\subsection{Omniverse and Blender read the same OpenUSD stage}
-\TBD{Omniverse version and hardware, confirmation that it renders the
-splat schema natively, measured frame rate, and a screenshot with telemetry
-overlays (Figure~\ref{fig:omniverse})}. \TBD{result of the Blender spike; do
-not claim native splat rendering}.
+\subsection{The OpenUSD stage renders outside the browser}
+Two renderers read \code{site.usdz} directly on a four-core CPU machine with
+no GPU, from the same list of six camera shots (Figure~\ref{fig:usdrenders}). A
+Gaussian-splat renderer written for this work walks the stage for every splat
+prim, applies each prim's transform to positions and covariances, and
+composites the splats in depth order; it rendered all six stills in about
+20\,s including loading, and a 24\,s, 576-frame 1080p flythrough in a few
+minutes. Blender 5.2's own USD importer brings in the transform hierarchy but
+turns each splat prim into an empty object, because it does not read the
+\code{ParticleField3DGaussianSplat} schema. Reading the splats with the OpenUSD
+library that ships inside Blender and drawing each as an emissive sphere gave
+renders in Cycles that match the splat renderer shot for shot, at about 5\,s
+per 960\,$\times$\,540 frame with 8 samples. In both, each zone reads well only
+near its source viewpoints; wide shots break into fragments because the
+captures are sparse, which more frames or generated views would address, not
+a different renderer. \TBD{Omniverse version and hardware, confirmation that it
+renders the splat schema natively, measured frame rate, and a screenshot with
+telemetry overlays (Figure~\ref{fig:omniverse})}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{splat_vs_blender.jpg}
+\caption{The same OpenUSD stage rendered on a CPU, from identical cameras: the
+Gaussian-splat renderer (left) and Blender 5.2 Cycles with one emissive sphere
+per splat (right). Rows: the racking aisle, the client market, and the racking
+aisle from an oblique viewpoint. All three shots are near the zones' source
+viewpoints.}
+\label{fig:usdrenders}
+\end{figure}
 
 \begin{figure}[t]
 \centering
@@ -555,20 +579,27 @@ area of generated geometry it replaces are set by hand in a configuration file.
 \TBD{calibration against the reconstructed stage and its residual error}.
 
 \subsection{Visualization}
-In Omniverse, a small extension polls \code{/telemetry} and updates prims
-under the twin: zone markers change color with alarm status, labels show
-temperatures, and the forklift prim follows its reported position and heading.
+In Omniverse, a small extension is planned that polls \code{/telemetry} and
+updates prims under the twin: zone markers change color with alarm status,
+labels show temperatures, and the forklift prim follows its reported position
+and heading. The plan is to open the same stage on a rented RTX GPU, where
+Omniverse renders particle-field prims natively, and capture the camera list
+used for the CPU renders.
 \TBD{Kit version and whether this is a Kit app template or a plain stage plus
 extension}. The browser viewer renders the zone SPZ files with Spark
 \cite{spark}, a three.js Gaussian-splat renderer, places them with the site
 plan, and overlays the same telemetry; a procedural splat layout of the
 building surrounds the captures and is labeled as generated. The site deploys
 as static files to GitHub Pages; common USD web viewers hand USDZ to AR Quick
-Look, which does not render USD particle fields. Blender \cite{blender}
-imports USD, but we found no indication in recent release notes that it reads
-Gaussian-splat prims, so it is evaluated for conventional geometry and data
-overlays, with the splat loaded through an add-on or a USD Hydra delegate that
-understands the schema.
+Look, which does not render USD particle fields. The CPU splat renderer uses
+usd-core, NumPy and Numba, projects each Gaussian with an elliptical weighted
+average filter, colors it from its degree-0 spherical harmonics and blends
+front to back. For Blender \cite{blender}, a script reads every splat prim with
+the \code{pxr} module, builds one point cloud per prim with Geometry Nodes
+(radius 1.7 times the splat scale, emission color, opacity as transparency) and
+renders with Cycles on the CPU; the scene can be saved as a \code{.blend} file
+and explored in the Blender interface. Spheres are not Gaussians, so edges are
+harder than in the splat renderer.
 
 \subsection{Statistical Analysis}
 Fidelity is measured on held-out frames: frames from the extraction window
@@ -619,7 +650,10 @@ repository; public release of renders is subject to the facility's permission.
 Movie S1. Recorded tour of the browser twin with live telemetry. \TBD{add
 when recorded}
 
-Movie S2. The twin in NVIDIA Omniverse with live telemetry. \TBD{record}
+Movie S2. A 24\,s 1080p flythrough of the OpenUSD stage, rendered with the CPU
+Gaussian-splat renderer.
+
+Movie S3. The twin in NVIDIA Omniverse with live telemetry. \TBD{record}
 
 Data file S1. Commands to reproduce the pipeline end to end. \TBD{final
 commands for the route used}
