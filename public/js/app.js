@@ -168,7 +168,8 @@ async function initScene(cfg) {
   if (withContext) {
     loadingText.textContent = "Building the facility layout…";
     const clear = captures.map((c) => c.clear).filter(Boolean);
-    const mesh = new SplatMesh({ constructSplats: (splats) => { buildPlaceholder(splats, { density: phone ? 1.45 : 1, clear }); } });
+    const massing = captures.length > 0 && cfg.context?.style !== "colour";
+    const mesh = new SplatMesh({ constructSplats: (splats) => { buildPlaceholder(splats, { density: phone ? 1.45 : 1, clear, massing }); } });
     scene.add(mesh);
     await mesh.initialized;
   }
@@ -228,15 +229,6 @@ async function initScene(cfg) {
   }
   camera.position.set(...VIEWS.overview[0]).add(new THREE.Vector3(6, 8, 10));
   controls.target.set(...VIEWS.overview[1]);
-  // ?cam=px,py,pz,tx,ty,tz pins the camera, for screenshots and recordings.
-  const pinned = (params.get("cam") || "").split(",").map(Number);
-  if (pinned.length === 6 && pinned.every(Number.isFinite)) {
-    camera.position.set(...pinned.slice(0, 3));
-    controls.target.set(...pinned.slice(3));
-  } else {
-    goTo(...VIEWS.overview, 2200);
-  }
-
   // One button per capture, looking the way its source cameras looked (-Z in the capture frame).
   if (captures.length) {
     document.querySelector('#views [data-view="aisle"]')?.remove();
@@ -244,7 +236,7 @@ async function initScene(cfg) {
     captures.forEach((c, i) => {
       const yaw = THREE.MathUtils.degToRad(c.yaw_deg || 0), dir = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
       const o = new THREE.Vector3(...c.position);
-      VIEWS[`capture-${i}`] = c.view || [o.clone().addScaledVector(dir, -1).setY(2).toArray(), o.clone().addScaledVector(dir, 7).setY(1.4).toArray()];
+      VIEWS[`capture-${i}`] = c.view || [o.clone().setY(o.y + 1.6).toArray(), o.clone().addScaledVector(dir, 7).setY(o.y + 1.3).toArray()];
       const btn = document.createElement("button");
       btn.dataset.view = `capture-${i}`;
       btn.textContent = c.button || c.name;
@@ -252,6 +244,18 @@ async function initScene(cfg) {
       followBtn.before(btn);
     });
   }
+  // ?cam=px,py,pz,tx,ty,tz pins the camera, for screenshots and recordings.
+  const pinned = (params.get("cam") || "").split(",").map(Number);
+  if (pinned.length === 6 && pinned.every(Number.isFinite)) {
+    camera.position.set(...pinned.slice(0, 3));
+    controls.target.set(...pinned.slice(3));
+  } else {
+    // Land on the first capture when there is one: seen from its own cameras it looks like the video.
+    const first = captures.length && !params.has("overview") ? "capture-0" : "overview";
+    document.querySelectorAll("#views [data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === first));
+    goTo(...VIEWS[first], 2600);
+  }
+
   for (const btn of document.querySelectorAll("#views [data-view]")) {
     btn.addEventListener("click", () => {
       document.querySelectorAll("#views [data-view]").forEach((b) => b.classList.toggle("on", b === btn));
@@ -378,7 +382,7 @@ async function loadCaptures(cfg, scene, loadingText) {
     try {
       let mesh = new SplatMesh({ fileBytes: bytes, fileName: c.url.split("/").pop() });
       await mesh.initialized;
-      if (c.crop) mesh = await cropSplats(mesh, c.crop, c.scale, c.ground);
+      if (c.crop || c.dilate) mesh = await cropSplats(mesh, c.crop, c.scale, c.ground, c.dilate || 1);
       // Same correction as the USD wrapper: rotateX(180) · translate(0, -ground, 0) · scale(s),
       // then the capture's place in the building.
       const root = new THREE.Group();
@@ -399,14 +403,18 @@ async function loadCaptures(cfg, scene, loadingText) {
 
 // Keeps the splats inside crop.min/max, given in metres in the corrected (Y-up, floor at 0) frame,
 // which is how a person reads positions off the twin. Undoes the correction to test raw centres.
-async function cropSplats(src, crop, scale, ground) {
-  const lo = new THREE.Vector3(...crop.min), hi = new THREE.Vector3(...crop.max), p = new THREE.Vector3();
+// `dilate` grows each splat and firms up its opacity, closing the gaps between depth samples so the
+// capture reads as a surface rather than a point cloud.
+async function cropSplats(src, crop, scale, ground, dilate = 1) {
+  const lo = new THREE.Vector3(...(crop?.min || [-Infinity, -Infinity, -Infinity]));
+  const hi = new THREE.Vector3(...(crop?.max || [Infinity, Infinity, Infinity])), p = new THREE.Vector3();
   const out = new SplatMesh({
     constructSplats: (splats) => {
       src.forEachSplat((_i, center, scales, quat, opacity, color) => {
         p.copy(center).multiplyScalar(scale);
         p.set(p.x, ground - p.y, -p.z); // rotateX(180) after translate(0, -ground, 0)
         if (p.x >= lo.x && p.x <= hi.x && p.y >= lo.y && p.y <= hi.y && p.z >= lo.z && p.z <= hi.z) {
+          if (dilate !== 1) { scales.multiplyScalar(dilate); opacity = Math.min(1, opacity * (1 + (dilate - 1) * 2)); }
           splats.pushSplat(center, scales, quat, opacity, color);
         }
       });

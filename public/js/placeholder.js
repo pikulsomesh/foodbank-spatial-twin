@@ -20,7 +20,9 @@ function mulberry32(seed) {
 // density > 1 means coarser sampling (fewer splats) for phones.
 // `clear` is a list of { x: [x0, x1], z: [z0, z1] } floor areas where captured splats go; racking,
 // sorting tables and staging pallets inside them are left out.
-export function buildPlaceholder(splats, { density = 1, clear = [] } = {}) {
+// `massing` draws everything in neutral greys shaded by face direction, like an architect's white
+// model, so photographic captures stand out instead of competing with flat colours.
+export function buildPlaceholder(splats, { density = 1, clear = [], massing = false } = {}) {
   const cleared = (x0, x1, z0, z1) => clear.some((c) => x0 < c.x[1] && x1 > c.x[0] && z0 < c.z[1] && z1 > c.z[0]);
   const rand = mulberry32(7);
   const c = new THREE.Vector3(), s = new THREE.Vector3(), q = new THREE.Quaternion(), col = new THREE.Color();
@@ -43,7 +45,8 @@ export function buildPlaceholder(splats, { density = 1, clear = [] } = {}) {
         c[a] = Math.min(r0[1], i + (rand() - 0.5) * step * 0.3);
         c[b] = Math.min(r1[1], j + (rand() - 0.5) * step * 0.3);
         s[n] = 0.01; s[a] = step * 0.62; s[b] = step * 0.62;
-        setHex(typeof color === "function" ? color(c.x, c.y, c.z) : color, vary);
+        if (massing) setHex(n === "y" ? (at < 0.01 ? 0x8f9499 : 0xd5d9dd) : n === "x" ? 0xb4b9be : 0xc3c8cc, 0.04);
+        else setHex(typeof color === "function" ? color(c.x, c.y, c.z) : color, vary);
         splats.pushSplat(c, s, q, opacity, col);
       }
     }
