@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photoreal Zones</title>
+<style>
+  :root { --bg: #0f1720; --panel: #17212b; --text: #e6edf3; --muted: #9aa7b4; --accent: #4fd1a5; --border: #2a3744; }
+  /* Always dark: the splat canvas is dark in both themes, like the demo site. */
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  .bar { position: fixed; left: 16px; right: 16px; top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .bar h1 { font-size: 16px; margin: 0 12px 0 0; }
+  button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .note { position: fixed; left: 16px; right: 16px; bottom: 12px; color: var(--muted); max-width: 720px; }
+  .views { position: fixed; left: 16px; top: 52px; display: flex; gap: 6px; flex-wrap: wrap; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+    "@sparkjsdev/spark": "https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.2.0/dist/spark.module.min.js"
+  }
+}
+</script>
+</head>
+<body>
+<div class="bar"><h1>Photoreal zones</h1><span id="zones"></span><span id="modes"></span></div>
+<div class="views" id="views"></div>
+<p class="note" id="note">Loading…</p>
+<script type="module">
+// Before/after inspector for the photoreal route: the Atlas RGBD capture of a zone
+// (zones.json) next to the 3DGS splat trained from the video (photoreal.json).
+// URL params: ?zone=Racking&mode=3dgs&view=2
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
+
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const getJSON = (u) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x0f1720);
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 200);
+scene.add(new SparkRenderer({ renderer }));
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+});
+
+const [atlas, trained] = await Promise.all([getJSON("zones/zones.json"), getJSON("zones/photoreal.json")]);
+const zones = (trained?.zones || []).map((t) => ({ trained: t, atlas: atlas?.zones?.find((a) => a.name === t.name) }));
+if (!zones.length) { $("note").textContent = "No trained zones yet: run scripts/photoreal_twin.py export."; throw new Error("no zones"); }
+
+let zone = zones.find((z) => z.trained.name === params.get("zone")) || zones[0];
+let mode = params.get("mode") === "atlas" ? "atlas" : "3dgs";
+let mesh = null;
+
+// Both captures follow the zones.json rule: rotate 180 deg about X, lift by ground_plane_offset.
+async function load() {
+  if (mesh) { scene.remove(mesh); mesh.dispose?.(); }
+  const entry = mode === "atlas" && zone.atlas ? zone.atlas : zone.trained;
+  $("note").textContent = "Loading…";
+  mesh = new SplatMesh({ url: entry.url });
+  mesh.rotation.x = Math.PI;
+  mesh.position.y = entry.ground_plane_offset || 0;
+  scene.add(mesh);
+  await mesh.initialized;
+  const t = zone.trained;
+  $("note").textContent = mode === "atlas"
+    ? `Before: Marble 2 (Atlas) capture, fused from 6 to 8 RGBD frames. It only reads well from its source cameras, and its frame differs from the trained splat, so presets may miss it.`
+    : `After: ${t.splats.toLocaleString()} Gaussians trained from ${t.frames} video frames (${t.video_start_s}s to ${t.video_start_s + t.video_duration_s}s), hosts masked out, 0 World Labs credits.`;
+  window.__ready = true;
+}
+
+function setView(i) {
+  const v = zone.trained.views[i];
+  camera.position.set(...v.position);
+  controls.target.set(...v.target);
+  controls.update();
+  [...$("views").children].forEach((b, j) => b.setAttribute("aria-pressed", String(j === i)));
+}
+
+function buttons() {
+  $("zones").replaceChildren(...zones.map((z) => {
+    const b = document.createElement("button");
+    b.textContent = z.trained.label || z.trained.name;
+    b.setAttribute("aria-pressed", String(z === zone));
+    b.onclick = () => { zone = z; buttons(); load(); setView(0); };
+    return b;
+  }));
+  $("modes").replaceChildren(...[["3dgs", "Trained 3DGS"], ["atlas", "Atlas capture"]].map(([m, label]) => {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.setAttribute("aria-pressed", String(m === mode));
+    b.disabled = m === "atlas" && !zone.atlas;
+    b.onclick = () => { mode = m; buttons(); load(); };
+    return b;
+  }));
+  $("views").replaceChildren(...zone.trained.views.map((v, i) => {
+    const b = document.createElement("button");
+    b.textContent = `View ${i + 1}`;
+    b.onclick = () => setView(i);
+    return b;
+  }));
+}
+
+buttons();
+await load();
+setView(Math.min(+params.get("view") || 0, zone.trained.views.length - 1));
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+</script>
+</body>
+</html>
