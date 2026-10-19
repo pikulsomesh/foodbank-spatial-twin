@@ -637,6 +637,40 @@ division of labor: the world model gives metric scale and usable geometry from
 eight frames, while local training needs about nine times as many frames and a
 scale assumption but delivers photorealism.
 
+What would it cost to run the twin on real floor data? We priced one
+representative 135{,}000\,sq\,ft facility from list prices on 19 October 2026
+(Table~\ref{tab:costest}); this is an estimate under stated assumptions, not
+a measured bill. Battery LoRaWAN sensors report freezer, cooler, kitchen and
+dock temperatures and door states through AWS IoT Core for LoRaWAN, BLE
+beacons place each forklift in an area, the warehouse management system
+supplies inventory, and the existing API serves the result with the
+\code{simulated} flag cleared. About \$2{,}700 of hardware and about \$12 a
+month of AWS services cover the core, so the cloud is not the barrier; the
+hardware, its installation and keeping the master data current are. Running
+Omniverse on an AWS GPU only when needed adds about \$124 a month, while an
+always-on GPU would add about \$2{,}100, which is why the browser is the
+everyday viewer. Assumptions, unit prices and sources are in the repository's
+\code{docs/COST\_ESTIMATE.md}.
+
+\begin{table}[t]
+\caption{Estimated cost of running the representative twin on real floor
+data, from list prices on 19 October 2026. Excludes tax, installation and
+staff time.}
+\centering\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}Xrr@{}}
+\toprule
+Item & One-time & Monthly \\
+\midrule
+24 temperature sensors, 21 door sensors, 2 LoRaWAN gateways & \$1{,}860 & \\
+8 forklift beacons, 10 BLE gateways (area-level location) & \$830 & \\
+AWS: IoT Core, Lambda, API Gateway, DynamoDB, logs (20 viewers) & & \$12 \\
+Optional: Omniverse on a g6e.xlarge, 10\,h a week & & \$124 \\
+Optional: forklift telematics, 8 vehicles & & \$200--400 \\
+\bottomrule
+\end{tabularx}
+\label{tab:costest}
+\end{table}
+
 \section{Materials and Methods}
 
 \subsection{Experimental Design}
