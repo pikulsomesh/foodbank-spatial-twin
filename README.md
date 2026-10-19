@@ -35,7 +35,7 @@ export WORLD_LABS_API_KEY=...                      # never commit this
 scripts/ingest_and_build.sh                        # one draft world, about 250 credits ($0.20)
 ```
 
-If YouTube blocks the download (it usually does from cloud and CI IPs), download the video on a workstation and run `scripts/ingest_and_build.sh --video-file path/to/video.mp4`. Use `--start SECONDS` to choose which 40-second window of the tour to capture.
+If YouTube blocks the download (it usually does from cloud and CI IPs), download the video on a workstation and run `scripts/ingest_and_build.sh --video-file path/to/video.mp4`. Use `--start SECONDS` to choose which 40-second window of the tour to capture. For a long tour, `--interval N` keeps one frame every N seconds (so 40 frames span 40N seconds) and `--crop-bottom PX` removes burned-in broadcast graphics. The first real run, on the Central Texas Food Bank warehouse aisle, is written up in [docs/CTFB_WAREHOUSE_RUN.md](docs/CTFB_WAREHOUSE_RUN.md).
 
 Arguments after `--` go to the Python stage, for example `scripts/ingest_and_build.sh -- --spz-resolution 100k`.
 

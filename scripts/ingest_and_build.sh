@@ -36,6 +36,11 @@
 #   --max-frames N       Frames to keep, 1..40 (default: 40)
 #   --samples-per-sec N  Blur-scoring candidates per second, 1..8 (default: 4)
 #   --max-width PX       Downscale wider frames to this width (default: 1920)
+#   --interval SECONDS   Keep one frame every N seconds, 1..30 (default: 1).
+#                        The capture window becomes max-frames * interval, so a
+#                        larger interval spreads 40 frames over a longer walk.
+#   --crop-bottom PX     Drop PX rows from the bottom of every frame before
+#                        scaling, e.g. a broadcast lower-third (default: 0)
 #   --force-download     Re-download even if a cached copy exists in /tmp
 #   --ingest-only        Stop after frame extraction (spends 0 credits)
 #   --dry-run            Run the Python stage in dry-run mode (spends 0 credits)
@@ -44,6 +49,8 @@
 # Examples:
 #   scripts/ingest_and_build.sh --ingest-only                 # frames only
 #   scripts/ingest_and_build.sh --start 35 --dry-run          # rehearse API call
+#   scripts/ingest_and_build.sh --video-file tour.mp4 --start 305 --interval 4 \
+#       --crop-bottom 264 --ingest-only                       # warehouse aisle, no overlay
 #   WORLD_LABS_API_KEY=... scripts/ingest_and_build.sh        # real draft run (~250 credits)
 # =============================================================================
 
@@ -75,6 +82,8 @@ START_SEC=0
 MAX_FRAMES=${HARD_MAX_FRAMES}
 SAMPLES_PER_SEC=4
 MAX_WIDTH=1920
+INTERVAL=1
+CROP_BOTTOM=0
 FORCE_DOWNLOAD=0
 INGEST_ONLY=0
 DRY_RUN=0
@@ -116,6 +125,8 @@ while [[ $# -gt 0 ]]; do
     --max-frames)       MAX_FRAMES="${2:?--max-frames needs a value}"; shift 2 ;;
     --samples-per-sec)  SAMPLES_PER_SEC="${2:?--samples-per-sec needs a value}"; shift 2 ;;
     --max-width)        MAX_WIDTH="${2:?--max-width needs a value}"; shift 2 ;;
+    --interval)         INTERVAL="${2:?--interval needs a value}"; shift 2 ;;
+    --crop-bottom)      CROP_BOTTOM="${2:?--crop-bottom needs a value}"; shift 2 ;;
     --force-download)   FORCE_DOWNLOAD=1; shift ;;
     --ingest-only)      INGEST_ONLY=1; shift ;;
     --dry-run)          DRY_RUN=1; shift ;;
@@ -131,6 +142,9 @@ is_uint "${SAMPLES_PER_SEC}" || die "--samples-per-sec must be an integer"
 is_uint "${MAX_WIDTH}"       || die "--max-width must be an integer"
 (( SAMPLES_PER_SEC >= 1 && SAMPLES_PER_SEC <= 8 )) || die "--samples-per-sec must be 1..8"
 (( MAX_WIDTH >= 320 ))                             || die "--max-width must be >= 320"
+is_uint "${INTERVAL}"        || die "--interval must be an integer"
+is_uint "${CROP_BOTTOM}"     || die "--crop-bottom must be an integer"
+(( INTERVAL >= 1 && INTERVAL <= 30 ))              || die "--interval must be 1..30"
 
 # COST GUARD: clamp to the hard ceiling no matter what was requested.
 if (( MAX_FRAMES < 1 )); then die "--max-frames must be >= 1"; fi
@@ -218,9 +232,19 @@ log "Source: ${DURATION}s, stream (w,h,field_order) = ${VSTREAM}"
 # awk handles the float math portably (no bc dependency).
 awk -v s="${START_SEC}" -v d="${DURATION}" 'BEGIN{exit !(s < d)}' \
   || die "--start ${START_SEC}s is beyond the video's ${DURATION}s"
-WINDOW="$(awk -v s="${START_SEC}" -v d="${DURATION}" -v m="${MAX_FRAMES}" \
-            'BEGIN{w=d-s; if (w>m) w=m; printf "%.3f", w}')"
-log "Capture window: ${START_SEC}s .. +${WINDOW}s  (max ${MAX_FRAMES} frames @ 1 fps)"
+WINDOW="$(awk -v s="${START_SEC}" -v d="${DURATION}" -v m="${MAX_FRAMES}" -v i="${INTERVAL}" \
+            'BEGIN{w=d-s; if (w>m*i) w=m*i; printf "%.3f", w}')"
+log "Capture window: ${START_SEC}s .. +${WINDOW}s  (max ${MAX_FRAMES} frames, 1 every ${INTERVAL}s)"
+
+SRC_H="$(cut -d, -f2 <<<"${VSTREAM}")"
+CROP=""
+if (( CROP_BOTTOM > 0 )); then
+  is_uint "${SRC_H}" || die "could not read frame height for --crop-bottom"
+  (( CROP_BOTTOM < SRC_H / 2 )) || die "--crop-bottom ${CROP_BOTTOM} would remove half the ${SRC_H}px frame"
+  # Even height keeps 4:2:0 chroma happy.
+  CROP="crop=iw:$(( (SRC_H - CROP_BOTTOM) / 2 * 2 )):0:0,"
+  log "Cropping ${CROP_BOTTOM}px from the bottom of each frame"
+fi
 
 # Shared head of both ffmpeg passes. Identical seeking + fps means the frame
 # index `n` in pass 2 refers to exactly the same picture scored in pass 1.
@@ -233,7 +257,7 @@ COMMON_IN=(-hide_banner -loglevel error -nostdin -ss "${START_SEC}" -t "${WINDOW
 #   hqdn3d   light spatial-only denoise (temporal terms 0: frames are 1 s apart)
 #   unsharp  mild luma unsharp mask to recover edge contrast lost to compression
 #   format   full-range 4:2:0 for the MJPEG encoder
-ENHANCE="bwdif=mode=send_frame:parity=auto:deint=interlaced,scale='min(${MAX_WIDTH},iw)':-2:flags=lanczos,hqdn3d=1.5:1.0:0:0,unsharp=5:5:0.6:5:5:0.0,format=yuvj420p"
+ENHANCE="bwdif=mode=send_frame:parity=auto:deint=interlaced,${CROP}scale='min(${MAX_WIDTH},iw)':-2:flags=lanczos,hqdn3d=1.5:1.0:0:0,unsharp=5:5:0.6:5:5:0.0,format=yuvj420p"
 
 # Delete only frames this script owns, never arbitrary user files.
 find "${FRAMES_DIR}" -maxdepth 1 -type f -name 'frame_[0-9][0-9][0-9].jpg' -delete
@@ -248,12 +272,12 @@ if (( HAS_BLURDETECT )); then
     -f null -
 
   # blur.txt alternates "frame:N pts:P pts_time:T" / "lavfi.blur=X".
-  # For each whole second (relative to the window) keep the lowest blur score.
-  SELECT_EXPR="$(awk -v spp="${SAMPLES_PER_SEC}" -v max="${MAX_FRAMES}" '
+  # For each INTERVAL-second bucket (relative to the window) keep the lowest blur score.
+  SELECT_EXPR="$(awk -v spp="${SAMPLES_PER_SEC}" -v iv="${INTERVAL}" -v max="${MAX_FRAMES}" '
       /^frame:/ { n=$1; sub("frame:","",n); n+=0; next }
       /^lavfi.blur=/ {
         b=$0; sub("lavfi.blur=","",b); b+=0
-        sec=int(n/spp)
+        sec=int(n/(spp*iv))
         if (sec < max && (!(sec in best) || b < best[sec])) { best[sec]=b; pick[sec]=n }
       }
       END {
@@ -263,15 +287,15 @@ if (( HAS_BLURDETECT )); then
       }' "${SCRATCH}/blur.txt")"
   [[ -n "${SELECT_EXPR}" ]] || die "blur scoring produced no frames (is the window empty?)"
 
-  log "Pass 2/2: extracting the sharpest frame of each second..."
+  log "Pass 2/2: extracting the sharpest frame of each ${INTERVAL}s bucket..."
   ffmpeg "${COMMON_IN[@]}" \
     -vf "fps=${SAMPLES_PER_SEC},select='${SELECT_EXPR}',${ENHANCE}" \
     "${PASSTHRU[@]}" -frames:v "${MAX_FRAMES}" -q:v 2 \
     "${FRAMES_DIR}/frame_%03d.jpg"
 else
-  log "Extracting 1 fps (no blur scoring available)..."
+  log "Extracting 1 frame every ${INTERVAL}s (no blur scoring available)..."
   ffmpeg "${COMMON_IN[@]}" \
-    -vf "fps=1,${ENHANCE}" \
+    -vf "fps=1/${INTERVAL},${ENHANCE}" \
     "${PASSTHRU[@]}" -frames:v "${MAX_FRAMES}" -q:v 2 \
     "${FRAMES_DIR}/frame_%03d.jpg"
 fi

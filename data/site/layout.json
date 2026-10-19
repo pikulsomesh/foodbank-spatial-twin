@@ -1,0 +1,8 @@
+{
+  "_comment": "Site plan for the multi-zone twin, in metres, USD frame (Y-up, floor at y = 0). The Central Texas Food Bank tour inspires the layout; it is not a survey of the real building. Each zone is one fused capture; yaw is degrees about +Y. Flow: receiving and racking storage in the middle, volunteer sorting on one side, the client market at the public front.",
+  "zones": [
+    {"name": "Racking", "label": "Racking storage (bays DC21B-DC24B)", "work_dir": "build/atlas", "position": [0, 0, 0], "yaw": 0},
+    {"name": "Sorting", "label": "Volunteer sorting room (roller conveyors)", "work_dir": "build/atlas_sorting", "position": [26, 0, 0], "yaw": 0},
+    {"name": "Market", "label": "Client grocery market", "work_dir": "build/atlas_market", "position": [-24, 0, 0], "yaw": 0}
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "note": "Place each SPZ like factory.spz (rotate 180 deg about X, lift by ground_plane_offset), then translate by position.",
+  "zones": [
+    {
+      "name": "Racking",
+      "label": "Racking storage (bays DC21B-DC24B)",
+      "url": "zones/racking.spz",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "pose_operation": "929d5a1be48d4b72b048dbbff2008602",
+      "ground_plane_offset": 1.6808714224025607,
+      "frame": "opencv, like factory.spz"
+    },
+    {
+      "name": "Sorting",
+      "label": "Volunteer sorting room (roller conveyors)",
+      "url": "zones/sorting.spz",
+      "position": [
+        26,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "pose_operation": "fddaa383f10b47efa207cfb4d12e780c",
+      "ground_plane_offset": -0.08943707723275846,
+      "frame": "opencv, like factory.spz"
+    },
+    {
+      "name": "Market",
+      "label": "Client grocery market",
+      "url": "zones/market.spz",
+      "position": [
+        -24,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "pose_operation": "f2594e013108429d913eca8a16851c17",
+      "ground_plane_offset": -0.0,
+      "frame": "opencv, like factory.spz"
+    }
+  ]
+}
