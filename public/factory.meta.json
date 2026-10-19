@@ -1,0 +1,16 @@
+{
+  "route": "marble2-atlas",
+  "pose_operation": "929d5a1be48d4b72b048dbbff2008602",
+  "generate_operation": null,
+  "views": 8,
+  "built_at": "2026-10-19T02:20:02Z",
+  "credits": 80,
+  "splats": 270423,
+  "sh_degree": 0,
+  "frame": "opencv (x right, y down, z forward), like Marble v1 SPZ",
+  "semantics_metadata": {
+    "metric_scale_factor": 1.0,
+    "ground_plane_offset": 1.6808714224025607,
+    "ground_source": "floor assumed 1.5 m below the source cameras"
+  }
+}

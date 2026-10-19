@@ -41,23 +41,39 @@ The automatic 8-of-40 picker (equal segments, sharpest frame in each) was tried 
 
 All eight are 1920x816, which reconstruction mode requires.
 
-People cannot be masked out through the Marble v1 API, so the run uses the text prompt below and accepts that the world model will either paint them in or extrapolate behind them. Somesh approved extrapolating parts the video doesn't show.
+The two hosts are masked out of the Marble 2 run (see below), and the world model is free to extrapolate what they hide and what the video never shows. Somesh approved that.
 
-## Generation (one paid draft world)
+## Framing
+
+The Central Texas Food Bank is the inspiration for the layout, not a site to reproduce exactly. The twin starts from the real racking aisle and may add plausible, world-model-generated zones so that it shows a fuller food bank operation.
+
+## Generation: Marble 2 (Atlas) route
+
+Somesh's World Labs account is on Marble 2: 10,000 Dev credits, and a project key that only works on `api.atlas-beta.worldlabs.ai/api/v2`. That API has no task that returns a splat world. Probes for an unlisted `image2DraftSplats` and similar names return 404, and the "Draft splat" line on the rate card (750 credits) is not available to this key. So `scripts/atlas_twin.py` builds the splat itself:
+
+| Stage | Call | Cost (rate card, 2026-10-19) |
+|-------|------|------|
+| `pose` | `images2PosedRGBD` on the 8 frames: camera, metric depth and confidence per frame | 10 credits per image, so 80 |
+| `generate` | `atlasGenerate` from the posed frames (hosts masked out) to an 8-camera ring around the aisle, with `returnDepth` | 50 per RGBD frame, so 400 |
+| `fuse` | Local and free. Unproject every RGBD view, keep the most confident sample per 1 cm voxel, write isotropic Gaussians as `.ply` and SPZ v2, then reuse `world_labs_to_usd.build_usdz` for the USDZ | 0 |
 
 ```bash
-export WORLD_LABS_API_KEY=...   # set in the cloud environment, never in chat
-.venv/bin/python scripts/world_labs_to_usd.py \
-    --input-dir data/ctfb-warehouse/frames \
-    --display-name "Central Texas Food Bank - warehouse aisle" \
-    --text-prompt "Interior of a new food bank distribution warehouse: tall red steel pallet racking with grey beams and bay labels, shrink-wrapped pallets of canned and boxed food on every level, a pallet jack beside a bin of donated groceries, polished concrete floor, high white ceiling with LED lights, long main aisle toward loading docks, no people."
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt numpy scipy OpenEXR
+export WLT_API_KEY=...            # or WLT_API_KEY_FROM_PROXY=1 when the egress proxy injects WLT-Api-Key
+.venv/bin/python scripts/atlas_twin.py pose
+.venv/bin/python scripts/atlas_twin.py generate --views 8 --max-credits 400
+.venv/bin/python scripts/atlas_twin.py fuse
 ```
 
-The dry run (`--dry-run`) passes: 8 of 8 inputs, `marble-1.0-draft`, estimated 250 credits, ledger at 0 of 10,000. The real run writes `public/factory.usdz`, `public/factory.spz` and `public/factory.meta.json`, and records the spend in `build/ledger.json`.
+Each paid stage records its operation id in `build/atlas/state.json` before waiting, so a re-run resumes or reuses the result instead of paying again. Submissions carry an `Idempotency-Key` derived from the request body. The hosts are masked by hand-drawn boxes in [`data/ctfb-warehouse/people_boxes.json`](../data/ctfb-warehouse/people_boxes.json). Masked pixels are left out of the generation context and out of the fused splat.
+
+**Status:** `pose` succeeded (operation `929d5a1b…`, 80 credits). The depth is metric-like: the first racking beam lands about 0.4 m above the lens, as on a real beam about 1.9 m high. `generate` failed twice with `EXECUTION_FAILED` and no detail. The first attempt had all target cameras at one centre; the second spread them on a 0.6 m ring and centred the context principal points. Retries are paused until we know whether failed tasks are billed.
+
+The committed `public/factory.spz` (270k splats, 2.1 MB) and `public/factory.usdz` (17.5 MB, `ParticleField3DGaussianSplat`, Y-up, metres, floor at y = 0) are fused from the 8 posed frames only. Because the floor is barely visible, it is placed 1.5 m below the source cameras rather than fitted. The SPZ uses the same OpenCV-style frame as Marble v1 output, so viewers rotate it 180° about X. It renders in Spark 0.1.10 ([preview](../data/ctfb-warehouse/spark_preview.jpg)). It covers only the racking bay the camera saw; the generated views are what fill in the rest of the zone.
 
 ## API access (checked 2026-10-19 from the cloud environment)
 
-- **Network:** `api.worldlabs.ai`, `api.atlas-beta.worldlabs.ai` and `storage.googleapis.com` are all reachable; both API hosts answer with their own 401, not a proxy denial.
-- **Marble v1 (`api.worldlabs.ai/marble/v1`)** is what produces a splat world (`worlds:generate`, then the SPZ download). No key for it is in the environment: `WORLD_LABS_API_KEY` is unset.
-- **Atlas beta (`api.atlas-beta.worldlabs.ai/api/v2`, "Marble 2 Developer API" 2.0.0)** authenticates with the `WLT-Api-Key` header, per its `securitySchemes`. The saved Atlas secret is injected as `Authorization: Bearer`, so every authenticated call returns `401 No API key found in request`.
-- **Atlas cannot replace Marble v1 for this step.** Its tasks are `atlasGenerate` (novel views from posed RGB-D context frames), `images2PosedRGBD`, `atlasMasked`, `atlasChisel`, `atlasTextToImage` and `splats2Mesh`, plus assets and operations. None returns a Gaussian-splat world. Useful later: `images2PosedRGBD` for camera poses, mask support on input frames to remove the two people, and `splats2Mesh` for a collision mesh in Omniverse. Its pricing is not in the spec.
+- **Network:** `api.worldlabs.ai`, `api.atlas-beta.worldlabs.ai` and `storage.googleapis.com` are all reachable.
+- **Auth:** Marble 2 reads only the `WLT-Api-Key` header. A secret injected as `Authorization: Bearer` is rejected with `401 No API key found in request`. The environment secret now sends `WLT-Api-Key`.
+- **Marble v1** (`api.worldlabs.ai/marble/v1`, used by `world_labs_to_usd.py`) needs a separate v1 key and v1 credits. Marble 2 keys are not valid there.
+- **Billing:** 1,000 credits = $1, and the rate card is shown only in the platform. Project authorization: up to 1,000 credits in total without asking again.
