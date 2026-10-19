@@ -93,7 +93,7 @@
     <ol>
       <li><b>Video to digital twin.</b> The racking aisle, sorting room and market are captured from walkthrough video with world models; the community kitchen is the next capture. Each area on the plan above is a footprint in the twin's metric frame, so the capture, the data and the renderer agree on where things are.</li>
       <li><b>Existing data on AWS.</b> The same Lambda that serves the cold-chain sensors answers <code>GET /operations</code> with inventory, flows, dock loads and kitchen batches. Today it is a deterministic simulator; a warehouse management system, a donor portal or the kitchen's production sheets can replace it behind the same JSON.</li>
-      <li><b>Omniverse as the visualisation layer.</b> <a href="operations.usda" download>operations.usda</a> carries every area, kitchen station and flow as OpenUSD prims keyed by the same ids, ready to layer over the captured site in Omniverse (or Blender) and bind to the live feed.</li>
+      <li><b>Omniverse as the visualisation layer.</b> <a href="twin.usda" download>twin.usda</a> opens the captured zones and <a href="operations.usda" download>operations.usda</a> together in one frame. Every area, kitchen station and flow is an OpenUSD prim keyed by the same ids as the API, ready to bind to the live feed in Omniverse (or Blender).</li>
     </ol>
     <p class="fine">Central Texas Food Bank is the inspiration, not a replica. Published figures (yearly pounds, partner agencies, kitchen size and equipment) are cited below; everything else is a modelling estimate marked in <a href="ops/operations.json">the master data</a>.</p>
     <ul id="refs" class="refs"></ul>

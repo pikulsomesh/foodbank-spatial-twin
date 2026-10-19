@@ -1,0 +1,71 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary autoTwin = {
+            string captures = "site.usdz"
+            string frame = "telemetry frame: metres, Y up, origin at the dock-door corner (same as GET /telemetry and /operations)"
+            string placements = "twin.config.json"
+        }
+    }
+    defaultPrim = "World"
+    metersPerUnit = 1
+    subLayers = [
+        @./twin_crop.usdc@
+    ]
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def Xform "Site"
+    {
+        def Xform "Racking" (
+            customData = {
+                string label = "racking aisle"
+            }
+            prepend references = @./site.usdz@</World/Site/Racking>
+        )
+        {
+            custom float3 twin:cropMax = (3, 4.5, -3)
+            custom float3 twin:cropMin = (-3, -0.7, -13)
+            float xformOp:rotateY = 0
+            double3 xformOp:translate = (20, 0, 13)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateY"]
+        }
+
+        def Xform "Sorting" (
+            customData = {
+                string label = "volunteer sorting room"
+            }
+            prepend references = @./site.usdz@</World/Site/Sorting>
+        )
+        {
+            custom float3 twin:cropMax = (2.5, 4, -4)
+            custom float3 twin:cropMin = (-3.5, -0.3, -12)
+            float xformOp:rotateY = -90
+            double3 xformOp:translate = (4, 0, 17)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateY"]
+        }
+
+        def Xform "Market" (
+            customData = {
+                string label = "client market"
+            }
+            prepend references = @./site.usdz@</World/Site/Market>
+        )
+        {
+            custom float3 twin:cropMax = (5.5, 3.5, -1.5)
+            custom float3 twin:cropMin = (-1.5, -0.3, -7.5)
+            float xformOp:rotateY = 180
+            double3 xformOp:translate = (24.5, -0.4, 12.5)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateY"]
+        }
+    }
+
+    def Xform "Operations" (
+        prepend references = @./operations.usda@</World/Operations>
+    )
+    {
+    }
+}
+

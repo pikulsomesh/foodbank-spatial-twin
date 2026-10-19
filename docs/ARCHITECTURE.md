@@ -34,6 +34,7 @@ One idea: **OpenUSD is the open interchange contract.** Everything upstream prod
 |---|---|---|
 | 1 to 3 | `public/factory.usdz`, `public/factory.spz`, `public/factory.meta.json` | Metric, Y-up, ground at y=0 (Thread 1 wrapper). Alignment lives in the meta file. |
 | 2 to 3 | `GET /telemetry` JSON | Positions are metres in the same frame as the USD. Fields: `zones[]` (temp, setpoint, status, position), `forklifts[]`. Additive changes only. |
+| 1+2 to 3 | `public/twin.usda` | Captures from `site.usdz` placed by `twin.config.json` (the viewer's placements), cropped by `twin_crop.usdc`, plus `operations.usda`: one frame for Omniverse, the browser and the APIs. |
 | 2 to 3 | `GET /operations` JSON, `public/operations.usda` | Same frame. `areas[]`, `inventory[]`, `flows[]`, `kitchen`, `trucks`, keyed by the ids in `src/telemetry/operations.json`. See OPERATIONS.md. |
 | 2 internal | S3 bucket `SiteBucket` | Public read, only for twin assets. |
 

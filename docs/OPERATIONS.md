@@ -6,7 +6,7 @@ The captured zones show what the building looks like. This layer models what the
 | --- | --- | --- |
 | 1. Video to digital twin | Every operational area is a footprint in the twin's metric frame, tagged with the capture that covers it (`Racking`, `Sorting`, `Market`, and `Kitchen` once the kitchen capture lands). | `src/telemetry/operations.json` `zones` |
 | 2. Existing data on AWS | The telemetry Lambda also answers `GET /operations` with inventory, flows, dock loads and kitchen batches. | `src/telemetry/operations.py`, `template.yaml` |
-| 3. Omniverse as the visualisation layer | `public/operations.usda` carries areas, kitchen stations and flows as OpenUSD prims keyed by the same ids. The browser shows the same data on `operations.html` and as floor outlines in the 3D viewer. | `scripts/operations_to_usd.py`, `public/operations.html`, `public/js/ops-overlay.js` |
+| 3. Omniverse as the visualisation layer | `public/twin.usda` puts the captures and the operations layer in one frame; `public/operations.usda` carries areas, kitchen stations and flows as OpenUSD prims keyed by the same ids. The browser shows the same data on `operations.html` and as floor outlines in the 3D viewer. | `scripts/operations_to_usd.py`, `public/operations.html`, `public/js/ops-overlay.js` |
 
 ## How a food bank runs, as the model sees it
 
@@ -52,6 +52,9 @@ Estimated (marked `"est": true`): the source and channel shares and product mixe
 ```sh
 pip install -r requirements-render.txt      # usd-core
 python scripts/operations_to_usd.py          # writes public/operations.usda
+python scripts/align_twin_usd.py             # writes public/twin.usda + twin_crop.usdc
 ```
 
-The layer has `/World/Operations/Areas/<id>` (footprint mesh plus `twin:*` attributes), `/World/Operations/Kitchen/<station>` and `/World/Operations/Flows/<from>_to_<to>`, with values from a reference moment as defaults. A Kit extension that polls `/operations` sets `twin:onHandLbs`, `twin:utilisation` and `twin:lbsToday` by id. The layer is in the viewer's telemetry frame; `public/site.usdz` still uses the older `data/site/layout.json` spacing, so referencing both together needs the captures re-composed with the viewer placements (or a per-zone transform) first.
+Open `public/twin.usda` in Omniverse: it is the whole twin in one frame. It references the captures from `site.usdz`, re-placed with the same `position` and `yaw_deg` the browser uses (`twin.config.json` is the single source of placement), crops them like the browser through `twin_crop.usdc` (opacity overrides, about 0.5 MB), and references `operations.usda`. Regenerate it with `python scripts/align_twin_usd.py` whenever a placement changes; `tests/twin_usd.test.mjs` fails until you do.
+
+The operations layer has `/World/Operations/Areas/<id>` (footprint mesh plus `twin:*` attributes), `/World/Operations/Kitchen/<station>` and `/World/Operations/Flows/<from>_to_<to>`, with values from a reference moment as defaults. A Kit extension that polls `/operations` sets `twin:onHandLbs`, `twin:utilisation` and `twin:lbsToday` by id. `site.usdz` on its own stays the zone library, spread out by `data/site/layout.json` for inspecting one capture at a time.
