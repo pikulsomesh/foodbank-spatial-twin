@@ -15,6 +15,8 @@ The content is organised around the project's three steps: video to twin with a 
 | `refs.bib` | References (biblatex; web sources are `@online` with `url`/`urldate`) |
 | `figures/overview.tikz` | Figure 1, the pipeline diagram (TikZ, included with `\input`) |
 | `figures/contact_sheet.jpg` | Figure 2, the eight input frames, copied from `data/ctfb-warehouse/` in PR 2 |
+| `figures/racking_preview.jpg`, `site_preview.jpg` | Figure 3, Spark renders of the fused zones, from PR 2 |
+| `figures/demo_overview.jpg`, `demo_aisle.jpg` | Figure 4, demo-site screenshots from PR 4 |
 
 ## Build
 
@@ -28,18 +30,20 @@ The template uses biblatex with `backend=bibtex`, so it runs BibTeX rather than 
 
 ## Placeholders
 
-Every value not yet measured is a red `\TBD{...}` in the PDF (40 at present). None are estimates. To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
+Every value not yet measured is a red `\TBD{...}` in the PDF (27 at present). None are estimates. To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
 
 | Where | What it needs | Comes from |
 |---|---|---|
-| Abstract, Results 2.3 to 2.6, Table 3 | Time, credits, file sizes, fidelity, latency, AWS cost, frame rates | The racking-aisle run (video-to-twin thread) and the deployed backend |
-| Methods: World-model reconstruction | Which World Labs route produced the twin, its tasks and credits | Video-to-twin thread |
-| Results 2.5, Methods: Serverless data backend | First real data connector, or a statement that evaluation is simulated; anchor calibration | Backend work |
-| Results 2.6, Figure 4, Methods: Visualization | Omniverse version, splat rendering check, screenshot, Blender spike result | Renderer work |
-| Figure 3 | Renders of observed vs. extrapolated regions | Video-to-twin thread |
-| Methods: Statistical Analysis | Number of held-out frames, dispersion statistic, pose estimation method | Evaluation run |
-| Back matter | Acknowledgements with permission; supplementary movie | Somesh |
+| Abstract, Results 2.5, Table 3 | Monthly AWS cost and telemetry latency | Deployed backend |
+| Table 3 | Generation time, fusion and conversion time, hold-out fidelity, frame rates | A successful generate run; a timed fuse; a hardware-GPU browser test |
+| Results 2.6 | Public URL, load time and frame rate | Live demo site once deployed |
+| Results 2.7, Figure 5, Methods: Visualization | Omniverse version, splat rendering check, screenshot, Blender result | Renderer work |
+| Methods: Serverless data backend | Anchor calibration against the stage | Backend and renderer work |
+| Methods: Statistical Analysis | Held-out frame count, dispersion statistic, pose method | Evaluation run |
+| Back matter | Acknowledgements with permission; Movies S1 and S2 | Somesh, demo video |
 | Introduction | Cited sentences on food bank operations; Kit license confirmation | Literature check |
+
+Filled from measured facts on 2026-10-19: frame counts, splat counts, SPZ and USDZ sizes and credit costs (from PR 2's `docs/CTFB_WAREHOUSE_RUN.md` and committed files), frame extraction time (re-run locally, 88 s), and Figures 3 and 4 (Spark previews from PR 2, demo-site screenshots from PR 4).
 
 ## Before submitting
 
