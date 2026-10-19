@@ -1,13 +1,84 @@
 <!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Food Bank Digital Twin</title>
-<!-- Placeholder for Thread 3 (3D viewer). Proves the S3 site and the telemetry API work end to end. -->
-<h1>Central Texas Food Bank digital twin</h1>
-<p>Viewer coming in Thread 3. Live simulated telemetry:</p>
-<pre id="out">loading…</pre>
-<script>
-  const API = (window.TWIN_API || "") + "/telemetry";
-  fetch(API).then(r => r.json()).then(d => out.textContent = JSON.stringify(d, null, 2))
-    .catch(e => out.textContent = "API not configured: " + e);
+<meta name="description" content="A food bank warehouse twin built from video with a world model, with live cold-chain and forklift telemetry from AWS. Runs in the browser.">
+<meta property="og:title" content="Food Bank Digital Twin">
+<meta property="og:description" content="From video to digital twin: a world-model splat of a food bank with live telemetry, in your browser.">
+<meta name="theme-color" content="#0f1720">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1720'/%3E%3Cpath d='M6 24V13l10-6 10 6v11h-5v-7H11v7z' fill='%2357c7a5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+    "@sparkjsdev/spark": "https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.2.0/dist/spark.module.min.js"
+  }
+}
 </script>
+</head>
+<body>
+<div id="stage" aria-label="3D view of the food bank twin. Drag to orbit, pinch or scroll to zoom."></div>
+<div id="badges" aria-hidden="true"></div>
+
+<header id="top">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <div>
+      <h1>Food Bank Digital Twin</h1>
+      <p class="sub">Video to world-model twin, live data from AWS</p>
+    </div>
+  </div>
+  <div class="pills">
+    <span id="twin-pill" class="pill" title="Where the 3D scene comes from">Loading twin…</span>
+    <span id="feed-pill" class="pill" title="Where the readings come from"><i class="dot"></i><span>Connecting…</span></span>
+  </div>
+</header>
+
+<aside id="panel" aria-label="Telemetry">
+  <button id="panel-toggle" class="sheet-handle" aria-expanded="true" aria-controls="panel-body">
+    <span class="grip" aria-hidden="true"></span><span id="panel-summary">Readings</span>
+  </button>
+  <div id="panel-body">
+    <section>
+      <h2>Cold chain <span id="stamp" class="stamp"></span></h2>
+      <div id="zones" class="cards"></div>
+    </section>
+    <section>
+      <h2>Fleet</h2>
+      <div id="fleet" class="cards"></div>
+    </section>
+    <section id="alerts-wrap" hidden>
+      <h2>Alerts</h2>
+      <ul id="alerts"></ul>
+    </section>
+    <section class="about">
+      <p id="about-text">The building is a stand-in made of Gaussian splats in the twin's metric frame. The World Labs capture replaces it with no code change.</p>
+      <p class="links">
+        <a id="repo-link" href="https://github.com/pikulsomesh/foodbank-spatial-twin" target="_blank" rel="noopener">Source on GitHub</a>
+        <a id="usdz-link" href="factory.usdz" hidden download>OpenUSD file for Omniverse</a>
+      </p>
+    </section>
+  </div>
+</aside>
+
+<nav id="views" aria-label="Camera">
+  <button data-view="overview" class="on">Overview</button>
+  <button data-view="cold">Cold rooms</button>
+  <button data-view="aisle">Racking</button>
+  <button data-view="follow">Follow forklift</button>
+  <button id="tour" aria-pressed="false" title="Slow orbit, handy for screen recordings">Tour</button>
+</nav>
+
+<div id="loading" role="status"><div class="spinner"></div><span id="loading-text">Loading the twin…</span></div>
+<div id="fail" hidden>
+  <h2>This browser can't show the 3D view</h2>
+  <p>The twin needs WebGL2. Try a recent Chrome, Safari or Firefox. The readings on the right still update.</p>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
