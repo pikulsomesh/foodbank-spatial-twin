@@ -6,7 +6,7 @@ Turn a walkthrough video of the Central Texas Food Bank into a live digital twin
 |---|---|---|
 | 1. Video to twin | yt-dlp + ffmpeg, Marble draft world, usd-convert-gsplat | `scripts/` (below) |
 | 2. Data on AWS | S3 site + Lambda/HTTP API telemetry (SAM) | `template.yaml`, `src/` (Thread 2 section) |
-| 3. Renderers | Browser (Spark), Omniverse, Blender (spike) | `public/`, `docs/` |
+| 3. Renderers | Browser (Spark), headless CPU splat renderer, Blender 5.2, Omniverse (planned) | `public/`, `scripts/render_usd_splats.py`, `scripts/blender_render_twin.py`, [docs/RENDERING.md](docs/RENDERING.md) |
 
 # Auto-Twin: Thread 1, the AI spatial pipeline
 
@@ -122,3 +122,22 @@ scripts/deploy.sh        # sam build + deploy, syncs public/ to the bucket, prin
 ```
 
 **Expected cost:** the free tier covers 1M Lambda requests and 1M HTTP API requests per month for the first 12 months, S3 is pennies at this size. Past that, a viewer polling every 5 seconds around the clock is about 520k requests per month, roughly $0.50 in API Gateway plus $0.10 in Lambda. The throttle caps the worst case.
+
+# Thread 3: browser demo (GitHub Pages)
+
+**Live site:** <https://pikulsomesh.github.io/foodbank-spatial-twin/> (deployed from `main` by `.github/workflows/pages.yml`).
+
+Open it on any laptop or phone, no install. Drag to orbit, pinch or scroll to zoom, and use the buttons at the bottom for preset views, following the forklift, or a slow **Tour** orbit for screen recordings. `?tour=1` starts the tour, `?cam=px,py,pz,tx,ty,tz` pins the camera for screenshots, `?sim=1` forces the offline feed, `?placeholder=1` hides the capture.
+
+| File | Role |
+|---|---|
+| `public/index.html`, `public/css/`, `public/js/app.js` | Viewer: three.js + [Spark](https://sparkjs.dev) 2.2 from jsDelivr, HTML badges pinned to telemetry positions, forklift and zone rings. |
+| `public/js/placeholder.js` | Procedural splat layout of a plausible food bank (freezer, cooler, racking, dock doors, sorting, staging) in the telemetry frame. It is the whole twin when no capture is published, and the surrounding building when one is. |
+| `public/js/telemetry.js` | Polls `GET /telemetry`; when the API is unset or unreachable it runs a JS port of `src/telemetry/app.py` and re-tries the API every 30 s. `tests/telemetry.test.mjs` keeps the two in sync. |
+| `public/twin.config.json` | The one file to edit: where each captured zone sits in the building, its crop box, what generated scenery it replaces, and the API URL. |
+
+**Captured zones.** The viewer reads `public/zones/zones.json` (written by the pipeline's `site` stage: one SPZ per zone plus its `ground_plane_offset`). Each zone with an entry under `captures` in `twin.config.json` is corrected like the USD wrapper (`rotateX(180) · translate(0, -ground, 0) · scale(s)`), cropped to `crop` (metres, Y-up, floor at 0, capture frame), then placed with `position` and `yaw_deg` in the telemetry frame. `clear` removes the generated racking, sorting tables and staging pallets on that patch of floor, and each placed zone gets a camera button that looks the way its source cameras did. Zones without an entry are skipped. Without `zones.json`, the viewer falls back to `public/factory.spz` as the racking aisle. Set `"context": false` to show the captures without the generated building. The panel links `site.usdz` for Omniverse when it is published.
+
+**Live data.** Once the SAM stack is deployed, `scripts/deploy.sh` sets it up end to end: with an authenticated `gh` it sets the repository variable `TWIN_API_URL` and redeploys Pages; otherwise it prints those two steps. By hand: set the repository variable `TWIN_API_URL` (Settings, Secrets and variables, Actions, Variables) to the `ApiBaseUrl` output and re-run the workflow. Until then the site shows "Simulated feed (offline)" and uses the same sensor model locally; when the API answers it switches to "Live from AWS" on its own. `scripts/deploy.sh` writes the URL into the S3 copy of the site the same way.
+
+**Demo video.** `scripts/record_demo.mjs` drives a scripted tour (overview, each captured zone, cold rooms, forklift) through the viewer's `?record=1` mode, which advances time only when the script asks for a frame, so a machine without a GPU still renders smooth footage. Its header has the commands.

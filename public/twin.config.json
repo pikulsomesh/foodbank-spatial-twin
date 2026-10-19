@@ -1,0 +1,110 @@
+{
+  "zones": "zones/zones.json",
+  "splat": "factory.spz",
+  "meta": "factory.meta.json",
+  "usdz": "site.usdz",
+  "captures": {
+    "Racking": {
+      "title": "racking aisle",
+      "button": "Racking",
+      "factory": true,
+      "position": [
+        20,
+        0,
+        13
+      ],
+      "yaw_deg": 0,
+      "crop": {
+        "min": [
+          -3,
+          -0.7,
+          -13
+        ],
+        "max": [
+          3,
+          4.5,
+          -3
+        ]
+      },
+      "clear": {
+        "x": [
+          17,
+          23.2
+        ],
+        "z": [
+          0,
+          10
+        ]
+      },
+      "dilate": 1.6
+    },
+    "Sorting": {
+      "title": "volunteer sorting room",
+      "button": "Sorting room",
+      "position": [
+        4,
+        0,
+        17
+      ],
+      "yaw_deg": -90,
+      "crop": {
+        "min": [
+          -3.5,
+          -0.3,
+          -12
+        ],
+        "max": [
+          2.5,
+          4,
+          -4
+        ]
+      },
+      "clear": {
+        "x": [
+          1.5,
+          16.5
+        ],
+        "z": [
+          13.5,
+          20
+        ]
+      },
+      "dilate": 1.6
+    },
+    "Market": {
+      "title": "client market",
+      "button": "Market",
+      "position": [
+        24.5,
+        -0.4,
+        12.5
+      ],
+      "yaw_deg": 180,
+      "crop": {
+        "min": [
+          -1.5,
+          -0.3,
+          -7.5
+        ],
+        "max": [
+          5.5,
+          3.5,
+          -1.5
+        ]
+      },
+      "clear": {
+        "x": [
+          19,
+          26
+        ],
+        "z": [
+          13,
+          20
+        ]
+      },
+      "dilate": 1.6
+    }
+  },
+  "telemetryApi": "",
+  "repo": "https://github.com/pikulsomesh/foodbank-spatial-twin"
+}

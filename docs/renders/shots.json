@@ -1,0 +1,11 @@
+{
+  "_comment": "Still cameras for scripts/render_usd_splats.py and scripts/blender_render_twin.py. USD frame: Y-up, metres, floor at y = 0. Zone origins: Market x = -24, Racking x = 0, Sorting x = +26; each capture faces -Z from near its origin, which is where the fused splats read best. fov is horizontal, degrees.",
+  "shots": [
+    {"name": "01_site_overview", "eye": [4, 3.2, 40], "target": [4, 1.4, -12], "fov": 72, "width": 2560, "height": 1080},
+    {"name": "02_racking", "eye": [-2, 1.6, 0.5], "target": [1.5, 1.2, -8], "fov": 60},
+    {"name": "03_sorting", "eye": [26, 1.3, 1.5], "target": [26, 1.0, -8], "fov": 60},
+    {"name": "04_sorting_oblique", "eye": [24, 1.5, 0], "target": [28, 1.0, -10], "fov": 65},
+    {"name": "05_market", "eye": [-22, 1.4, 0.5], "target": [-24, 1.0, -6], "fov": 65},
+    {"name": "06_racking_oblique", "eye": [3.5, 2.4, 1.5], "target": [-1, 1.2, -8], "fov": 60}
+  ]
+}
