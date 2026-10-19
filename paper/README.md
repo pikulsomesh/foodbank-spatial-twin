@@ -21,10 +21,10 @@ Main groups of placeholders:
 
 | Where | What it needs | Comes from |
 |---|---|---|
-| Abstract, Table 4 | Time, credits, file sizes, fidelity, latency, AWS cost, frame rates | The racking-aisle run (video-to-twin thread) and the deployed backend |
+| Abstract, Table 3 | Time, credits, file sizes, fidelity, latency, AWS cost, frame rates | The racking-aisle run (video-to-twin thread) and the deployed backend |
 | Section 4.2 | Which World Labs route produced the twin (Marble world vs. posed RGB-D plus local fusion) | Video-to-twin thread |
 | Section 5 | First real data connector, or a statement that evaluation is simulated | Backend work |
-| Section 6, Figure 3 | Omniverse version, splat rendering check, screenshot, Blender spike result | Renderer work |
+| Section 6, Figure 2 | Omniverse version, splat rendering check, screenshot, Blender spike result | Renderer work |
 | Section 7, Figure 4 | Renders of observed vs. extrapolated regions | Video-to-twin thread |
 | Front matter | Surname, affiliation, email, date, acknowledgements | Somesh |
 | Section 2 | Cited paragraph on food bank operations; Kit license confirmation | Literature check |
