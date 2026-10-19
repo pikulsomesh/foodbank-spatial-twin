@@ -1,3 +1,13 @@
+# Auto-Twin: video to digital twin to open renderers
+
+Turn a walkthrough video of the Central Texas Food Bank into a live digital twin: a World Labs world-model splat, converted to OpenUSD, bound to AWS-hosted telemetry, and rendered in a browser, Omniverse, or Blender. OpenUSD is the open contract between all layers. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+| Layer | What | Where |
+|---|---|---|
+| 1. Video to twin | yt-dlp + ffmpeg, Marble draft world, usd-convert-gsplat | `scripts/` (below) |
+| 2. Data on AWS | S3 site + Lambda/HTTP API telemetry (SAM) | `template.yaml`, `src/` (Thread 2 section) |
+| 3. Renderers | Browser (Spark), Omniverse, Blender (spike) | `public/`, `docs/` |
+
 # Auto-Twin: Thread 1, the AI spatial pipeline
 
 This stage turns a walkthrough video of the Central Texas Food Bank into an Omniverse-ready OpenUSD twin.
