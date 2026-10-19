@@ -6,7 +6,7 @@ Turn a walkthrough video of the Central Texas Food Bank into a live digital twin
 |---|---|---|
 | 1. Video to twin | yt-dlp + ffmpeg, Marble draft world, usd-convert-gsplat | `scripts/` (below) |
 | 2. Data on AWS | S3 site + Lambda/HTTP API telemetry (SAM) | `template.yaml`, `src/` (Thread 2 section) |
-| 3. Renderers | Browser (Spark), Omniverse, Blender (spike) | `public/`, `docs/` |
+| 3. Renderers | Browser (Spark), headless CPU splat renderer, Blender 5.2, Omniverse (planned) | `public/`, `scripts/render_usd_splats.py`, `scripts/blender_render_twin.py`, [docs/RENDERING.md](docs/RENDERING.md) |
 
 # Auto-Twin: Thread 1, the AI spatial pipeline
 
