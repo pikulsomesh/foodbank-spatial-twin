@@ -1,0 +1,10 @@
+{
+  "splat": "factory.spz",
+  "meta": "factory.meta.json",
+  "usdz": "factory.usdz",
+  "placement": { "position": [20, 0, 13], "yaw_deg": 0 },
+  "crop": { "min": [-3, -0.7, -13], "max": [3, 4.5, -3] },
+  "context": { "clear": { "x": [17, 23.2], "z": [0, 10] } },
+  "telemetryApi": "",
+  "repo": "https://github.com/pikulsomesh/foodbank-spatial-twin"
+}

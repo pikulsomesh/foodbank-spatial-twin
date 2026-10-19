@@ -122,3 +122,20 @@ scripts/deploy.sh        # sam build + deploy, syncs public/ to the bucket, prin
 ```
 
 **Expected cost:** the free tier covers 1M Lambda requests and 1M HTTP API requests per month for the first 12 months, S3 is pennies at this size. Past that, a viewer polling every 5 seconds around the clock is about 520k requests per month, roughly $0.50 in API Gateway plus $0.10 in Lambda. The throttle caps the worst case.
+
+# Thread 3: browser demo (GitHub Pages)
+
+**Live site:** <https://pikulsomesh.github.io/foodbank-spatial-twin/> (deployed from `main` by `.github/workflows/pages.yml`).
+
+Open it on any laptop or phone, no install. Drag to orbit, pinch or scroll to zoom, and use the buttons at the bottom for preset views, following the forklift, or a slow **Tour** orbit for screen recordings. `?tour=1` starts the tour, `?cam=px,py,pz,tx,ty,tz` pins the camera for screenshots, `?sim=1` forces the offline feed, `?placeholder=1` hides the capture.
+
+| File | Role |
+|---|---|
+| `public/index.html`, `public/css/`, `public/js/app.js` | Viewer: three.js + [Spark](https://sparkjs.dev) 2.2 from jsDelivr, HTML badges pinned to telemetry positions, forklift and zone rings. |
+| `public/js/placeholder.js` | Procedural splat layout of a plausible food bank (freezer, cooler, racking, dock doors, sorting, staging) in the telemetry frame. It is the whole twin when no capture is published, and the surrounding building when one is. |
+| `public/js/telemetry.js` | Polls `GET /telemetry`; when the API is unset or unreachable it runs a JS port of `src/telemetry/app.py` and re-tries the API every 30 s. `tests/telemetry.test.mjs` keeps the two in sync. |
+| `public/twin.config.json` | The one file to edit: splat path, where the capture sits in the building, crop box, and the API URL. |
+
+**Swapping in a capture.** Publish `public/factory.spz` and `public/factory.meta.json` (the pipeline writes both). The viewer applies the same correction as the USD wrapper (`rotateX(180) · translate(0, -ground, 0) · scale(s)` from `semantics_metadata`), then crops it to `crop` (metres, Y-up, floor at 0) and places it with `placement` (position in the telemetry frame plus a yaw). `context.clear` removes the procedural racking where the capture goes; delete `context` to show the capture alone. When `factory.usdz` is present the panel links it for Omniverse.
+
+**Live data.** Once the SAM stack is deployed, set the repository variable `TWIN_API_URL` (Settings, Secrets and variables, Actions, Variables) to the `ApiBaseUrl` output and re-run the workflow. Until then the site shows "Simulated feed (offline)" and uses the same sensor model locally; when the API answers it switches to "Live from AWS" on its own. `scripts/deploy.sh` writes the URL into the S3 copy of the site the same way.

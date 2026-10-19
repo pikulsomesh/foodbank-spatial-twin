@@ -1,0 +1,400 @@
+// Browser viewer for the food bank twin: Spark renders the splat, HTML badges and a few meshes
+// show telemetry from the AWS API (or the local simulator when the API is unreachable).
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
+import { buildPlaceholder } from "./placeholder.js";
+import { startFeed, forklift as simForklift } from "./telemetry.js";
+
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const phone = matchMedia("(max-width: 720px)").matches || navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820;
+
+const DEFAULTS = { splat: "factory.spz", meta: "factory.meta.json", usdz: "factory.usdz",
+  placement: { position: [0, 0, 0], yaw_deg: 0 }, telemetryApi: "" };
+
+async function getJSON(url) {
+  try { const r = await fetch(url, { cache: "no-cache" }); return r.ok ? await r.json() : null; } catch { return null; }
+}
+
+// ---------- Panel and badges (work even without WebGL) ----------
+const cards = new Map(), badges = new Map();
+let selected = null, lastData = null, lastSource = "simulated";
+const fmtT = (v) => `${v > 0 ? "" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)}°C`;
+
+function card(container, id, onClick) {
+  let el = cards.get(id);
+  if (!el) {
+    el = document.createElement("button");
+    el.className = "card";
+    el.addEventListener("click", () => onClick(id));
+    container.append(el);
+    cards.set(id, el);
+  }
+  return el;
+}
+
+function badge(id, cls, onClick) {
+  let el = badges.get(id);
+  if (!el) {
+    el = document.createElement("div");
+    el.className = `badge ${cls}`;
+    el.addEventListener("click", () => onClick(id));
+    $("badges").append(el);
+    badges.set(id, el);
+  }
+  return el;
+}
+
+function setFeed(source, data) {
+  const pill = $("feed-pill");
+  pill.classList.toggle("live", source === "live");
+  pill.classList.toggle("sim", source !== "live");
+  const simulatedBackend = source === "live" && data.simulated;
+  pill.querySelector("span").textContent = source === "live"
+    ? (simulatedBackend ? "Live from AWS (simulated sensors)" : "Live from AWS")
+    : "Simulated feed (offline)";
+  pill.title = source === "live"
+    ? "Readings come from the AWS telemetry API every 2 seconds."
+    : "The AWS API isn't reachable from here, so the page runs the same sensor model locally.";
+}
+
+function render(data, source) {
+  lastData = data; lastSource = source;
+  setFeed(source, data);
+  $("stamp").textContent = new Date(data.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+  for (const z of data.zones) {
+    const el = card($("zones"), z.id, select);
+    el.className = `card ${z.status}${selected === z.id ? " sel" : ""}`;
+    el.innerHTML = `<div class="row"><span class="name">${z.label}</span><span class="tag ${z.status}">${z.status === "ok" ? "OK" : z.status === "warn" ? "Drifting" : "Alarm"}</span></div>
+      <div class="row"><span class="big">${fmtT(z.temperature_c)}</span><span class="meta">set ${fmtT(z.setpoint_c)}</span></div>
+      <div class="meta">${z.humidity_pct.toFixed(0)}% RH · door ${z.door_open ? "open" : "closed"}</div>`;
+    const b = badge(z.id, "zone", select);
+    b.className = `badge zone ${z.status}`;
+    b.innerHTML = `<i class="dot"></i>${z.label} <b>${fmtT(z.temperature_c)}</b>${z.door_open ? '<span class="door">door open</span>' : ""}`;
+    scene3d?.zoneStatus(z);
+  }
+  for (const f of data.forklifts) {
+    const el = card($("fleet"), f.id, select);
+    el.className = `card${selected === f.id ? " sel" : ""}`;
+    el.innerHTML = `<div class="row"><span class="name">${f.label}</span><span class="meta">${f.speed_mps.toFixed(2)} m/s</span></div>
+      <div class="meta">Battery ${f.battery_pct.toFixed(0)}% · heading ${f.heading_deg.toFixed(0)}°</div>
+      <div class="bar"><i style="width:${f.battery_pct}%"></i></div>`;
+    const b = badge(f.id, "fork", select);
+    b.innerHTML = `<i class="dot"></i>${f.label} <b>${f.battery_pct.toFixed(0)}%</b>`;
+    scene3d?.forkliftTarget(f, source);
+  }
+  const alerts = data.alerts || [];
+  $("alerts-wrap").hidden = !alerts.length;
+  $("alerts").innerHTML = alerts.map((a) => `<li>${a}</li>`).join("");
+  const worst = data.zones.find((z) => z.status === "alarm") || data.zones.find((z) => z.status === "warn");
+  $("panel-summary").textContent = worst ? `${worst.label} ${fmtT(worst.temperature_c)} · ${worst.status === "alarm" ? "alarm" : "drifting"}`
+    : `All ${data.zones.length} zones in range`;
+}
+
+function select(id) {
+  selected = selected === id ? null : id;
+  for (const [k, el] of cards) el.classList.toggle("sel", k === selected);
+  if (selected) scene3d?.focus(selected);
+}
+
+$("panel-toggle").addEventListener("click", () => {
+  const p = $("panel"), collapsed = p.classList.toggle("collapsed");
+  $("panel-toggle").setAttribute("aria-expanded", String(!collapsed));
+});
+if (phone) { $("panel").classList.add("collapsed"); $("panel-toggle").setAttribute("aria-expanded", "false"); }
+
+// ---------- 3D scene ----------
+let scene3d = null;
+
+function hasWebGL2() {
+  try { return !!document.createElement("canvas").getContext("webgl2"); } catch { return false; }
+}
+
+function makeForklift() {
+  const g = new THREE.Group();
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xf5c518, roughness: 0.55 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x23272b, roughness: 0.8 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0x8a9299, metalness: 0.6, roughness: 0.4 });
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+  add(new THREE.BoxGeometry(1.1, 0.75, 1.7), yellow, 0, 0.6, -0.1);           // body
+  add(new THREE.BoxGeometry(1.0, 0.5, 0.5), dark, 0, 0.75, -0.75);             // counterweight
+  for (const x of [-0.5, 0.5]) for (const z of [-0.45, 0.55]) add(new THREE.BoxGeometry(0.06, 1.3, 0.06), dark, x, 1.6, z); // guard posts
+  add(new THREE.BoxGeometry(1.1, 0.05, 1.1), dark, 0, 2.25, 0.05);             // overhead guard
+  for (const x of [-0.3, 0.3]) add(new THREE.BoxGeometry(0.08, 2.4, 0.1), steel, x, 1.25, 0.85); // mast
+  for (const x of [-0.25, 0.25]) add(new THREE.BoxGeometry(0.12, 0.05, 1.0), steel, x, 0.12, 1.4); // forks
+  const wheel = new THREE.CylinderGeometry(0.25, 0.25, 0.2, 16).rotateZ(Math.PI / 2);
+  for (const x of [-0.55, 0.55]) for (const z of [-0.6, 0.5]) add(wheel, dark, x, 0.25, z);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.55, 48).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xf5c518, transparent: true, opacity: 0.55, depthWrite: false }));
+  ring.position.y = 0.03;
+  g.add(ring);
+  return g;
+}
+
+const STATUS_COLOR = { ok: 0x4cc38a, warn: 0xf0b429, alarm: 0xf05252 };
+
+async function initScene(cfg) {
+  const stage = $("stage");
+  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, phone ? 1.5 : 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setClearColor(0x0f1720);
+  stage.append(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0f1720, 45, 90);
+  const camera = new THREE.PerspectiveCamera(phone ? 60 : 50, innerWidth / innerHeight, 0.1, 200);
+  const spark = new SparkRenderer({ renderer });
+  scene.add(spark);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+  sun.position.set(10, 20, 15);
+  scene.add(sun);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.maxPolarAngle = Math.PI * 0.49;
+  controls.minDistance = 2;
+  controls.maxDistance = 60;
+  controls.autoRotateSpeed = 0.6;
+
+  // Twin: the World Labs SPZ when it's published next to this page, otherwise the procedural stand-in.
+  const twinRoot = new THREE.Group();
+  const pl = cfg.placement || {};
+  twinRoot.position.fromArray(pl.position || [0, 0, 0]);
+  twinRoot.rotation.y = THREE.MathUtils.degToRad(pl.yaw_deg || 0);
+  scene.add(twinRoot);
+
+  let twinKind = "placeholder";
+  const loadingText = $("loading-text");
+  if (cfg.splat && !params.has("placeholder")) {
+    try {
+      const r = await fetch(cfg.splat);
+      const type = r.headers.get("content-type") || "";
+      if (r.ok && !type.includes("text/html")) {
+        loadingText.textContent = "Downloading the world-model splat…";
+        const bytes = new Uint8Array(await r.arrayBuffer());
+        const meta = (await getJSON(cfg.meta)) || {};
+        const sem = meta.semantics_metadata || {};
+        const s = Number(sem.metric_scale_factor) || 1, g = Number(sem.ground_plane_offset) || 0;
+        // Same correction as the USD wrapper: rotateX(180) · translate(0, -g, 0) · scale(s).
+        const flip = new THREE.Group(); flip.rotation.x = Math.PI;
+        const lift = new THREE.Group(); lift.position.y = -g;
+        let mesh = new SplatMesh({ fileBytes: bytes, fileName: cfg.splat.split("/").pop() });
+        await mesh.initialized;
+        if (cfg.crop) mesh = await cropSplats(mesh, cfg.crop, s, g);
+        mesh.scale.setScalar(s);
+        lift.add(mesh); flip.add(lift); twinRoot.add(flip);
+        twinKind = "world";
+      }
+    } catch (e) {
+      console.warn("Could not load the twin splat, showing the placeholder:", e);
+    }
+  }
+  // The procedural building is the whole twin until a capture exists, then the context around it.
+  const withContext = twinKind === "placeholder" || cfg.context;
+  if (withContext) {
+    loadingText.textContent = "Building the facility layout…";
+    const clear = twinKind === "world" ? cfg.context?.clear : null;
+    const mesh = new SplatMesh({ constructSplats: (splats) => { buildPlaceholder(splats, { density: phone ? 1.45 : 1, clear }); } });
+    scene.add(mesh);
+    await mesh.initialized;
+  }
+  const pill = $("twin-pill");
+  if (twinKind === "world") {
+    pill.textContent = withContext ? "World Labs capture + layout" : "World Labs capture";
+    pill.title = "Gaussian splat from a World Labs world model, built from the walkthrough video.";
+    $("about-text").textContent = withContext
+      ? "The racking aisle is a Gaussian splat from a World Labs world model, built from walkthrough video. The rest of the building is a schematic layout in the same metric frame, until more of the facility is captured."
+      : "The building is a Gaussian splat from a World Labs world model, built from walkthrough video. Readings are pinned to it in metres, in the same frame as the OpenUSD twin.";
+  } else {
+    pill.textContent = "Placeholder layout";
+    pill.title = "Procedural splat stand-in until the World Labs capture is published.";
+  }
+  if (cfg.usdz) fetch(cfg.usdz, { method: "HEAD" }).then((r) => {
+    if (r.ok && !(r.headers.get("content-type") || "").includes("text/html")) { $("usdz-link").href = cfg.usdz; $("usdz-link").hidden = false; }
+  }).catch(() => {});
+
+  // Telemetry markers
+  const zoneRings = new Map();
+  const ringGeo = new THREE.RingGeometry(0.9, 1.15, 48).rotateX(-Math.PI / 2);
+  const fork = makeForklift();
+  scene.add(fork);
+  const forkTarget = { pos: new THREE.Vector3(1, 0, 12), yaw: 0, live: false };
+  const anchors = new Map(); // id -> Vector3 where the badge points
+
+  // On wide screens the panel covers the right edge, so centre the view in the space left of it.
+  function fit() {
+    const side = innerWidth > 720 ? $("panel").offsetWidth + 16 : 0;
+    camera.aspect = (innerWidth + side) / innerHeight;
+    if (side) camera.setViewOffset(innerWidth + side, innerHeight, side, 0, innerWidth, innerHeight);
+    else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  }
+  fit();
+  addEventListener("resize", fit);
+
+  // Overview backs off until the 26 m building fits the screen width (portrait phones need more room).
+  const overview = () => {
+    const halfW = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(camera.aspect, 1.6);
+    const d = THREE.MathUtils.clamp(16 / halfW, 34, 62);
+    const dir = new THREE.Vector3(0.05, camera.aspect < 1 ? 0.78 : 0.55, 1).normalize();
+    return [dir.multiplyScalar(d).add(new THREE.Vector3(13, 0, 9)).toArray(), [13, 0, camera.aspect < 1 ? 7 : 8.5]];
+  };
+  // Camera presets in the telemetry frame.
+  const VIEWS = {
+    get overview() { return overview(); },
+    cold: [[8, 7, 15], [8, 1.5, 3]],
+    aisle: [[20, 2, 13], [20, 1.5, 5]],
+  };
+  let follow = false, tween = null;
+  function goTo(pos, target, ms = 1200) {
+    tween = { t0: performance.now(), ms, p0: camera.position.clone(), q0: controls.target.clone(),
+      p1: new THREE.Vector3(...pos), q1: new THREE.Vector3(...target) };
+  }
+  camera.position.set(...VIEWS.overview[0]).add(new THREE.Vector3(6, 8, 10));
+  controls.target.set(...VIEWS.overview[1]);
+  // ?cam=px,py,pz,tx,ty,tz pins the camera, for screenshots and recordings.
+  const pinned = (params.get("cam") || "").split(",").map(Number);
+  if (pinned.length === 6 && pinned.every(Number.isFinite)) {
+    camera.position.set(...pinned.slice(0, 3));
+    controls.target.set(...pinned.slice(3));
+  } else {
+    goTo(...VIEWS.overview, 2200);
+  }
+
+  for (const btn of document.querySelectorAll("#views [data-view]")) {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#views [data-view]").forEach((b) => b.classList.toggle("on", b === btn));
+      follow = btn.dataset.view === "follow";
+      if (!follow) goTo(...VIEWS[btn.dataset.view]);
+    });
+  }
+  const tourBtn = $("tour");
+  const setTour = (on) => { controls.autoRotate = on; tourBtn.setAttribute("aria-pressed", String(on)); };
+  tourBtn.addEventListener("click", () => setTour(!controls.autoRotate));
+  if (params.has("tour")) setTour(true);
+  controls.addEventListener("start", () => { tween = null; });
+
+
+  const v = new THREE.Vector3(), clock = new THREE.Clock();
+  renderer.setAnimationLoop(() => {
+    const dt = Math.min(clock.getDelta(), 0.1), now = performance.now();
+
+    // Forklift: exact pose from the local model when simulated, smoothed toward readings when live.
+    if (!forkTarget.live) {
+      const f = simForklift(Date.now() / 1000);
+      forkTarget.pos.fromArray(f.position);
+      forkTarget.yaw = THREE.MathUtils.degToRad(f.heading_deg);
+      fork.position.copy(forkTarget.pos);
+      fork.rotation.y = forkTarget.yaw;
+    } else {
+      const k = 1 - Math.exp(-dt * 3);
+      fork.position.lerp(forkTarget.pos, k);
+      let d = forkTarget.yaw - fork.rotation.y;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      fork.rotation.y += d * k;
+    }
+    anchors.set("forklift-1", v.copy(fork.position).setY(2.6).clone());
+
+    for (const [, ring] of zoneRings) ring.material.opacity = ring.userData.alarm ? 0.45 + 0.35 * Math.sin(now / 180) : 0.5;
+
+    if (tween) {
+      const t = Math.min(1, (now - tween.t0) / tween.ms), e = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+      camera.position.lerpVectors(tween.p0, tween.p1, e);
+      controls.target.lerpVectors(tween.q0, tween.q1, e);
+      if (t === 1) tween = null;
+    } else if (follow) {
+      const behind = new THREE.Vector3(Math.sin(fork.rotation.y), 0, Math.cos(fork.rotation.y)).multiplyScalar(-6);
+      const want = fork.position.clone().add(behind).setY(4.5);
+      camera.position.lerp(want, 1 - Math.exp(-dt * 2));
+      controls.target.lerp(fork.position.clone().setY(1), 1 - Math.exp(-dt * 4));
+    }
+    controls.update();
+    renderer.render(scene, camera);
+
+    // Pin HTML badges to their anchors.
+    for (const [id, el] of badges) {
+      const a = anchors.get(id);
+      if (!a) continue;
+      v.copy(a).project(camera);
+      const off = v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1;
+      el.classList.toggle("hidden", off);
+      if (!off) el.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px, ${(-v.y * 0.5 + 0.5) * innerHeight}px) translate(-50%, -100%)`;
+    }
+  });
+
+  return {
+    zoneStatus(z) {
+      let ring = zoneRings.get(z.id);
+      if (!ring) {
+        ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }));
+        ring.position.set(z.position[0], 0.04, z.position[2]);
+        scene.add(ring);
+        zoneRings.set(z.id, ring);
+      }
+      ring.material.color.setHex(STATUS_COLOR[z.status] || STATUS_COLOR.ok);
+      ring.userData.alarm = z.status === "alarm";
+      anchors.set(z.id, new THREE.Vector3(z.position[0], Math.max(z.position[1], 0) + 2.9, z.position[2]));
+    },
+    forkliftTarget(f, source) {
+      forkTarget.live = source === "live";
+      if (forkTarget.live) {
+        forkTarget.pos.fromArray(f.position);
+        forkTarget.yaw = THREE.MathUtils.degToRad(f.heading_deg);
+      }
+    },
+    focus(id) {
+      const a = anchors.get(id);
+      if (!a) return;
+      follow = id.startsWith("forklift");
+      document.querySelectorAll("#views [data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === (follow ? "follow" : "")));
+      if (!follow) goTo([a.x - 2, a.y + 4, a.z + 9], [a.x, a.y - 1.5, a.z]);
+    },
+  };
+}
+
+// Keeps the splats inside crop.min/max, given in metres in the corrected (Y-up, floor at 0) frame,
+// which is how a person reads positions off the twin. Undoes the correction to test raw centres.
+async function cropSplats(src, crop, scale, ground) {
+  const lo = new THREE.Vector3(...crop.min), hi = new THREE.Vector3(...crop.max), p = new THREE.Vector3();
+  const out = new SplatMesh({
+    constructSplats: (splats) => {
+      src.forEachSplat((_i, center, scales, quat, opacity, color) => {
+        p.copy(center).multiplyScalar(scale);
+        p.set(p.x, ground - p.y, -p.z); // rotateX(180) after translate(0, -ground, 0)
+        if (p.x >= lo.x && p.x <= hi.x && p.y >= lo.y && p.y <= hi.y && p.z >= lo.z && p.z <= hi.z) {
+          splats.pushSplat(center, scales, quat, opacity, color);
+        }
+      });
+    },
+  });
+  await out.initialized;
+  src.dispose?.();
+  return out;
+}
+
+// ---------- Boot ----------
+(async function main() {
+  const cfg = { ...DEFAULTS, ...((await getJSON("twin.config.json")) || {}) };
+  if (cfg.repo) $("repo-link").href = cfg.repo;
+  const apiBase = params.get("api") ?? cfg.telemetryApi;
+  startFeed({ apiBase, forceSim: params.has("sim"), onData: render });
+
+  if (hasWebGL2()) {
+    try {
+      scene3d = await initScene(cfg);
+      if (lastData) render(lastData, lastSource);
+    } catch (e) {
+      console.error(e);
+      $("fail").hidden = false;
+    }
+  } else {
+    $("fail").hidden = false;
+  }
+  $("loading").classList.add("done");
+})();
