@@ -81,8 +81,8 @@ forklift positions, through a serverless backend on Amazon Web Services that
 costs nothing when idle. Third, NVIDIA Omniverse displays the twin with its
 live data, with a web browser and Blender as alternatives. Universal Scene
 Description, an open 3D file standard that now stores Gaussian splats natively,
-is the only interface between the steps. Applied to three areas of a food bank
-from a public news video, twenty frames produced a twin of about 747,000 splats
+is the only interface between the steps. Applied to a representative Texas
+food bank, with three areas captured from a public news video, twenty frames produced a twin of about 747,000 splats
 in one 48.5-megabyte file for 200 world-model credits (20 US cents), plus up to
 800 more if two failed requests are billed. Generating views of unfilmed areas
 failed on the provider's side both times, so the twin shows only what the
@@ -176,6 +176,16 @@ hub combines a warehouse and distribution hub, a kitchen, a food market and a
 training center in 64,000 square feet \cite{kxxv2026waco}. Cold storage at that
 scale is exactly what a twin with live temperatures is meant to watch.
 
+The case study is a representative Texas food bank, not a model of any one
+facility. It is inspired by the Central Texas Food Bank: three of its areas
+are captured from a public walkthrough of one of that food bank's buildings,
+and its operating volumes are anchored to published figures for another. The
+rest of the building is designed for this paper, and all live data is
+simulated. Table~\ref{tab:provenance} states where every part of the twin
+comes from, and the figures show captured, designed and simulated content so
+that they can be told apart. The aim is to show what a food bank's twin looks
+like and what it takes to build one, not to describe a particular site.
+
 \section{Results}
 
 \subsection{Three steps joined by one open contract}
@@ -227,9 +237,29 @@ captured first, because the camera circles one bay and then looks down the
 aisle, and because it is the zone that matters most for inventory locations,
 forklift paths and telemetry. The volunteer sorting room and the client market
 were captured in a second run, from narrower windows in which the camera moves
-enough to give overlapping views. The layout of the twin is inspired by the Central Texas Food Bank;
-it is not an exact replica, and the world model adds plausible operational
-areas that the source video does not show.
+enough to give overlapping views. The other operating areas of the
+representative food bank (receiving, freezer, cooler, order staging and the
+community kitchen) were not captured: they are designed footprints in the
+operations layer and a grey massing model in the browser, not generated or
+reconstructed geometry (Table~\ref{tab:provenance}).
+
+\begin{table}[t]
+\caption{Provenance of each part of the representative food bank twin.}
+\centering\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.3\linewidth}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}X@{}}
+\toprule
+Part of the twin & Kind & Source \\
+\midrule
+Racking aisle, sorting room, client market (geometry) & Captured, partial & 20 frames of a public walkthrough of a Central Texas Food Bank building; world-model depth fused locally. The racking aisle is also trained locally from 72 frames. \\
+Absolute scale & Estimated & The world model's metric depth; not checked against a survey. \\
+Building shell, receiving, freezer, cooler, order staging, kitchen annex & Designed & Footprints chosen for this paper; drawn as grey massing or outlines, never as splats. \\
+Annual volume, agencies, floor area, pallet positions, cold storage, docks, kitchen equipment, meals per day & Published & Figures for the Central Texas Food Bank's Austin facility (Table~\ref{tab:published}). \\
+Source and channel shares, product mix, capacities, recipes, step times & Estimated & Set for this paper and flagged as estimates in the master data. \\
+Temperatures, door events, forklifts, daily flows and inventory & Simulated & Computed from the clock; every payload carries \code{simulated: true}. \\
+\bottomrule
+\end{tabularx}
+\label{tab:provenance}
+\end{table}
 
 \begin{table}[t]
 \caption{Candidate zones in the source walkthrough and the assessment that led to the three captured zones.}
@@ -451,8 +481,8 @@ About 950 kitchen meals per day for after-school, summer and child-care meal pro
 
 \subsection{The browser shows the twin with live telemetry}
 The browser viewer renders all three zones with Spark from their SPZ files,
-5.9\,MB in total (2.1, 2.2 and 1.6\,MB), placed by the same site plan as the
-USD stage (Figure~\ref{fig:browser}). Because the captures are partial, the
+5.9\,MB in total (2.1, 2.2 and 1.6\,MB), placed by the same configuration as
+the composed USD stage (Figure~\ref{fig:browser}). Because the captures are partial, the
 viewer sets them inside a procedurally generated building with cold rooms,
 racking and pallets, which is clearly not reconstructed from the video, and
 overlays the simulated cold-chain and forklift telemetry as labels, rings and
@@ -582,11 +612,14 @@ decisions. People, motion blur, reflective steel and repetitive racking remain
 hard inputs; masking people before reconstruction would help, and the world
 model's API exposes masked inputs that we have not yet evaluated.
 
-The twin is also a composite. Its geometry comes from a video that appears to
-show the food bank's Waco hub, while its operating volumes come from published
-figures for the 135{,}000\,sq\,ft Austin facility, and the building layout is
-a stand-in; this is acceptable for a demonstration but must be stated wherever
-the twin is shown. Keeping these sources in one frame is what lets the twin be
+The twin is also a composite by design. Its captured geometry comes from a
+video that appears to show the food bank's Waco hub, its operating volumes
+come from published figures for the 135{,}000\,sq\,ft Austin facility, the
+rest of the building is designed, and the data is simulated. That makes it a
+fair picture of what a Texas food bank's twin looks like, but not a record of
+any one site, and its provenance (Table~\ref{tab:provenance}) should travel
+with every image of it. A twin of a real facility would replace each designed
+or simulated row with a capture or a live feed from that facility. Keeping these sources in one frame is what lets the twin be
 used at all: one USD stage composes the captured zones (by reference, placed
 by the same configuration as the browser) with the operations layer, and
 cropping is a non-destructive opacity override, so the capture library is never
@@ -651,8 +684,8 @@ of preference, from a dense 5\,cm horizontal slab of points, from the world
 model's ground plane, or from a fixed 1.5\,m below the cameras. A site stage
 then places each zone on a plan in meters (racking at the origin, sorting at
 $+26$\,m and the market at $-24$\,m on $x$) and writes one USD stage that
-references each zone's layer. The layout is inspired by the Central Texas Food
-Bank and is not a survey.
+references each zone's layer. This plan is a library layout, not a survey;
+the composed twin re-places the zones as described under Visualization.
 
 \subsection{Locally trained zones}
 The photoreal route uses no paid service. Frames from a zone's segment of the
