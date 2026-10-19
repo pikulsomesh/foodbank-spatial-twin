@@ -4,10 +4,18 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 import { buildPlaceholder } from "./placeholder.js";
-import { startFeed, forklift as simForklift } from "./telemetry.js";
+import { startFeed, simulate, forklift as simForklift } from "./telemetry.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
+
+// ?record=1 freezes wall-clock time: the page renders only when a capture script calls
+// window.twinStep(ms), so a slow (software-rendered) browser still produces a smooth video.
+const recording = params.has("record");
+const epoch = Date.now();
+let virtualMs = 0;
+const nowMs = () => (recording ? virtualMs : performance.now());
+const wallMs = () => (recording ? epoch + virtualMs : Date.now());
 const phone = matchMedia("(max-width: 720px)").matches || navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820;
 
 const DEFAULTS = { zones: "zones/zones.json", splat: "factory.spz", meta: "factory.meta.json", usdz: "factory.usdz",
@@ -224,7 +232,7 @@ async function initScene(cfg) {
   };
   let follow = false, tween = null;
   function goTo(pos, target, ms = 1200) {
-    tween = { t0: performance.now(), ms, p0: camera.position.clone(), q0: controls.target.clone(),
+    tween = { t0: nowMs(), ms, p0: camera.position.clone(), q0: controls.target.clone(),
       p1: new THREE.Vector3(...pos), q1: new THREE.Vector3(...target) };
   }
   camera.position.set(...VIEWS.overview[0]).add(new THREE.Vector3(6, 8, 10));
@@ -270,13 +278,15 @@ async function initScene(cfg) {
   controls.addEventListener("start", () => { tween = null; });
 
 
-  const v = new THREE.Vector3(), clock = new THREE.Clock();
-  renderer.setAnimationLoop(() => {
-    const dt = Math.min(clock.getDelta(), 0.1), now = performance.now();
+  const v = new THREE.Vector3();
+  let last = nowMs();
+  function frame() {
+    const now = nowMs(), dt = Math.min((now - last) / 1000, 0.1);
+    last = now;
 
     // Forklift: exact pose from the local model when simulated, smoothed toward readings when live.
     if (!forkTarget.live) {
-      const f = simForklift(Date.now() / 1000);
+      const f = simForklift(wallMs() / 1000);
       forkTarget.pos.fromArray(f.position);
       forkTarget.yaw = THREE.MathUtils.degToRad(f.heading_deg);
       fork.position.copy(forkTarget.pos);
@@ -303,7 +313,7 @@ async function initScene(cfg) {
       camera.position.lerp(want, 1 - Math.exp(-dt * 2));
       controls.target.lerp(fork.position.clone().setY(1), 1 - Math.exp(-dt * 4));
     }
-    controls.update();
+    controls.update(dt);
     renderer.render(scene, camera);
 
     // Pin HTML badges to their anchors.
@@ -315,7 +325,21 @@ async function initScene(cfg) {
       el.classList.toggle("hidden", off);
       if (!off) el.style.transform = `translate(${(v.x * 0.5 + 0.5) * innerWidth}px, ${(-v.y * 0.5 + 0.5) * innerHeight}px) translate(-50%, -100%)`;
     }
-  });
+  }
+  if (recording) {
+    let nextReading = 0;
+    const tick = () => new Promise((r) => requestAnimationFrame(() => r()));
+    // Spark sorts splats in a worker, so give it a few real frames to catch up with the camera
+    // before the frame counts.
+    window.twinStep = async (ms, settle = 1) => {
+      virtualMs += ms;
+      if (virtualMs >= nextReading) { render(simulate(wallMs()), "simulated"); nextReading += 2000; }
+      for (let i = 0; i < settle; i++) { frame(); await tick(); }
+      frame();
+    };
+  } else {
+    renderer.setAnimationLoop(frame);
+  }
 
   return {
     zoneStatus(z) {
@@ -430,7 +454,7 @@ async function cropSplats(src, crop, scale, ground, dilate = 1) {
   const cfg = { ...DEFAULTS, ...((await getJSON("twin.config.json")) || {}) };
   if (cfg.repo) $("repo-link").href = cfg.repo;
   const apiBase = params.get("api") ?? cfg.telemetryApi;
-  startFeed({ apiBase, forceSim: params.has("sim"), onData: render });
+  if (!recording) startFeed({ apiBase, forceSim: params.has("sim"), onData: render });
 
   if (hasWebGL2()) {
     try {

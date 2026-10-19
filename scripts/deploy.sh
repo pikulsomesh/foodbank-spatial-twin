@@ -28,3 +28,15 @@ rm -rf "$STAGE"
 
 echo "Telemetry: $(out TelemetryUrl)"
 echo "Site:      $(out SiteUrl)"
+
+# Point the GitHub Pages demo at the API too: set the repo variable the Pages workflow reads,
+# then redeploy. Needs an authenticated gh CLI; otherwise print the two steps.
+REPO="${GITHUB_REPO:-pikulsomesh/foodbank-spatial-twin}"
+if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
+  gh variable set TWIN_API_URL --repo "$REPO" --body "$API"
+  gh workflow run pages.yml --repo "$REPO" --ref main
+  echo "Pages:     redeploying https://${REPO%%/*}.github.io/${REPO#*/}/ with live data"
+else
+  echo "Pages:     set repo variable TWIN_API_URL=$API (Settings > Secrets and variables > Actions > Variables),"
+  echo "           then run the 'Demo site' workflow on main."
+fi
