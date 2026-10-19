@@ -86,6 +86,12 @@ Resources:
             ApiId: !Ref TelemetryApi
             Path: /telemetry
             Method: GET
+        GetOperations:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TelemetryApi
+            Path: /operations
+            Method: GET
         GetHealth:
           Type: HttpApi
           Properties:
@@ -115,6 +121,9 @@ Outputs:
   TelemetryUrl:
     Description: GET this for live simulated telemetry
     Value: !Sub "https://${TelemetryApi}.execute-api.${AWS::Region}.amazonaws.com/telemetry"
+  OperationsUrl:
+    Description: GET this for simulated inventory, flows, docks and kitchen
+    Value: !Sub "https://${TelemetryApi}.execute-api.${AWS::Region}.amazonaws.com/operations"
   ApiBaseUrl:
     Value: !Sub "https://${TelemetryApi}.execute-api.${AWS::Region}.amazonaws.com"
   SiteBucketName:

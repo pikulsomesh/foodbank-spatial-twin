@@ -1,0 +1,113 @@
+{
+  "_comment": "Operations master data for the food bank twin: zones, inventory families, inbound sources, outbound channels and the community kitchen. Positions and footprints are metres in the telemetry frame (Y up, origin at the dock-door corner), the same frame as /telemetry. Volumes are for the whole real facility; the twin's building is a scaled-down stand-in. Records with \"est\": true are modelling estimates, everything else cites `src` ids in `sources`. public/ops/operations.json must stay byte-identical (tests check it).",
+  "site": {
+    "name": "Central Texas Food Bank",
+    "inspiration_only": true,
+    "utc_offset_hours": -5,
+    "annual_lbs": 74000000,
+    "annual_produce_lbs": 26600000,
+    "partner_agencies": 251,
+    "counties": 21,
+    "facility_sqft": 135000,
+    "pallet_positions": 7000,
+    "cold_storage_sqft": 35000,
+    "loading_docks": 15,
+    "lbs_per_meal": 1.2,
+    "operating_weekdays": [1.1, 1.0, 1.0, 1.0, 1.0, 0.6, 0.0],
+    "src": ["ctfb-impact-fy24", "ctfb-rename", "cfs-processing", "fa-meal"]
+  },
+  "zones": [
+    {"id": "receiving", "label": "Receiving dock", "kind": "dock", "temp": "ambient", "footprint": {"x": [0.5, 5.0], "z": [7.5, 17.5]}, "capacity_pallets": 120, "telemetry_zone": null, "capture": null, "est": true},
+    {"id": "sorting", "label": "Product recovery and sorting", "kind": "sorting", "temp": "ambient", "footprint": {"x": [5.5, 16.5], "z": [13.5, 20.0]}, "capacity_pallets": 80, "telemetry_zone": null, "capture": "Sorting", "src": ["ctfb-tour"]},
+    {"id": "freezer", "label": "Freezer", "kind": "storage", "temp": "frozen", "footprint": {"x": [1.0, 7.0], "z": [0.0, 5.5]}, "capacity_pallets": 900, "telemetry_zone": "freezer-1", "capture": null, "est": true},
+    {"id": "cooler", "label": "Cooler", "kind": "storage", "temp": "chilled", "footprint": {"x": [9.0, 15.0], "z": [0.0, 5.5]}, "capacity_pallets": 800, "telemetry_zone": "cooler-1", "capture": null, "est": true},
+    {"id": "dry", "label": "Dry storage racking", "kind": "storage", "temp": "ambient", "footprint": {"x": [17.0, 26.0], "z": [0.5, 9.0]}, "capacity_pallets": 5000, "telemetry_zone": "dry-1", "capture": "Racking", "est": true},
+    {"id": "staging", "label": "Partner order staging", "kind": "staging", "temp": "ambient", "footprint": {"x": [6.5, 11.0], "z": [7.5, 11.0]}, "capacity_pallets": 90, "telemetry_zone": null, "capture": null, "est": true},
+    {"id": "market", "label": "Client grocery market", "kind": "market", "temp": "ambient", "footprint": {"x": [19.0, 26.0], "z": [13.0, 20.0]}, "capacity_pallets": 30, "telemetry_zone": null, "capture": "Market", "est": true},
+    {"id": "kitchen", "label": "Community kitchen", "kind": "kitchen", "temp": "ambient", "footprint": {"x": [26.5, 38.0], "z": [0.0, 11.0]}, "capacity_pallets": 24, "telemetry_zone": "kitchen-1", "capture": "Kitchen", "src": ["ctfb-kitchen-volunteer", "ctfb-tour"]}
+  ],
+  "categories": [
+    {"id": "produce", "label": "Fresh produce", "zone": "cooler", "lbs_per_pallet": 800, "shelf_life_days": 10, "days_of_supply": 4, "color": 3},
+    {"id": "dairy", "label": "Dairy and eggs", "zone": "cooler", "lbs_per_pallet": 900, "shelf_life_days": 21, "days_of_supply": 8, "color": 1},
+    {"id": "frozen", "label": "Frozen protein", "zone": "freezer", "lbs_per_pallet": 1100, "shelf_life_days": 180, "days_of_supply": 35, "color": 7},
+    {"id": "canned", "label": "Canned and shelf-stable", "zone": "dry", "lbs_per_pallet": 1200, "shelf_life_days": 540, "days_of_supply": 45, "color": 2},
+    {"id": "grains", "label": "Grains, pasta and cereal", "zone": "dry", "lbs_per_pallet": 900, "shelf_life_days": 365, "days_of_supply": 40, "color": 4},
+    {"id": "bakery", "label": "Bread and bakery", "zone": "dry", "lbs_per_pallet": 350, "shelf_life_days": 5, "days_of_supply": 1.5, "color": 5}
+  ],
+  "sources": [
+    {"id": "usda", "label": "USDA commodities (TEFAP, CSFP)", "share": 0.23, "sorted": false, "mix": {"canned": 0.45, "frozen": 0.25, "grains": 0.2, "dairy": 0.1}, "est": true},
+    {"id": "retail", "label": "Grocery and retail rescue", "share": 0.28, "sorted": true, "mix": {"produce": 0.3, "bakery": 0.25, "dairy": 0.15, "frozen": 0.1, "canned": 0.1, "grains": 0.1}, "est": true},
+    {"id": "growers", "label": "Farms and produce growers", "share": 0.27, "sorted": false, "mix": {"produce": 1.0}, "est": true},
+    {"id": "purchased", "label": "Purchased food", "share": 0.17, "sorted": false, "mix": {"canned": 0.4, "grains": 0.3, "frozen": 0.2, "dairy": 0.1}, "est": true},
+    {"id": "drives", "label": "Food drives and community", "share": 0.05, "sorted": true, "mix": {"canned": 0.6, "grains": 0.4}, "est": true}
+  ],
+  "channels": [
+    {"id": "partners", "label": "Partner agencies (pantries, shelters)", "share": 0.74, "zone": "staging", "est": true, "src": ["ctfb-impact-fy24"]},
+    {"id": "mobile", "label": "Mobile pantries and direct distribution", "share": 0.2, "zone": "staging", "est": true},
+    {"id": "market", "label": "On-site client market", "share": 0.06, "zone": "market", "est": true},
+    {"id": "meals", "label": "Kids and senior meal sites", "share": 0, "zone": "kitchen", "from_kitchen": true, "src": ["ctfb-kids-cafe"]}
+  ],
+  "flow": {
+    "_comment": "Hours are local time. Each profile lists [start_hour, end_hour] windows sharing that day's volume evenly. Lags are hours from a pallet arriving at the dock to its next move.",
+    "inbound_windows": [[6, 9, 0.45], [9, 12, 0.35], [12, 15, 0.2]],
+    "outbound_windows": [[7, 10, 0.35], [10, 13, 0.35], [13, 17, 0.3]],
+    "putaway_lag_h": 0.75,
+    "to_sorting_lag_h": 0.5,
+    "sorted_lag_h": 2.5,
+    "kitchen_pick_window": [5.5, 7.0],
+    "lbs_per_inbound_truck": 18000,
+    "lbs_per_partner_pickup": 3500,
+    "docks": 15,
+    "est": true
+  },
+  "kitchen": {
+    "label": "Community kitchen",
+    "area_sqft": 4200,
+    "meals_per_day": 950,
+    "operating_weekdays": [1, 1, 1, 1, 1, 0, 0],
+    "batch_meals": 250,
+    "batch_stagger_h": 0.75,
+    "first_batch_h": 6.0,
+    "dispatch_window": [13.0, 15.5],
+    "cold_hold_setpoint_c": 3.0,
+    "programs": [
+      {"id": "sfsp", "label": "USDA Summer Food Service Program", "share": 0.35, "src": ["ctfb-kitchen-history"]},
+      {"id": "cacfp", "label": "Child and Adult Care Food Program", "share": 0.4, "src": ["ctfb-kitchen-history"]},
+      {"id": "kidscafe", "label": "Kids Cafe after-school meals", "share": 0.25, "src": ["ctfb-kids-cafe"]}
+    ],
+    "equipment": [
+      {"id": "kettle", "label": "Steam-jacketed kettles", "count": 3, "position": [29.0, 0, 2.0]},
+      {"id": "skillet", "label": "Tilt skillets", "count": 2, "position": [31.5, 0, 2.0]},
+      {"id": "combi", "label": "Combi ovens", "count": 2, "position": [34.0, 0, 2.0]},
+      {"id": "chiller", "label": "Blast chillers", "count": 2, "position": [36.5, 0, 5.0]},
+      {"id": "prep", "label": "Prep and training tables", "count": 4, "position": [30.5, 0, 6.0]},
+      {"id": "pack", "label": "Portion and pack line", "count": 1, "position": [33.5, 0, 9.0]},
+      {"id": "walkin", "label": "Kitchen walk-in cooler", "count": 1, "position": [36.5, 0, 9.0]}
+    ],
+    "recipes": [
+      {"id": "chicken-rice", "label": "Chicken and rice bowl with green beans", "cook": "kettle", "bom_lbs": {"frozen": 0.22, "grains": 0.15, "produce": 0.18, "dairy": 0.04}},
+      {"id": "pasta-bake", "label": "Turkey pasta bake with salad", "cook": "combi", "bom_lbs": {"grains": 0.18, "canned": 0.12, "frozen": 0.15, "produce": 0.15, "dairy": 0.05}},
+      {"id": "taco-skillet", "label": "Bean and beef taco skillet with fruit", "cook": "skillet", "bom_lbs": {"frozen": 0.16, "canned": 0.15, "bakery": 0.08, "produce": 0.2}}
+    ],
+    "routing": [
+      {"step": "prep", "label": "Prep", "hours": 0.75, "equipment": "prep"},
+      {"step": "cook", "label": "Cook", "hours": 1.0, "equipment": null},
+      {"step": "chill", "label": "Blast chill", "hours": 1.5, "equipment": "chiller"},
+      {"step": "pack", "label": "Portion and pack", "hours": 0.75, "equipment": "pack"},
+      {"step": "hold", "label": "Cold hold", "hours": null, "equipment": "walkin"}
+    ],
+    "est_note": "Equipment types, the 4,200 sq ft area and the meal programmes are published; counts, recipes, quantities, batch sizes and timings are modelling estimates.",
+    "src": ["ctfb-kitchen-volunteer", "ctfb-culinary", "ctfb-kids-cafe", "ctfb-kitchen-history"]
+  },
+  "references": [
+    {"id": "ctfb-impact-fy24", "title": "Central Texas Food Bank, 2023-2024 impact report (74 million lbs, 26.6 million lbs produce, 251 partner agencies)", "url": "https://www.centraltexasfoodbank.org/"},
+    {"id": "ctfb-rename", "title": "Capital Area Food Bank of Texas renames to become Central Texas Food Bank (135,000 sq ft facility, 21 counties)", "url": "https://www.centraltexasfoodbank.org/press/capital-area-food-bank-texas-renames-become-central-texas-food-bank"},
+    {"id": "cfs-processing", "title": "Central Texas Food System, Food processing and distribution (7,000+ pallets, 35,000+ sq ft cooler and freezer, 15 docks)", "url": "https://www.centraltxfoodsystem.org/food-processing-distribution"},
+    {"id": "ctfb-tour", "title": "Tour the Central Texas Food Bank (warehouse, cooler and freezer, product recovery room, production kitchen)", "url": "https://www.centraltexasfoodbank.org/tour-central-texas-food-bank"},
+    {"id": "ctfb-kitchen-volunteer", "title": "Volunteer in our Community Kitchen (4,200 sq ft production kitchen; kettles, combi ovens, blast chillers, tilt skillets)", "url": "https://www.centraltexasfoodbank.org/get-involved/volunteer/volunteer-our-community-kitchen"},
+    {"id": "ctfb-culinary", "title": "Central Texas Food Bank Culinary Training Program (12 weeks, hands-on in the community kitchen)", "url": "https://www.centraltexasfoodbank.org/kitchen"},
+    {"id": "ctfb-kids-cafe", "title": "Food Bank's after-school meals help Central Texas families (about 950 meals a day from the kitchen)", "url": "https://www.centraltexasfoodbank.org/news/food-banks-after-school-meals-help-central-texas-families"},
+    {"id": "ctfb-kitchen-history", "title": "Cooking with Purpose: A Recipe for Serving Central Texas (SFSP and CACFP meals from the kitchen)", "url": "https://www.centraltexasfoodbank.org/news/cooking-purpose-recipe-serving-central-texas"},
+    {"id": "fa-meal", "title": "Feeding America meal conversion (1.2 lbs of food per meal)", "url": "https://www.feedingamerica.org/"}
+  ]
+}

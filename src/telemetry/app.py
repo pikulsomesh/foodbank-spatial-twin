@@ -12,6 +12,8 @@ import os
 import random
 import time
 
+import operations
+
 SITE = os.environ.get("SITE_NAME", "Central Texas Food Bank")
 
 # id, label, setpoint C, alarm band C (+/-), anchor [x, y, z] in metres
@@ -19,6 +21,7 @@ ZONES = [
     {"id": "freezer-1", "label": "Freezer", "setpoint_c": -18.0, "band_c": 3.0, "position": [4.0, 1.5, 3.0]},
     {"id": "cooler-1", "label": "Cooler", "setpoint_c": 3.0, "band_c": 2.5, "position": [12.0, 1.5, 3.0]},
     {"id": "dry-1", "label": "Dry Storage", "setpoint_c": 21.0, "band_c": 6.0, "position": [20.0, 1.5, 8.0]},
+    {"id": "kitchen-1", "label": "Kitchen Walk-in", "setpoint_c": 3.0, "band_c": 2.5, "position": [36.5, 1.5, 9.0]},
 ]
 
 # Closed loop the forklift drives: dock -> freezer aisle -> cooler aisle -> dry aisle.
@@ -94,5 +97,9 @@ def handler(event, context):
     path = (event or {}).get("rawPath", "/telemetry")
     if path.endswith("/health"):
         return _resp(200, {"ok": True})
+    if path.endswith("/operations"):
+        now = time.time()
+        # Inventory, flows, docks and kitchen; cold-chain risk comes from the same sensor model.
+        return _resp(200, operations.build_operations(now, build_payload(now)["zones"]), cache=5)
     # max-age=2 lets browsers and shared caches absorb a polling viewer's repeat hits.
     return _resp(200, build_payload(time.time()), cache=2)
