@@ -1,0 +1,5 @@
+# Thread 1 build stage. Python 3.11 or 3.12 (usd-convert-gsplat does not support 3.13).
+usd-convert-gsplat[usd]>=0.1.15
+requests>=2.31
+pillow>=10.0
+yt-dlp>=2025.1.1

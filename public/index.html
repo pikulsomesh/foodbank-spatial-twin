@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Food Bank Digital Twin</title>
+<!-- Placeholder for Thread 3 (3D viewer). Proves the S3 site and the telemetry API work end to end. -->
+<h1>Central Texas Food Bank digital twin</h1>
+<p>Viewer coming in Thread 3. Live simulated telemetry:</p>
+<pre id="out">loading…</pre>
+<script>
+  const API = (window.TWIN_API || "") + "/telemetry";
+  fetch(API).then(r => r.json()).then(d => out.textContent = JSON.stringify(d, null, 2))
+    .catch(e => out.textContent = "API not configured: " + e);
+</script>

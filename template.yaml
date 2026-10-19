@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Auto-Twin Thread 2. Serverless backend for the Central Texas Food Bank digital twin:
+  a public S3 static website (viewer + factory.usdz/.spz) and an HTTP API that returns
+  simulated cold-chain IoT telemetry from one small Lambda. No standing cost: no NAT,
+  no VPC, no provisioned capacity, no database.
+
+Parameters:
+  ThrottleRate:
+    Type: Number
+    Default: 5
+    Description: Steady-state requests per second allowed across the API (cost ceiling).
+  ThrottleBurst:
+    Type: Number
+    Default: 10
+    Description: Burst requests allowed across the API.
+  LogRetentionDays:
+    Type: Number
+    Default: 7
+    Description: CloudWatch Logs retention. Logs are the only storage that grows on its own.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [arm64]      # Graviton: about 20% cheaper per GB-second than x86
+    MemorySize: 128             # minimum; the handler does a few microseconds of arithmetic
+    Timeout: 3                  # fail fast, never bill a runaway invocation
+
+Resources:
+  # ---------------------------------------------------------------- static site
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      # Public read is intentional: it holds only the viewer and the public twin assets.
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [GET, HEAD]
+            AllowedOrigins: ["*"]
+            AllowedHeaders: ["*"]
+            MaxAge: 3600
+      LifecycleConfiguration:
+        Rules:
+          - Id: abort-incomplete-uploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: PublicReadForStaticWebsite
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${SiteBucket.Arn}/*"
+
+  # ---------------------------------------------------------------- telemetry API
+  TelemetryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/telemetry/
+      Handler: app.handler
+      Description: Simulated cold-chain telemetry for the food bank twin
+      Environment:
+        Variables:
+          SITE_NAME: Central Texas Food Bank
+      Events:
+        GetTelemetry:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TelemetryApi
+            Path: /telemetry
+            Method: GET
+        GetHealth:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TelemetryApi
+            Path: /health
+            Method: GET
+
+  TelemetryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${TelemetryFunction}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  TelemetryApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: ["*"]
+        AllowMethods: [GET, OPTIONS]
+        AllowHeaders: [Content-Type]
+        MaxAge: 3600
+      DefaultRouteSettings:
+        ThrottlingRateLimit: !Ref ThrottleRate
+        ThrottlingBurstLimit: !Ref ThrottleBurst
+
+Outputs:
+  TelemetryUrl:
+    Description: GET this for live simulated telemetry
+    Value: !Sub "https://${TelemetryApi}.execute-api.${AWS::Region}.amazonaws.com/telemetry"
+  ApiBaseUrl:
+    Value: !Sub "https://${TelemetryApi}.execute-api.${AWS::Region}.amazonaws.com"
+  SiteBucketName:
+    Description: Upload public/ here (scripts/deploy.sh does it)
+    Value: !Ref SiteBucket
+  SiteUrl:
+    Description: Static website endpoint (HTTP only; S3 website hosting has no TLS)
+    Value: !GetAtt SiteBucket.WebsiteURL
