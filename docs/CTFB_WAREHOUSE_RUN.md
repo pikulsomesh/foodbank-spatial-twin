@@ -77,3 +77,30 @@ The committed `public/factory.spz` (270k splats, 2.1 MB) and `public/factory.usd
 - **Auth:** Marble 2 reads only the `WLT-Api-Key` header. A secret injected as `Authorization: Bearer` is rejected with `401 No API key found in request`. The environment secret now sends `WLT-Api-Key`.
 - **Marble v1** (`api.worldlabs.ai/marble/v1`, used by `world_labs_to_usd.py`) needs a separate v1 key and v1 credits. Marble 2 keys are not valid there.
 - **Billing:** 1,000 credits = $1, and the rate card is shown only in the platform. Project authorization: up to 1,000 credits in total without asking again.
+
+## Run 2: more zones and one site
+
+Two more zones from the tour were posed. Each used 6 frames, chosen by hand from 40 extracted ones, with the hosts boxed out. That cost 60 credits per zone.
+
+| Zone | Source | Frames | Pose operation | Fused splats |
+|------|--------|--------|----------------|--------------|
+| Volunteer sorting room | 0:48-1:06, `--start 40 --interval 2` | [`data/ctfb-sorting/frames`](../data/ctfb-sorting/frames) | `fddaa383…` | 282k (`--stride 3`) |
+| Client grocery market | 9:16-9:50, `--start 555 --interval 1` | [`data/ctfb-market/frames`](../data/ctfb-market/frames) | `f2594e01…` | 195k |
+
+```bash
+.venv/bin/python scripts/atlas_twin.py pose --input-dir data/ctfb-sorting/frames --work-dir build/atlas_sorting
+.venv/bin/python scripts/atlas_twin.py fuse --work-dir build/atlas_sorting \
+    --mask-boxes data/ctfb-sorting/people_boxes.json --output build/atlas_sorting/out/zone.usdz --stride 3
+.venv/bin/python scripts/atlas_twin.py site          # reads data/site/layout.json
+```
+
+`fuse` finds the floor in one of three ways, in this order: a dense 5 cm slab of points (the sorting room); the y = 0 ground plane that images2PosedRGBD sets when it finds the ground (the market); or, failing both, 1.5 m below the cameras (the racking aisle).
+
+`site` places the zones on the plan in [`data/site/layout.json`](../data/site/layout.json): racking in the middle, sorting at +26 m on x, the market at -24 m. It writes:
+
+- `public/site.usdz`: one OpenUSD stage, `/World/Site/{Racking,Sorting,Market}`. Each zone is its own referenced layer with its own transform, so a zone can be re-captured without touching the others. It holds 747k splats and is 48.5 MB.
+- `public/zones/*.spz` and `public/zones/zones.json`: the same placements for a browser viewer. Each SPZ is placed like `factory.spz`, then translated.
+
+`public/factory.spz` and `factory.usdz` are unchanged (racking only), so the demo-site placement still applies. [Preview](../data/site/preview.jpg): the site overview, then the market and the sorting room from their source viewpoints, rendered in Spark 0.1.10.
+
+The layout takes the Central Texas Food Bank as inspiration; it is not a survey. Gaps between and inside the zones are where world-model views will go once `atlasGenerate` works for this account.

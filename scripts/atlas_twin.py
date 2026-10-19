@@ -372,6 +372,26 @@ def voxel_merge(pts, rgb, conf, size, voxel: float):
     return pts[idx], rgb[idx], conf[idx], size[idx]
 
 
+def find_floor(y, cam_y: float, camera_height: float) -> tuple[float, str]:
+    """Floor height in API units, and how it was found.
+
+    1. A visible floor shows up as one dense 5 cm slab low in the scene.
+    2. Otherwise, when images2PosedRGBD found the ground it puts it at y = 0
+       (cameras then sit well above 0, as in the sorting room at ~1.2).
+    3. Otherwise (racking aisle: floor barely visible, cameras near 0), put it
+       `camera_height` below the source cameras.
+    """
+    import numpy as np
+    low = y[y < np.percentile(y, 15)]
+    hist, edges = np.histogram(low, bins=np.arange(low.min(), low.max() + 0.05, 0.05))
+    i = int(np.argmax(hist))
+    if hist[i] > 0.05 * len(y):
+        return float(edges[i] + 0.025), "dense floor slab in the fused points"
+    if cam_y > 0.5:
+        return 0.0, "ground plane y=0 from images2PosedRGBD"
+    return cam_y - camera_height, f"assumed {camera_height} m below the source cameras"
+
+
 def write_spz(path: Path, pts, rgb, opacity, log_scale, frac_bits: int = 12) -> None:
     """Niantic SPZ v2, SH degree 0. Layout per usd_convert_gsplat.spz_reader / nianticlabs/spz."""
     import gzip
@@ -439,15 +459,11 @@ def stage_fuse(args, state: dict) -> None:
     pts, rgb, conf, size = voxel_merge(pts, rgb, conf, size, args.voxel)
     log(f"fused {len(pts):,} splats after {args.voxel * 100:.0f} cm voxel merge")
 
-    # Ground plane. images2PosedRGBD depth is metric-like (the first racking
-    # beam lands ~0.4 m above the lens, as on a real ~1.9 m beam), but this
-    # footage almost never shows the floor, so a plane fit is unreliable.
-    # Put the floor --camera-height below the mean source camera instead.
     cam_y = float(np.mean([json.loads(p.with_name(p.name + "_camera.json").read_text())
                            ["extrinsics"]["position"][1] for k, p, _ in sources if k == "pose"]))
-    floor = cam_y - args.camera_height
+    floor, how = find_floor(pts[:, 1], cam_y, args.camera_height)
     scale = args.metric_scale
-    log(f"cameras at y={cam_y:.3f}; floor placed at y={floor:.3f}; scale {scale} m/unit")
+    log(f"cameras at y={cam_y:.3f}; floor at y={floor:.3f} ({how}); scale {scale} m/unit")
 
     # Write in the same OpenCV-style frame Marble v1 SPZ uses (x right, y down,
     # z forward) so build_usdz's existing correction (scale, ground offset,
@@ -464,7 +480,7 @@ def stage_fuse(args, state: dict) -> None:
 
     # build_usdz applies scale first, then subtracts the offset, so it is in metres.
     semantics = {"metric_scale_factor": scale, "ground_plane_offset": -floor * scale,
-                 "ground_source": f"floor assumed {args.camera_height} m below the source cameras"}
+                 "ground_source": how}
     provenance = {"route": "marble2-atlas", "pose_operation": (state.get("pose") or {}).get("operation_id"),
                   "generate_operation": (state.get("generate") or {}).get("operation_id"),
                   "views": len(sources), "built_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -480,9 +496,92 @@ def stage_fuse(args, state: dict) -> None:
         f"{public / 'factory.spz'} ({(public / 'factory.spz').stat().st_size / 1e6:.1f} MB)")
 
 
+def stage_site(args) -> None:
+    """Compose fused zones into one OpenUSD site and publish per-zone SPZ for the browser.
+
+    Each zone keeps its own USD layer (from `fuse`), referenced under
+    /World/Site/<Zone> with that zone's placement from the layout file, so a
+    zone can be re-captured without touching the others. The browser gets one
+    SPZ per zone plus public/zones/zones.json with the same placements.
+    """
+    from pxr import Gf, Sdf, Usd, UsdGeom, UsdUtils
+    layout = read_json(args.layout, None)
+    if not layout:
+        raise PipelineError(f"no layout at {args.layout}")
+    out_dir = args.work_dir / "site"
+    if out_dir.exists():
+        import shutil
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True)
+    zones_dir = args.output.parent / "zones"
+    zones_dir.mkdir(parents=True, exist_ok=True)
+
+    stage = Usd.Stage.CreateNew(str(out_dir / "site.usdc"))
+    UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)
+    UsdGeom.SetStageMetersPerUnit(stage, 1.0)
+    world = UsdGeom.Xform.Define(stage, "/World")
+    stage.SetDefaultPrim(world.GetPrim())
+    UsdGeom.Xform.Define(stage, "/World/Site")
+    manifest = []
+    for z in layout["zones"]:
+        wd = Path(z["work_dir"])
+        usd_dir, spz = wd / "usd", wd / "splat" / "twin.spz"
+        if not (usd_dir / "factory.usdc").exists() or not spz.exists():
+            raise PipelineError(f"zone {z['name']}: run `fuse --work-dir {wd}` first")
+        # Copy the zone's layers next to the site layer so the package is self-contained.
+        for layer in usd_dir.glob("*.usdc"):
+            (out_dir / f"{z['name'].lower()}_{layer.name}").write_bytes(layer.read_bytes())
+        root = out_dir / f"{z['name'].lower()}_factory.usdc"
+        zl = Sdf.Layer.FindOrOpen(str(root))
+
+        def rename_refs(path, prefix=z["name"].lower()):
+            spec = zl.GetPrimAtPath(path)
+            if spec and spec.referenceList.prependedItems:
+                spec.referenceList.prependedItems = [
+                    Sdf.Reference(f"./{prefix}_{Path(r.assetPath).name}", r.primPath)
+                    for r in spec.referenceList.prependedItems]
+        zl.Traverse(Sdf.Path.absoluteRootPath, rename_refs)
+        zl.Save()
+        xf = UsdGeom.Xform.Define(stage, f"/World/Site/{z['name']}")
+        xf.AddTranslateOp().Set(Gf.Vec3d(*z["position"]))
+        xf.AddRotateYOp().Set(float(z.get("yaw", 0)))
+        xf.GetPrim().GetReferences().AddReference(f"./{root.name}", "/World")
+        xf.GetPrim().SetCustomDataByKey("label", z.get("label", z["name"]))
+        meta = read_json(wd / "state.json", {})
+        (zones_dir / f"{z['name'].lower()}.spz").write_bytes(spz.read_bytes())
+        manifest.append({"name": z["name"], "label": z.get("label"), "url": f"zones/{z['name'].lower()}.spz",
+                         "position": z["position"], "yaw": z.get("yaw", 0),
+                         "pose_operation": (meta.get("pose") or {}).get("operation_id"),
+                         "ground_plane_offset": _zone_ground(wd), "frame": "opencv, like factory.spz"})
+    stage.GetRootLayer().customLayerData = {"autoTwin": {"layout": str(args.layout)}}
+    stage.GetRootLayer().Save()
+    site = args.output.parent / "site.usdz"
+    if site.exists():
+        site.unlink()
+    if not UsdUtils.CreateNewUsdzPackage(Sdf.AssetPath(str(out_dir / "site.usdc")), str(site)):
+        raise PipelineError("UsdUtils.CreateNewUsdzPackage failed for the site")
+    check = Usd.Stage.Open(str(site))
+    n = sum(len(p.GetAttribute("positions").Get() or []) for p in check.Traverse()
+            if p.GetTypeName() == "ParticleField3DGaussianSplat")
+    write_json(zones_dir / "zones.json", {"note": "Place each SPZ like factory.spz (rotate 180 deg about X, "
+                                          "lift by ground_plane_offset), then translate by position.",
+                                          "zones": manifest})
+    log(f"wrote {site} ({site.stat().st_size / 1e6:.1f} MB, {len(manifest)} zones, {n:,} splats) "
+        f"and {zones_dir}/zones.json")
+
+
+def _zone_ground(work_dir: Path) -> float | None:
+    """ground_plane_offset the zone's fuse applied (read back from its wrapper layer)."""
+    from pxr import Usd, UsdGeom
+    st = Usd.Stage.Open(str(work_dir / "usd" / "factory.usdc"))
+    ops = UsdGeom.Xformable(st.GetPrimAtPath("/World/FoodBank")).GetOrderedXformOps()
+    op = next((o for o in ops if o.GetOpType() == UsdGeom.XformOp.TypeTranslate), None)
+    return None if op is None else -float(op.Get()[1])
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[1])
-    ap.add_argument("stage", choices=["pose", "generate", "fuse"])
+    ap.add_argument("stage", choices=["pose", "generate", "fuse", "site"])
     ap.add_argument("--input-dir", type=Path, default=Path("data/ctfb-warehouse/frames"))
     ap.add_argument("--work-dir", type=Path, default=Path("build/atlas"))
     ap.add_argument("--max-frames", type=int, default=8)
@@ -492,6 +591,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--prompt", default=DEFAULT_PROMPT)
     ap.add_argument("--mask-boxes", type=Path, default=Path("data/ctfb-warehouse/people_boxes.json"),
                     help="JSON of exclusion boxes per posed frame; masked pixels are not used as context")
+    ap.add_argument("--layout", type=Path, default=Path("data/site/layout.json"), help="site: zone placements")
     ap.add_argument("--output", type=Path, default=Path("public/factory.usdz"), help="fuse: USDZ path")
     ap.add_argument("--stride", type=int, default=2, help="fuse: sample every Nth pixel")
     ap.add_argument("--max-depth", type=float, default=20.0, help="fuse: drop depth beyond this (API units)")
@@ -504,14 +604,16 @@ def main(argv: list[str] | None = None) -> int:
 
     state_path = args.work_dir / "state.json"
     state = read_json(state_path, {})
-    client = None if args.dry_run or args.stage == "fuse" else Atlas()
+    client = None if args.dry_run or args.stage in ("fuse", "site") else Atlas()
     try:
         if args.stage == "pose":
             stage_pose(args, client, state, state_path)
         elif args.stage == "generate":
             stage_generate(args, client, state, state_path)
-        else:
+        elif args.stage == "fuse":
             stage_fuse(args, state)
+        else:
+            stage_site(args)
     except PipelineError as exc:
         log(f"ERROR: {exc}")
         return 1
