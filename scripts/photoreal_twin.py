@@ -452,7 +452,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--iters", type=int, default=7000, help="train: optimisation steps")
     ap.add_argument("--train-args", nargs=argparse.REMAINDER, help="train: extra splat_train.py flags")
     ap.add_argument("--camera-height", type=float, default=1.6, help="export: camera height in metres")
-    ap.add_argument("--radius", type=float, default=30.0, help="export: keep splats within this of the path (m)")
+    ap.add_argument("--radius", type=float, default=80.0,
+                    help="export: keep splats within this of the path (m); the long lens sees far down the aisles")
     ap.add_argument("--min-views", type=int, default=6, help="export: drop splats inside fewer camera frustums")
     ap.add_argument("--ceiling", type=float, default=9.0, help="export: drop splats above this (m)")
     ap.add_argument("--public-dir", type=Path, default=ROOT / "public/zones")

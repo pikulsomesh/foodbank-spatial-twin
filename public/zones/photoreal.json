@@ -12,101 +12,101 @@
       "yaw": 0,
       "ground_plane_offset": 0.0,
       "frame": "opencv, like factory.spz",
-      "splats": 181556,
+      "splats": 128884,
       "sh_degree": 0,
       "extent_m": {
         "min": [
-          -14.35,
+          -23.02,
           -0.15,
-          -32.0
+          -76.23
         ],
         "max": [
-          13.53,
-          8.42,
-          1.02
+          30.2,
+          9.0,
+          1.24
         ]
       },
       "views": [
         {
           "position": [
-            -1.81,
+            -2.08,
             1.61,
-            0.41
+            0.47
           ],
           "target": [
-            -1.25,
+            -1.52,
             1.55,
-            -2.54
+            -2.48
           ],
           "fov_deg": 21.6,
           "frame": "f_0131.jpg"
         },
         {
           "position": [
-            -1.96,
-            1.74,
-            0.73
+            -2.25,
+            1.76,
+            0.83
           ],
           "target": [
-            -1.39,
-            1.65,
-            -2.22
+            -1.68,
+            1.67,
+            -2.11
           ],
           "fov_deg": 21.6,
           "frame": "f_0212.jpg"
         },
         {
           "position": [
-            -1.81,
-            1.75,
-            0.79
+            -2.08,
+            1.77,
+            0.91
           ],
           "target": [
-            -1.21,
-            1.65,
-            -2.15
+            -1.48,
+            1.68,
+            -2.03
           ],
           "fov_deg": 21.6,
           "frame": "f_0235.jpg"
         },
         {
           "position": [
-            1.47,
+            1.68,
             1.62,
-            1.12
+            1.29
           ],
           "target": [
-            1.1,
+            1.31,
             1.71,
-            -1.85
+            -1.69
           ],
           "fov_deg": 21.6,
           "frame": "f_0277.jpg"
         },
         {
           "position": [
-            1.57,
-            1.54,
-            1.49
+            1.8,
+            1.53,
+            1.71
           ],
           "target": [
-            0.96,
+            1.19,
             1.62,
-            -1.45
+            -1.23
           ],
           "fov_deg": 21.6,
           "frame": "f_0282.jpg"
         },
         {
           "position": [
-            1.29,
+            1.48,
             1.57,
             0.01
           ],
           "target": [
-            0.93,
+            1.12,
             1.64,
-            -2.97
+            -2.96
           ],
           "fov_deg": 21.6,
           "frame": "f_0306.jpg"
@@ -119,7 +119,7 @@
       "frames": 72,
       "credits": 0,
       "camera_height_m": 1.6,
-      "built_at": "2026-10-19T13:04:50Z"
+      "built_at": "2026-10-19T22:38:36Z"
     }
   ],
   "note": "Trained 3DGS zones (scripts/photoreal_twin.py). Same placement rule as zones.json: rotate 180 deg about X, lift by ground_plane_offset, then translate by position."
