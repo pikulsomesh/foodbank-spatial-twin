@@ -24,6 +24,10 @@ function mulberry32(seed) {
 // model, so photographic captures stand out instead of competing with flat colours.
 export function buildPlaceholder(splats, { density = 1, clear = [], massing = false } = {}) {
   const cleared = (x0, x1, z0, z1) => clear.some((c) => x0 < c.x[1] && x1 > c.x[0] && z0 < c.z[1] && z1 > c.z[0]);
+  // Areas marked `walls: true` also lose every wall splat above the floor, opening the building
+  // where a capture's background extends past it.
+  const open = clear.filter((c) => c.walls);
+  const opened = (p) => p.y > 0.02 && open.some((c) => p.x >= c.x[0] && p.x <= c.x[1] && p.z >= c.z[0] && p.z <= c.z[1]);
   const rand = mulberry32(7);
   const c = new THREE.Vector3(), s = new THREE.Vector3(), q = new THREE.Quaternion(), col = new THREE.Color();
   const OTHER = { x: ["y", "z"], y: ["x", "z"], z: ["x", "y"] };
@@ -44,6 +48,7 @@ export function buildPlaceholder(splats, { density = 1, clear = [], massing = fa
         c[n] = at;
         c[a] = Math.min(r0[1], i + (rand() - 0.5) * step * 0.3);
         c[b] = Math.min(r1[1], j + (rand() - 0.5) * step * 0.3);
+        if (open.length && opened(c)) continue;
         s[n] = 0.01; s[a] = step * 0.62; s[b] = step * 0.62;
         if (massing) setHex(n === "y" ? (at < 0.01 ? 0x8f9499 : 0xd5d9dd) : n === "x" ? 0xb4b9be : 0xc3c8cc, 0.04);
         else setHex(typeof color === "function" ? color(c.x, c.y, c.z) : color, vary);

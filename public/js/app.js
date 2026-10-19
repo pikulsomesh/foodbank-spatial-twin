@@ -187,7 +187,9 @@ async function initScene(cfg) {
     const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
     pill.textContent = withContext ? `${captures.length} captured zone${captures.length > 1 ? "s" : ""} + layout` : "World Labs capture";
     pill.title = "Gaussian splats from World Labs world models, built from the walkthrough video.";
-    $("about-text").textContent = `The ${list} ${names.length > 1 ? "are" : "is a"} Gaussian splat${names.length > 1 ? "s" : ""} built from walkthrough video with World Labs world models.` +
+    const trained = captures.filter((c) => c.trained).map((c) => c.title || c.name);
+    $("about-text").textContent = `The ${list} ${names.length > 1 ? "are" : "is a"} Gaussian splat${names.length > 1 ? "s" : ""} built from walkthrough video.` +
+      (trained.length ? ` The ${trained.join(" and ")} ${trained.length > 1 ? "were" : "was"} trained on dozens of video frames (3D Gaussian Splatting); the others are fused from a few frames posed by a World Labs world model.` : " Frames were posed and fused with World Labs world models.") +
       (withContext ? " The rest of the building is a schematic layout in the same metric frame, until more of the facility is captured." : "");
   } else {
     pill.textContent = "Placeholder layout";
@@ -230,11 +232,21 @@ async function initScene(cfg) {
     cold: [[8, 7, 15], [8, 1.5, 3]],
     aisle: [[20, 2, 13], [20, 1.5, 5]],
   };
-  let follow = false, tween = null;
-  function goTo(pos, target, ms = 1200) {
-    tween = { t0: nowMs(), ms, p0: camera.position.clone(), q0: controls.target.clone(),
+  // `photo`: a capture seen from its source camera, which the forklift would otherwise drive through.
+  let follow = false, photo = false, tween = null;
+  // A view is [position, target, fov?]. Source-camera views carry the video's narrow lens; widen it
+  // on tall screens so the view still spans what the frame showed side to side.
+  const baseFov = camera.fov;
+  function viewFov(fov) {
+    if (!fov) return baseFov;
+    const half = Math.atan(Math.tan(THREE.MathUtils.degToRad(fov / 2)) * (1920 / 816));
+    return Math.max(fov, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(half) / camera.aspect)));
+  }
+  function goTo(pos, target, ms = 1200, fov) {
+    tween = { t0: nowMs(), ms, p0: camera.position.clone(), q0: controls.target.clone(), f0: camera.fov, f1: viewFov(fov),
       p1: new THREE.Vector3(...pos), q1: new THREE.Vector3(...target) };
   }
+  const goView = (name, ms) => { const [p, t, f] = VIEWS[name]; goTo(p, t, ms, f); };
   camera.position.set(...VIEWS.overview[0]).add(new THREE.Vector3(6, 8, 10));
   controls.target.set(...VIEWS.overview[1]);
   // One button per capture, looking the way its source cameras looked (-Z in the capture frame).
@@ -244,7 +256,10 @@ async function initScene(cfg) {
     captures.forEach((c, i) => {
       const yaw = THREE.MathUtils.degToRad(c.yaw_deg || 0), dir = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
       const o = new THREE.Vector3(...c.position);
-      VIEWS[`capture-${i}`] = c.view || [o.clone().setY(o.y + 1.6).toArray(), o.clone().addScaledVector(dir, 7).setY(o.y + 1.3).toArray()];
+      const src = c.views?.[c.source_view ?? 0];
+      const place = (p) => new THREE.Vector3(...p).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw).add(o).toArray();
+      VIEWS[`capture-${i}`] = c.view || (src ? [place(src.position), place(src.target), src.fov_deg]
+        : [o.clone().setY(o.y + 1.6).toArray(), o.clone().addScaledVector(dir, 7).setY(o.y + 1.3).toArray()]);
       const btn = document.createElement("button");
       btn.dataset.view = `capture-${i}`;
       btn.textContent = c.button || c.name;
@@ -260,15 +275,18 @@ async function initScene(cfg) {
   } else {
     // Land on the first capture when there is one: seen from its own cameras it looks like the video.
     const first = captures.length && !params.has("overview") ? "capture-0" : "overview";
+    photo = first.startsWith("capture-");
     document.querySelectorAll("#views [data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === first));
-    goTo(...VIEWS[first], 2600);
+    goView(first, 2600);
   }
 
   for (const btn of document.querySelectorAll("#views [data-view]")) {
     btn.addEventListener("click", () => {
       document.querySelectorAll("#views [data-view]").forEach((b) => b.classList.toggle("on", b === btn));
       follow = btn.dataset.view === "follow";
-      if (!follow) goTo(...VIEWS[btn.dataset.view]);
+      photo = btn.dataset.view.startsWith("capture-");
+      if (!follow) goView(btn.dataset.view);
+      else if (camera.fov !== baseFov) { camera.fov = baseFov; camera.updateProjectionMatrix(); }
     });
   }
   const tourBtn = $("tour");
@@ -298,7 +316,9 @@ async function initScene(cfg) {
       d = Math.atan2(Math.sin(d), Math.cos(d));
       fork.rotation.y += d * k;
     }
-    anchors.set("forklift-1", v.copy(fork.position).setY(2.6).clone());
+    fork.visible = !photo;
+    if (photo) anchors.delete("forklift-1");
+    else anchors.set("forklift-1", v.copy(fork.position).setY(2.6).clone());
 
     for (const [, ring] of zoneRings) ring.material.opacity = ring.userData.alarm ? 0.45 + 0.35 * Math.sin(now / 180) : 0.5;
 
@@ -306,6 +326,7 @@ async function initScene(cfg) {
       const t = Math.min(1, (now - tween.t0) / tween.ms), e = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
       camera.position.lerpVectors(tween.p0, tween.p1, e);
       controls.target.lerpVectors(tween.q0, tween.q1, e);
+      if (tween.f0 !== tween.f1) { camera.fov = tween.f0 + (tween.f1 - tween.f0) * e; camera.updateProjectionMatrix(); }
       if (t === 1) tween = null;
     } else if (follow) {
       const behind = new THREE.Vector3(Math.sin(fork.rotation.y), 0, Math.cos(fork.rotation.y)).multiplyScalar(-6);
@@ -319,7 +340,7 @@ async function initScene(cfg) {
     // Pin HTML badges to their anchors.
     for (const [id, el] of badges) {
       const a = anchors.get(id);
-      if (!a) continue;
+      if (!a) { el.classList.add("hidden"); continue; }
       v.copy(a).project(camera);
       const off = v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1;
       el.classList.toggle("hidden", off);
@@ -365,6 +386,7 @@ async function initScene(cfg) {
       const a = anchors.get(id);
       if (!a) return;
       follow = id.startsWith("forklift");
+      photo = false;
       document.querySelectorAll("#views [data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === (follow ? "follow" : "")));
       if (!follow) goTo([a.x - 2, a.y + 4, a.z + 9], [a.x, a.y - 1.5, a.z]);
     },
@@ -380,14 +402,21 @@ async function fetchSplat(url) {
 }
 
 // Which captures to show: every zone in zones.json (written by the pipeline) that twin.config.json
-// knows where to put, or else the single factory.spz as the racking aisle.
+// knows where to put, or else the single factory.spz as the racking aisle. A zone that also has a
+// trained 3DGS in photoreal.json uses it (placed by its entry's `photoreal` block) unless ?atlas is set.
 async function captureList(cfg) {
   const placed = cfg.captures || {};
-  const zj = cfg.zones ? await getJSON(cfg.zones) : null;
+  const [zj, pj] = await Promise.all([cfg.zones && getJSON(cfg.zones), cfg.photoreal && !params.has("atlas") && getJSON(cfg.photoreal)]);
+  const trained = new Map((pj?.zones || []).map((z) => [z.name, z]));
   if (zj?.zones?.length) {
     return zj.zones.filter((z) => placed[z.name] || console.info(`No placement for captured zone ${z.name}; skipping it.`))
-      .map((z) => ({ name: z.name, label: z.label, url: z.url, ground: Number(z.ground_plane_offset) || 0,
-        scale: Number(z.metric_scale_factor) || 1, ...placed[z.name] }));
+      .map((z) => {
+        const { photoreal, ...atlas } = placed[z.name];
+        const t = photoreal && trained.get(z.name);
+        const src = t || z;
+        return { name: z.name, label: z.label, url: src.url, ground: Number(src.ground_plane_offset) || 0,
+          scale: Number(src.metric_scale_factor) || 1, ...atlas, ...(t ? { ...photoreal, trained: true, views: t.views } : {}) };
+      });
   }
   if (!cfg.splat) return [];
   const sem = ((await getJSON(cfg.meta)) || {}).semantics_metadata || {};
@@ -406,7 +435,7 @@ async function loadCaptures(cfg, scene, loadingText) {
     try {
       let mesh = new SplatMesh({ fileBytes: bytes, fileName: c.url.split("/").pop() });
       await mesh.initialized;
-      if (c.crop || c.dilate) mesh = await cropSplats(mesh, c.crop, c.scale, c.ground, c.dilate || 1);
+      if (c.crop || c.dilate || c.max_splat_m) mesh = await cropSplats(mesh, c.crop, c.scale, c.ground, c.dilate || 1, c.max_splat_m);
       // Same correction as the USD wrapper: rotateX(180) · translate(0, -ground, 0) · scale(s),
       // then the capture's place in the building.
       const root = new THREE.Group();
@@ -428,8 +457,9 @@ async function loadCaptures(cfg, scene, loadingText) {
 // Keeps the splats inside crop.min/max, given in metres in the corrected (Y-up, floor at 0) frame,
 // which is how a person reads positions off the twin. Undoes the correction to test raw centres.
 // `dilate` grows each splat and firms up its opacity, closing the gaps between depth samples so the
-// capture reads as a surface rather than a point cloud.
-async function cropSplats(src, crop, scale, ground, dilate = 1) {
+// capture reads as a surface rather than a point cloud. `maxSplat` (metres) drops oversized splats,
+// which in a trained capture are mostly haze where the training views were masked (people).
+async function cropSplats(src, crop, scale, ground, dilate = 1, maxSplat = Infinity) {
   const lo = new THREE.Vector3(...(crop?.min || [-Infinity, -Infinity, -Infinity]));
   const hi = new THREE.Vector3(...(crop?.max || [Infinity, Infinity, Infinity])), p = new THREE.Vector3();
   const out = new SplatMesh({
@@ -437,7 +467,8 @@ async function cropSplats(src, crop, scale, ground, dilate = 1) {
       src.forEachSplat((_i, center, scales, quat, opacity, color) => {
         p.copy(center).multiplyScalar(scale);
         p.set(p.x, ground - p.y, -p.z); // rotateX(180) after translate(0, -ground, 0)
-        if (p.x >= lo.x && p.x <= hi.x && p.y >= lo.y && p.y <= hi.y && p.z >= lo.z && p.z <= hi.z) {
+        if (p.x >= lo.x && p.x <= hi.x && p.y >= lo.y && p.y <= hi.y && p.z >= lo.z && p.z <= hi.z
+            && Math.max(scales.x, scales.y, scales.z) * scale <= maxSplat) {
           if (dilate !== 1) { scales.multiplyScalar(dilate); opacity = Math.min(1, opacity * (1 + (dilate - 1) * 2)); }
           splats.pushSplat(center, scales, quat, opacity, color);
         }
