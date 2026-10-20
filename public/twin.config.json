@@ -168,6 +168,42 @@
           "walls": true
         }
       }
+    },
+    "Kitchen": {
+      "title": "community kitchen",
+      "button": "Kitchen",
+      "photoreal": {
+        "position": [
+          26.5,
+          0,
+          4.5
+        ],
+        "yaw_deg": -90,
+        "dilate": 1,
+        "crop": {
+          "min": [
+            -4.5,
+            -0.5,
+            -11.5
+          ],
+          "max": [
+            6.5,
+            5,
+            0.3
+          ]
+        },
+        "clear": {
+          "x": [
+            26.5,
+            38
+          ],
+          "z": [
+            0,
+            11
+          ],
+          "walls": true
+        }
+      }
     }
   },
   "telemetryApi": "",
