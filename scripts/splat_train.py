@@ -481,12 +481,23 @@ def train(args) -> None:
     log(f"{len(cams)} cameras, {len(xyz):,} SfM points, extent {extent:.2f}, device {device}, width {width}px")
     views = load_views(args.scene, cams, width, device, args.fill_weight)
     tr = Trainer(xyz, rgb, extent, device, args.max_splats)
+    start = 0
+    if args.resume:
+        # Pick up from a --save-every checkpoint (Adam moments start fresh).
+        g = read_ply(args.resume)
+        tr.P = {k: torch.tensor(g[f], dtype=torch.float32, device=device).requires_grad_(True) for k, f in
+                (("means", "xyz"), ("scales", "scale"), ("quats", "rot"), ("opac", "opacity"), ("dc", "dc"))}
+        tr.opt = torch.optim.Adam([{"params": [v], "name": k, "lr": Trainer.LR[k] * (extent if k == "means" else 1)}
+                                   for k, v in tr.P.items()], eps=1e-15)
+        tr.reset_stats()
+        start = args.start_iter
+        log(f"resumed {len(g['xyz']):,} splats from {args.resume} at step {start}")
     bg = torch.zeros(3, device=device)
     densify_until = int(args.iters * 0.6)
     lr0, lr1 = Trainer.LR["means"] * extent, Trainer.LR["means"] * extent * 0.01
     t0 = time.time()
     order = []
-    for it in range(1, args.iters + 1):
+    for it in range(start + 1, args.iters + 1):
         if not order:
             order = list(np.random.permutation(len(views)))
         v = views[order.pop()]
@@ -525,7 +536,7 @@ def train(args) -> None:
         if it % 100 == 0 or it == 1:
             el = time.time() - t0
             log(f"it {it}/{args.iters} loss {loss.item():.4f} l1 {l1.item():.4f} splats {len(tr.P['means']):,} "
-                f"{el / it:.2f}s/it, eta {el / it * (args.iters - it) / 60:.0f} min")
+                f"{el / (it - start):.2f}s/it, eta {el / (it - start) * (args.iters - it) / 60:.0f} min")
         if args.save_every and it % args.save_every == 0:
             save(tr, args.out)
         if args.preview_every and it % args.preview_every == 0:
@@ -574,6 +585,8 @@ def main(argv=None) -> int:
     ap.add_argument("--opacity-reset", type=int, default=3000)
     ap.add_argument("--grad-thresh", type=float, default=0.0002)
     ap.add_argument("--save-every", type=int, default=1000)
+    ap.add_argument("--resume", type=Path, help="checkpoint PLY written by --save-every to continue from")
+    ap.add_argument("--start-iter", type=int, default=0, help="step the --resume checkpoint was saved at")
     ap.add_argument("--preview-every", type=int, default=500)
     ap.add_argument("--threads", type=int, default=0)
     ap.add_argument("--fill-weight", type=float, default=0.3,
