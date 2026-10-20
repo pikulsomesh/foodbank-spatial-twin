@@ -19,7 +19,7 @@ tour video ──ffmpeg──► frames (4 to 6 fps, 960 px)
 ```bash
 python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt mediapipe opencv-python-headless scipy torch
 sudo apt-get install colmap libgles2 libegl1          # COLMAP 3.9; the GL libs are for MediaPipe
-for z in racking market sorting; do
+for z in racking market kitchen sorting; do
   .venv/bin/python scripts/photoreal_twin.py frames --zone $z --video Inside-the-NEW-SnapYT.App.mp4
   .venv/bin/python scripts/photoreal_twin.py masks  --zone $z
   .venv/bin/python scripts/photoreal_twin.py select --zone $z
@@ -41,8 +41,10 @@ The usual 3DGS trainers (the reference code, gsplat, Nerfstudio splatfacto) rast
 - EWA projection of each anisotropic Gaussian to a 2D conic.
 - Sparse rasterisation: one (pixel, Gaussian) pair per pixel inside the Gaussian's visible extent, pairs below 1/255 alpha dropped, a stable sort by pixel to keep depth order, and front-to-back compositing with a segmented cumulative sum of log(1 − alpha). Work scales with real coverage, which makes CPU training practical (about 1 s per step at 480 px on 4 cores).
 - L1 + 0.2 D-SSIM loss, both masked so the hosts and the broadcast lower-third never become splats. Under the masks the loss sees a background plate at 0.3 weight (`fill` stage): pixels warped in from frames up to 15 s away where the hosts had moved, with a blurred inpaint only where no frame saw the background. Without plates that region trains to haze; pruning it leaves holes, because nothing behind the hosts gets reconstructed.
+- Visual-hull carving (`--carve`, on by default): every 250 steps, splats whose centre lands on a host mask in more than half of the five or more frames that see it are removed. The hosts walk with the camera, so the space they occupy is masked in nearly every frame; without carving, densification grows grey columns of splats there to explain the plates.
 - Adaptive density control: clone small and split large Gaussians with high screen-space gradient, prune transparent ones, reset opacity every 3,000 steps, with Adam state carried across.
 - Coarse to fine: half resolution for the first quarter of the steps.
+- Checkpoints every `--save-every` steps; `--resume <ply> --start-iter <n>` continues a run after the machine restarts.
 
 Colour is SH degree 0, which is what the browser SPZ and the USD ParticleField carry today.
 
@@ -59,10 +61,12 @@ The same rules as the Atlas zones, so nothing downstream changes:
 
 The Atlas files are left in place. [`public/photoreal.html`](../public/photoreal.html) shows a trained zone next to its Atlas capture, from the presets.
 
-**Scale and level.** COLMAP poses have no metric scale. Export levels the scene so the mean camera up is +Y, finds the floor as the densest low slab of solid splats, and scales so the cameras sit 1.6 m above it (a shoulder-height broadcast camera; `--camera-height` to change). That puts the racking beams at about the right height; it is not a survey.
+**Scale and level.** COLMAP poses have no metric scale. Export levels the scene so the mean camera up is +Y, takes the floor from the lowest well-supported band of COLMAP points below the cameras (stable across retrains), and scales so the cameras sit 1.6 m above it (a shoulder-height broadcast camera; `--camera-height` to change). That puts the racking beams at about the right height; it is not a survey.
 
 ## Limits
 
 - Only what the camera saw is reconstructed. The video is an interview walk-through: shallow depth of field, mostly forward motion, and two people in most frames. Behind where the hosts stood the result is built from warped neighbouring frames, so it is softer than the rest; thin coverage at the edges of each zone is expected too.
+- The broadcast lens is long (about 22 degrees vertical), so each zone sees far down its aisle; export keeps splats up to 80 m from the camera path (`--radius`) and the twin crops each zone to its room in `twin.config.json`.
+- The community kitchen has no Atlas capture; it exists only as a trained zone and sits in the annex east of the building (x 26.5 to 38 m, z 0 to 11 m).
 - The sorting room is white walls and a grey floor, so COLMAP needs exhaustive matching and a lower initial triangulation angle there.
 - CC0 texture libraries (Poly Haven, ambientCG) are blocked from the build box, so the generated building is not textured by this layer.
