@@ -241,6 +241,127 @@
       "credits": 0,
       "camera_height_m": 1.6,
       "built_at": "2026-10-20T00:50:11Z"
+    },
+    {
+      "name": "Kitchen",
+      "label": "Community kitchen",
+      "url": "zones/kitchen-3dgs.spz",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "ground_plane_offset": 0.0,
+      "frame": "opencv, like factory.spz",
+      "splats": 161425,
+      "sh_degree": 0,
+      "extent_m": {
+        "min": [
+          -11.46,
+          -0.14,
+          -21.06
+        ],
+        "max": [
+          10.9,
+          5.78,
+          -0.71
+        ]
+      },
+      "views": [
+        {
+          "position": [
+            0.88,
+            1.79,
+            -1.63
+          ],
+          "target": [
+            3.55,
+            1.58,
+            -2.97
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0001.jpg"
+        },
+        {
+          "position": [
+            0.56,
+            1.65,
+            -0.48
+          ],
+          "target": [
+            1.86,
+            1.59,
+            -3.19
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0012.jpg"
+        },
+        {
+          "position": [
+            0.44,
+            1.46,
+            -0.3
+          ],
+          "target": [
+            0.12,
+            1.43,
+            -3.28
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0025.jpg"
+        },
+        {
+          "position": [
+            0.4,
+            1.55,
+            -0.18
+          ],
+          "target": [
+            -0.57,
+            1.49,
+            -3.01
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0044.jpg"
+        },
+        {
+          "position": [
+            -0.74,
+            2.32,
+            0.84
+          ],
+          "target": [
+            -1.2,
+            2.27,
+            -2.13
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0058.jpg"
+        },
+        {
+          "position": [
+            -0.76,
+            1.38,
+            0.55
+          ],
+          "target": [
+            -1.29,
+            1.33,
+            -2.41
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0074.jpg"
+        }
+      ],
+      "route": "photoreal-3dgs",
+      "zone": "kitchen",
+      "video_start_s": 863,
+      "video_duration_s": 34,
+      "frames": 65,
+      "credits": 0,
+      "camera_height_m": 1.6,
+      "built_at": "2026-10-20T03:04:09Z"
     }
   ],
   "note": "Trained 3DGS zones (scripts/photoreal_twin.py). Same placement rule as zones.json: rotate 180 deg about X, lift by ground_plane_offset, then translate by position."
