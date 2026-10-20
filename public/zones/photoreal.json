@@ -120,6 +120,127 @@
       "credits": 0,
       "camera_height_m": 1.6,
       "built_at": "2026-10-19T22:38:36Z"
+    },
+    {
+      "name": "Market",
+      "label": "Client grocery market",
+      "url": "zones/market-3dgs.spz",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "ground_plane_offset": 0.0,
+      "frame": "opencv, like factory.spz",
+      "splats": 105899,
+      "sh_degree": 0,
+      "extent_m": {
+        "min": [
+          -10.72,
+          -0.15,
+          -29.21
+        ],
+        "max": [
+          11.79,
+          7.05,
+          -0.75
+        ]
+      },
+      "views": [
+        {
+          "position": [
+            2.58,
+            1.62,
+            -1.16
+          ],
+          "target": [
+            1.45,
+            1.54,
+            -3.94
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0015.jpg"
+        },
+        {
+          "position": [
+            -0.02,
+            1.51,
+            0.83
+          ],
+          "target": [
+            0.22,
+            1.5,
+            -2.16
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0032.jpg"
+        },
+        {
+          "position": [
+            0.17,
+            1.5,
+            1.43
+          ],
+          "target": [
+            0.22,
+            1.49,
+            -1.57
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0035.jpg"
+        },
+        {
+          "position": [
+            0.05,
+            1.47,
+            1.13
+          ],
+          "target": [
+            -0.22,
+            1.46,
+            -1.86
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0067.jpg"
+        },
+        {
+          "position": [
+            -0.72,
+            1.59,
+            0.11
+          ],
+          "target": [
+            -0.51,
+            1.58,
+            -2.88
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0075.jpg"
+        },
+        {
+          "position": [
+            -1.11,
+            1.74,
+            -1.07
+          ],
+          "target": [
+            -0.78,
+            1.75,
+            -4.05
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0086.jpg"
+        }
+      ],
+      "route": "photoreal-3dgs",
+      "zone": "market",
+      "video_start_s": 553,
+      "video_duration_s": 45,
+      "frames": 49,
+      "credits": 0,
+      "camera_height_m": 1.6,
+      "built_at": "2026-10-20T00:50:11Z"
     }
   ],
   "note": "Trained 3DGS zones (scripts/photoreal_twin.py). Same placement rule as zones.json: rotate 180 deg about X, lift by ground_plane_offset, then translate by position."
