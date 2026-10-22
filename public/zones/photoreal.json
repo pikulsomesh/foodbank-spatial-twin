@@ -362,6 +362,127 @@
       "credits": 0,
       "camera_height_m": 1.6,
       "built_at": "2026-10-20T03:04:09Z"
+    },
+    {
+      "name": "Sorting",
+      "label": "Volunteer sorting room (roller conveyors)",
+      "url": "zones/sorting-3dgs.spz",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "ground_plane_offset": 0.0,
+      "frame": "opencv, like factory.spz",
+      "splats": 111400,
+      "sh_degree": 0,
+      "extent_m": {
+        "min": [
+          -44.36,
+          -0.14,
+          -62.81
+        ],
+        "max": [
+          20.28,
+          8.99,
+          1.99
+        ]
+      },
+      "views": [
+        {
+          "position": [
+            -1.42,
+            1.43,
+            2.07
+          ],
+          "target": [
+            0.62,
+            1.35,
+            -0.12
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0025.jpg"
+        },
+        {
+          "position": [
+            -1.43,
+            1.43,
+            2.04
+          ],
+          "target": [
+            -0.24,
+            1.39,
+            -0.72
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0043.jpg"
+        },
+        {
+          "position": [
+            -0.61,
+            1.46,
+            1.89
+          ],
+          "target": [
+            -0.4,
+            1.44,
+            -1.1
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0054.jpg"
+        },
+        {
+          "position": [
+            0.58,
+            1.54,
+            1.06
+          ],
+          "target": [
+            -0.4,
+            1.49,
+            -1.77
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0062.jpg"
+        },
+        {
+          "position": [
+            3.12,
+            1.88,
+            -3.39
+          ],
+          "target": [
+            1.1,
+            1.78,
+            -5.61
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0082.jpg"
+        },
+        {
+          "position": [
+            2.84,
+            1.92,
+            -3.99
+          ],
+          "target": [
+            0.73,
+            1.8,
+            -6.12
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0085.jpg"
+        }
+      ],
+      "route": "photoreal-3dgs",
+      "zone": "sorting",
+      "video_start_s": 52,
+      "video_duration_s": 30,
+      "frames": 68,
+      "credits": 0,
+      "camera_height_m": 1.6,
+      "built_at": "2026-10-22T22:29:35Z"
     }
   ],
   "note": "Trained 3DGS zones (scripts/photoreal_twin.py). Same placement rule as zones.json: rotate 180 deg about X, lift by ground_plane_offset, then translate by position."

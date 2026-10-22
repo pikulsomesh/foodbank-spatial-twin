@@ -102,7 +102,39 @@
           20
         ]
       },
-      "dilate": 1.6
+      "dilate": 1.6,
+      "photoreal": {
+        "position": [
+          1.5,
+          0,
+          16.75
+        ],
+        "yaw_deg": -90,
+        "dilate": 1,
+        "crop": {
+          "min": [
+            -3.25,
+            -0.5,
+            -14.5
+          ],
+          "max": [
+            3.25,
+            5,
+            0.5
+          ]
+        },
+        "clear": {
+          "x": [
+            1.5,
+            16
+          ],
+          "z": [
+            13.5,
+            20
+          ],
+          "walls": true
+        }
+      }
     },
     "Market": {
       "title": "client market",
