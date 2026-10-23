@@ -1,0 +1,19 @@
+{
+  "_comment": "Camera path for the flythrough: Catmull-Rom through these keys. Wide site view, then market, racking and sorting from their capture viewpoints.",
+  "name": "flythrough",
+  "fps": 24,
+  "seconds": 24,
+  "fov": 65,
+  "keys": [
+    {"eye": [5, 3, 32], "target": [5, 1.4, -12]},
+    {"eye": [-16, 2.4, 12], "target": [-24, 1.2, -6]},
+    {"eye": [-23, 1.4, 1.5], "target": [-24, 1.1, -6]},
+    {"eye": [-21, 1.5, -1.5], "target": [-25, 1.1, -7]},
+    {"eye": [-10, 2.6, 9], "target": [0, 1.3, -8]},
+    {"eye": [-1, 1.7, 1.5], "target": [1, 1.3, -8]},
+    {"eye": [1.5, 1.8, -1], "target": [0, 1.3, -10]},
+    {"eye": [12, 2.6, 9], "target": [26, 1.1, -8]},
+    {"eye": [26, 1.3, 1.5], "target": [26, 1.0, -8]},
+    {"eye": [26.5, 1.4, -3], "target": [27.5, 1.0, -15]}
+  ]
+}

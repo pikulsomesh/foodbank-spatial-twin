@@ -1,0 +1,246 @@
+{
+  "zones": "zones/zones.json",
+  "photoreal": "zones/photoreal.json",
+  "splat": "factory.spz",
+  "meta": "factory.meta.json",
+  "usdz": "site.usdz",
+  "captures": {
+    "Racking": {
+      "title": "racking aisle",
+      "button": "Racking",
+      "factory": true,
+      "position": [
+        20,
+        0,
+        13
+      ],
+      "yaw_deg": 0,
+      "crop": {
+        "min": [
+          -3,
+          -0.7,
+          -13
+        ],
+        "max": [
+          3,
+          4.5,
+          -3
+        ]
+      },
+      "clear": {
+        "x": [
+          17,
+          23.2
+        ],
+        "z": [
+          0,
+          10
+        ]
+      },
+      "dilate": 1.6,
+      "photoreal": {
+        "position": [
+          20,
+          0,
+          13
+        ],
+        "yaw_deg": 0,
+        "dilate": 1,
+        "crop": {
+          "min": [
+            -8,
+            -0.5,
+            -28
+          ],
+          "max": [
+            8,
+            6,
+            1
+          ]
+        },
+        "clear": {
+          "x": [
+            12,
+            26
+          ],
+          "z": [
+            -0.5,
+            10
+          ],
+          "walls": true
+        },
+        "source_view": 4
+      }
+    },
+    "Sorting": {
+      "title": "volunteer sorting room",
+      "button": "Sorting room",
+      "position": [
+        4,
+        0,
+        17
+      ],
+      "yaw_deg": -90,
+      "crop": {
+        "min": [
+          -3.5,
+          -0.3,
+          -12
+        ],
+        "max": [
+          2.5,
+          4,
+          -4
+        ]
+      },
+      "clear": {
+        "x": [
+          1.5,
+          16.5
+        ],
+        "z": [
+          13.5,
+          20
+        ]
+      },
+      "dilate": 1.6,
+      "photoreal": {
+        "position": [
+          1.5,
+          0,
+          16.75
+        ],
+        "yaw_deg": -90,
+        "dilate": 1,
+        "crop": {
+          "min": [
+            -3.25,
+            -0.5,
+            -14.5
+          ],
+          "max": [
+            3.25,
+            5,
+            0.5
+          ]
+        },
+        "clear": {
+          "x": [
+            1.5,
+            16
+          ],
+          "z": [
+            13.5,
+            20
+          ],
+          "walls": true
+        },
+        "source_view": 3
+      }
+    },
+    "Market": {
+      "title": "client market",
+      "button": "Market",
+      "position": [
+        24.5,
+        -0.4,
+        12.5
+      ],
+      "yaw_deg": 180,
+      "crop": {
+        "min": [
+          -1.5,
+          -0.3,
+          -7.5
+        ],
+        "max": [
+          5.5,
+          3.5,
+          -1.5
+        ]
+      },
+      "clear": {
+        "x": [
+          19,
+          26
+        ],
+        "z": [
+          13,
+          20
+        ]
+      },
+      "dilate": 1.6,
+      "photoreal": {
+        "position": [
+          26,
+          0,
+          16.5
+        ],
+        "yaw_deg": 90,
+        "dilate": 1,
+        "crop": {
+          "min": [
+            -4,
+            -0.5,
+            -10
+          ],
+          "max": [
+            2,
+            6,
+            0.5
+          ]
+        },
+        "clear": {
+          "x": [
+            16,
+            26
+          ],
+          "z": [
+            14.5,
+            20
+          ],
+          "walls": true
+        },
+        "source_view": 3
+      }
+    },
+    "Kitchen": {
+      "title": "community kitchen",
+      "button": "Kitchen",
+      "photoreal": {
+        "position": [
+          26.5,
+          0,
+          4.5
+        ],
+        "yaw_deg": -90,
+        "dilate": 1,
+        "crop": {
+          "min": [
+            -4.5,
+            -0.5,
+            -11.5
+          ],
+          "max": [
+            6.5,
+            5,
+            0.3
+          ]
+        },
+        "clear": {
+          "x": [
+            26.5,
+            38
+          ],
+          "z": [
+            0,
+            11
+          ],
+          "walls": true
+        }
+      }
+    }
+  },
+  "telemetryApi": "",
+  "repo": "https://github.com/pikulsomesh/foodbank-spatial-twin"
+}

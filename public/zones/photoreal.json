@@ -1,0 +1,489 @@
+{
+  "zones": [
+    {
+      "name": "Racking",
+      "label": "Racking storage (bays DC21B-DC24B)",
+      "url": "zones/racking-3dgs.spz",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "ground_plane_offset": 0.0,
+      "frame": "opencv, like factory.spz",
+      "splats": 128884,
+      "sh_degree": 0,
+      "extent_m": {
+        "min": [
+          -23.02,
+          -0.15,
+          -76.23
+        ],
+        "max": [
+          30.2,
+          9.0,
+          1.24
+        ]
+      },
+      "views": [
+        {
+          "position": [
+            -2.08,
+            1.61,
+            0.47
+          ],
+          "target": [
+            -1.52,
+            1.55,
+            -2.48
+          ],
+          "fov_deg": 21.6,
+          "frame": "f_0131.jpg"
+        },
+        {
+          "position": [
+            -2.25,
+            1.76,
+            0.83
+          ],
+          "target": [
+            -1.68,
+            1.67,
+            -2.11
+          ],
+          "fov_deg": 21.6,
+          "frame": "f_0212.jpg"
+        },
+        {
+          "position": [
+            -2.08,
+            1.77,
+            0.91
+          ],
+          "target": [
+            -1.48,
+            1.68,
+            -2.03
+          ],
+          "fov_deg": 21.6,
+          "frame": "f_0235.jpg"
+        },
+        {
+          "position": [
+            1.68,
+            1.62,
+            1.29
+          ],
+          "target": [
+            1.31,
+            1.71,
+            -1.69
+          ],
+          "fov_deg": 21.6,
+          "frame": "f_0277.jpg"
+        },
+        {
+          "position": [
+            1.8,
+            1.53,
+            1.71
+          ],
+          "target": [
+            1.19,
+            1.62,
+            -1.23
+          ],
+          "fov_deg": 21.6,
+          "frame": "f_0282.jpg"
+        },
+        {
+          "position": [
+            1.48,
+            1.57,
+            0.01
+          ],
+          "target": [
+            1.12,
+            1.64,
+            -2.96
+          ],
+          "fov_deg": 21.6,
+          "frame": "f_0306.jpg"
+        }
+      ],
+      "route": "photoreal-3dgs",
+      "zone": "racking",
+      "video_start_s": 368,
+      "video_duration_s": 100,
+      "frames": 72,
+      "credits": 0,
+      "camera_height_m": 1.6,
+      "built_at": "2026-10-19T22:38:36Z"
+    },
+    {
+      "name": "Market",
+      "label": "Client grocery market",
+      "url": "zones/market-3dgs.spz",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "ground_plane_offset": 0.0,
+      "frame": "opencv, like factory.spz",
+      "splats": 105899,
+      "sh_degree": 0,
+      "extent_m": {
+        "min": [
+          -10.72,
+          -0.15,
+          -29.21
+        ],
+        "max": [
+          11.79,
+          7.05,
+          -0.75
+        ]
+      },
+      "views": [
+        {
+          "position": [
+            2.58,
+            1.62,
+            -1.16
+          ],
+          "target": [
+            1.45,
+            1.54,
+            -3.94
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0015.jpg"
+        },
+        {
+          "position": [
+            -0.02,
+            1.51,
+            0.83
+          ],
+          "target": [
+            0.22,
+            1.5,
+            -2.16
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0032.jpg"
+        },
+        {
+          "position": [
+            0.17,
+            1.5,
+            1.43
+          ],
+          "target": [
+            0.22,
+            1.49,
+            -1.57
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0035.jpg"
+        },
+        {
+          "position": [
+            0.05,
+            1.47,
+            1.13
+          ],
+          "target": [
+            -0.22,
+            1.46,
+            -1.86
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0067.jpg"
+        },
+        {
+          "position": [
+            -0.72,
+            1.59,
+            0.11
+          ],
+          "target": [
+            -0.51,
+            1.58,
+            -2.88
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0075.jpg"
+        },
+        {
+          "position": [
+            -1.11,
+            1.74,
+            -1.07
+          ],
+          "target": [
+            -0.78,
+            1.75,
+            -4.05
+          ],
+          "fov_deg": 21.3,
+          "frame": "f_0086.jpg"
+        }
+      ],
+      "route": "photoreal-3dgs",
+      "zone": "market",
+      "video_start_s": 553,
+      "video_duration_s": 45,
+      "frames": 49,
+      "credits": 0,
+      "camera_height_m": 1.6,
+      "built_at": "2026-10-20T00:50:11Z"
+    },
+    {
+      "name": "Kitchen",
+      "label": "Community kitchen",
+      "url": "zones/kitchen-3dgs.spz",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "ground_plane_offset": 0.0,
+      "frame": "opencv, like factory.spz",
+      "splats": 161425,
+      "sh_degree": 0,
+      "extent_m": {
+        "min": [
+          -11.46,
+          -0.14,
+          -21.06
+        ],
+        "max": [
+          10.9,
+          5.78,
+          -0.71
+        ]
+      },
+      "views": [
+        {
+          "position": [
+            0.88,
+            1.79,
+            -1.63
+          ],
+          "target": [
+            3.55,
+            1.58,
+            -2.97
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0001.jpg"
+        },
+        {
+          "position": [
+            0.56,
+            1.65,
+            -0.48
+          ],
+          "target": [
+            1.86,
+            1.59,
+            -3.19
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0012.jpg"
+        },
+        {
+          "position": [
+            0.44,
+            1.46,
+            -0.3
+          ],
+          "target": [
+            0.12,
+            1.43,
+            -3.28
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0025.jpg"
+        },
+        {
+          "position": [
+            0.4,
+            1.55,
+            -0.18
+          ],
+          "target": [
+            -0.57,
+            1.49,
+            -3.01
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0044.jpg"
+        },
+        {
+          "position": [
+            -0.74,
+            2.32,
+            0.84
+          ],
+          "target": [
+            -1.2,
+            2.27,
+            -2.13
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0058.jpg"
+        },
+        {
+          "position": [
+            -0.76,
+            1.38,
+            0.55
+          ],
+          "target": [
+            -1.29,
+            1.33,
+            -2.41
+          ],
+          "fov_deg": 21.8,
+          "frame": "f_0074.jpg"
+        }
+      ],
+      "route": "photoreal-3dgs",
+      "zone": "kitchen",
+      "video_start_s": 863,
+      "video_duration_s": 34,
+      "frames": 65,
+      "credits": 0,
+      "camera_height_m": 1.6,
+      "built_at": "2026-10-20T03:04:09Z"
+    },
+    {
+      "name": "Sorting",
+      "label": "Volunteer sorting room (roller conveyors)",
+      "url": "zones/sorting-3dgs.spz",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "ground_plane_offset": 0.0,
+      "frame": "opencv, like factory.spz",
+      "splats": 111400,
+      "sh_degree": 0,
+      "extent_m": {
+        "min": [
+          -44.36,
+          -0.14,
+          -62.81
+        ],
+        "max": [
+          20.28,
+          8.99,
+          1.99
+        ]
+      },
+      "views": [
+        {
+          "position": [
+            -1.42,
+            1.43,
+            2.07
+          ],
+          "target": [
+            0.62,
+            1.35,
+            -0.12
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0025.jpg"
+        },
+        {
+          "position": [
+            -1.43,
+            1.43,
+            2.04
+          ],
+          "target": [
+            -0.24,
+            1.39,
+            -0.72
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0043.jpg"
+        },
+        {
+          "position": [
+            -0.61,
+            1.46,
+            1.89
+          ],
+          "target": [
+            -0.4,
+            1.44,
+            -1.1
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0054.jpg"
+        },
+        {
+          "position": [
+            0.58,
+            1.54,
+            1.06
+          ],
+          "target": [
+            -0.4,
+            1.49,
+            -1.77
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0062.jpg"
+        },
+        {
+          "position": [
+            3.12,
+            1.88,
+            -3.39
+          ],
+          "target": [
+            1.1,
+            1.78,
+            -5.61
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0082.jpg"
+        },
+        {
+          "position": [
+            2.84,
+            1.92,
+            -3.99
+          ],
+          "target": [
+            0.73,
+            1.8,
+            -6.12
+          ],
+          "fov_deg": 22.0,
+          "frame": "f_0085.jpg"
+        }
+      ],
+      "route": "photoreal-3dgs",
+      "zone": "sorting",
+      "video_start_s": 52,
+      "video_duration_s": 30,
+      "frames": 68,
+      "credits": 0,
+      "camera_height_m": 1.6,
+      "built_at": "2026-10-22T22:29:35Z"
+    }
+  ],
+  "note": "Trained 3DGS zones (scripts/photoreal_twin.py). Same placement rule as zones.json: rotate 180 deg about X, lift by ground_plane_offset, then translate by position."
+}

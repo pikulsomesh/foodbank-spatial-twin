@@ -1,0 +1,7 @@
+{
+  "_comment": "Exclusion boxes [x0, y0, x1, y1] around the hosts on the 1280x720 posed frames; see data/ctfb-warehouse/people_boxes.json.",
+  "2": [[760, 220, 1070, 720], [1100, 140, 1280, 720]],
+  "3": [[790, 230, 1120, 720], [1200, 460, 1280, 720]],
+  "4": [[960, 210, 1280, 720]],
+  "5": [[190, 220, 470, 720], [590, 120, 1030, 720]]
+}

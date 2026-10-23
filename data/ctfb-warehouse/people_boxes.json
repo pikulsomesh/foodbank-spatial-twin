@@ -1,0 +1,11 @@
+{
+  "_comment": "Hand-drawn exclusion boxes [x0, y0, x1, y1] around the two hosts, in pixels of the 1280x720 frames images2PosedRGBD returns (pose-stage frame index). Masked pixels are left out of atlasGenerate context and of the fused splat, so the world model fills those regions instead.",
+  "0": [[0, 130, 280, 720]],
+  "1": [[0, 520, 120, 720]],
+  "2": [[0, 40, 470, 720]],
+  "3": [],
+  "4": [[130, 90, 690, 720], [760, 20, 1280, 720]],
+  "5": [[250, 130, 610, 720], [750, 40, 1250, 720]],
+  "6": [[480, 250, 870, 720], [1020, 130, 1280, 720]],
+  "7": [[330, 110, 1160, 720]]
+}

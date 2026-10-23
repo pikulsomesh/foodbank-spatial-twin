@@ -15,11 +15,28 @@ out() { aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGI
   --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
 BUCKET="$(out SiteBucketName)"; API="$(out ApiBaseUrl)"
 
-# Inject the API base URL into the placeholder page, then sync (never mutate the source file).
+# Point the viewer at the API in a staged copy, then sync (never mutate the source file).
 STAGE="$(mktemp -d)"; cp -r public/. "$STAGE"/
-sed -i "s#window.TWIN_API || \"\"#window.TWIN_API || \"$API\"#" "$STAGE/index.html"
+python3 - "$STAGE/twin.config.json" "$API" <<'PY'
+import json, sys
+path, api = sys.argv[1], sys.argv[2]
+cfg = json.load(open(path)); cfg["telemetryApi"] = api
+json.dump(cfg, open(path, "w"), indent=2)
+PY
 aws s3 sync "$STAGE" "s3://$BUCKET" --delete --region "$REGION"
 rm -rf "$STAGE"
 
 echo "Telemetry: $(out TelemetryUrl)"
 echo "Site:      $(out SiteUrl)"
+
+# Point the GitHub Pages demo at the API too: set the repo variable the Pages workflow reads,
+# then redeploy. Needs an authenticated gh CLI; otherwise print the two steps.
+REPO="${GITHUB_REPO:-pikulsomesh/foodbank-spatial-twin}"
+if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
+  gh variable set TWIN_API_URL --repo "$REPO" --body "$API"
+  gh workflow run pages.yml --repo "$REPO" --ref main
+  echo "Pages:     redeploying https://${REPO%%/*}.github.io/${REPO#*/}/ with live data"
+else
+  echo "Pages:     set repo variable TWIN_API_URL=$API (Settings > Secrets and variables > Actions > Variables),"
+  echo "           then run the 'Demo site' workflow on main."
+fi

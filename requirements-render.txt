@@ -1,0 +1,8 @@
+# Renderers for public/site.usdz (docs/RENDERING.md). Python 3.13 (the bpy wheel requires it).
+usd-core>=26.3
+numpy>=2.0
+numba>=0.61
+pillow>=10.0
+imageio>=2.34
+imageio-ffmpeg>=0.5
+bpy==5.2.2

@@ -1,0 +1,61 @@
+name: Demo site
+
+# Publishes public/ (the browser viewer and the twin assets) to GitHub Pages.
+# Pull requests run the checks only; pushes to main also deploy.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test the telemetry Lambda and the viewer's fallback simulator
+        run: |
+          python -m pip install --quiet pytest
+          pytest -q tests
+          node --test tests/*.test.mjs
+      # Set the repository variable TWIN_API_URL (Settings > Secrets and variables > Actions >
+      # Variables) to the HTTP API base URL once the AWS stack is deployed. Without it the site
+      # runs on its built-in simulated feed.
+      - name: Point the viewer at the telemetry API
+        if: ${{ vars.TWIN_API_URL != '' }}
+        env:
+          TWIN_API_URL: ${{ vars.TWIN_API_URL }}
+        run: |
+          jq --arg api "$TWIN_API_URL" '.telemetryApi = $api' public/twin.config.json > /tmp/cfg.json
+          mv /tmp/cfg.json public/twin.config.json
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: public
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
