@@ -16,10 +16,11 @@ The content is organised around the project's three steps: video to twin with a 
 | `figures/overview.tikz` | Figure 1, the pipeline diagram (TikZ, included with `\input`) |
 | `figures/contact_sheet.jpg` | Figure 2, the eight input frames, copied from `data/ctfb-warehouse/` in PR 2 |
 | `figures/racking_preview.jpg`, `site_preview.jpg` | Figure 3, Spark renders of the fused zones, from PR 2 |
-| `figures/twin_alignment.jpg` | Figure 5, top view of the composed `twin.usda` with the operations footprints, from PR 8 |
-| `figures/demo_overview.jpg`, `demo_aisle.jpg` | Figure 6, demo-site screenshots from PR 4 |
+| `figures/photoreal_four_zones.jpg` | Figure 5, the four locally trained zones in the browser, from PR 6 (`docs/img/photoreal/four-zones-in-twin.jpg`) |
+| `figures/twin_alignment.jpg` | Figure 6, top view of the composed `twin.usda` with the operations footprints, from PR 8 |
+| `figures/demo_overview.jpg`, `demo_aisle.jpg` | Figure 7, demo-site screenshots from PR 4 |
 | `figures/photoreal_before_after.jpg` | Figure 4, world-model capture vs. locally trained 3DGS, from PR 6 |
-| `figures/splat_vs_blender.jpg` | Figure 7, CPU splat renderer vs. Blender Cycles from the same cameras, from PR 5 |
+| `figures/splat_vs_blender.jpg` | Figure 8, CPU splat renderer vs. Blender Cycles from the same cameras, from PR 5 |
 
 ## Build
 
@@ -33,20 +34,19 @@ The template uses biblatex with `backend=bibtex`, so it runs BibTeX rather than 
 
 ## Placeholders
 
-Every value not yet measured is a red `\TBD{...}` in the PDF (20 at present). None are estimates. Items that wait on AWS say "pending AWS". To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
+Every value not yet measured is a red `\TBD{...}` in the PDF (19 at present). None are estimates. Items that wait on AWS say "pending AWS". To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
 
 | Where | What it needs | Comes from |
 |---|---|---|
 | Abstract, Results 2.6, Table 3 | Monthly AWS cost and telemetry latency (marked "pending AWS") | Deployed backend |
-| Results 2.4 | Training steps and time for the racking 3DGS zone; sorting room and market results | Photoreal thread (PR 6) |
 | Table 3 | Generation time, fusion time, hold-out fidelity, frame rates | A successful generate run; a timed fuse; a hardware-GPU browser test |
 | Results 2.7 | Public URL, load time and frame rate | Live demo site once deployed |
-| Results 2.9, Figure 8, Methods: Visualization | Omniverse version, splat rendering check, screenshot, frame rate | Rented RTX GPU (plan in PR 5's `docs/RENDERING.md`) |
+| Results 2.9, Figure 9, Methods: Visualization | Omniverse version, splat rendering check, screenshot, frame rate | Rented RTX GPU (plan in PR 5's `docs/RENDERING.md`) |
 | Methods: Statistical Analysis | Held-out frame count, dispersion statistic, pose method | Evaluation run |
 | Human Studies, Acknowledgments | Permission from the food bank and KXXV | Somesh |
 | Supplementary | Final demo recording (a draft exists in `demo-site/demo-draft.mp4`); Omniverse movie | Demo and renderer work |
 
-Filled from measured facts on 2026-10-19: frame counts, splat counts, SPZ and USDZ sizes and credit costs (PR 2), frame extraction time (88 s, re-run locally), SPZ to USDZ conversion time (5.2 s and 3.9 s, re-run locally), Figures 3 to 6 (PR 2 previews, PR 6 before/after, PR 4 screenshots, PR 5 renders), the locally trained racking zone (PR 6), the Kit license wording (kit-app-template README) and two cited sentences on food bank operations, and the operations layer (Results 2.7, Table 4, Methods: Operations model) from PR 8, with weekday ranges computed by running its simulator over 1 September to 26 October 2026, and the single composed stage (`twin.usda`, Figure 5) from PR 8 commit d0a3d76. The case study is framed as a representative Texas food bank with a provenance table, and the Discussion carries a list-price cost estimate for running on real floor data (`docs/COST_ESTIMATE.md`); the measured AWS bill of the demo backend is still pending.
+Filled from measured facts on 2026-10-19: frame counts, splat counts, SPZ and USDZ sizes and credit costs (PR 2), frame extraction time (88 s, re-run locally), SPZ to USDZ conversion time (5.2 s and 3.9 s, re-run locally), Figures 3 to 6 (PR 2 previews, PR 6 before/after, PR 4 screenshots, PR 5 renders), the locally trained racking zone (PR 6), the Kit license wording (kit-app-template README) and two cited sentences on food bank operations, and the operations layer (Results 2.7, Table 4, Methods: Operations model) from PR 8, with weekday ranges computed by running its simulator over 1 September to 26 October 2026, and the single composed stage (`twin.usda`, Figure 5) from PR 8 commit d0a3d76. The case study is framed as a representative Texas food bank with a provenance table, and the Discussion carries a list-price cost estimate for running on real floor data (`docs/COST_ESTIMATE.md`); the measured AWS bill of the demo backend is still pending. Updated on 2026-10-23 for PR 6 as merged: four locally trained zones (Table 4, Figure 5) and the final trainer (background plates, hull carving); per-zone training wall-clock times were not recorded, so the paper gives the documented step count and rate instead.
 
 The source video appears to be KXXV's tour of the Central Texas Food Bank's new Waco hub (KXXV is a Waco station and the lower-third reads "Feed the Need"); the paper says "appears to be". Confirm before submission.
 

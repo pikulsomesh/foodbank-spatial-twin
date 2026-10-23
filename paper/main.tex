@@ -86,9 +86,9 @@ food bank, with three areas captured from a public news video, twenty frames pro
 in one 48.5-megabyte file for 200 world-model credits (20 US cents), plus up to
 800 more if two failed requests are billed. Generating views of unfilmed areas
 failed on the provider's side both times, so the twin shows only what the
-camera saw. A conventional splat model trained locally from 72
-frames of the same video, at no credit cost, made one area photorealistic near
-the filmed path. Cloud cost is \TBD{pending AWS deployment}. A phone video and
+camera saw. Splat models trained locally from 49 to 72
+frames each, at no credit cost, made these areas and a community
+kitchen photorealistic near the filmed path. Cloud cost is \TBD{pending AWS deployment}. A phone video and
 a world model can bring a first facility twin within reach of charitable
 organizations; filling in unseen space is the open step.
 \end{abstract}
@@ -238,10 +238,11 @@ aisle, and because it is the zone that matters most for inventory locations,
 forklift paths and telemetry. The volunteer sorting room and the client market
 were captured in a second run, from narrower windows in which the camera moves
 enough to give overlapping views. The other operating areas of the
-representative food bank (receiving, freezer, cooler, order staging and the
-community kitchen) were not captured: they are designed footprints in the
-operations layer and a grey massing model in the browser, not generated or
-reconstructed geometry (Table~\ref{tab:provenance}).
+representative food bank (receiving, freezer, cooler and order staging) were
+not captured: they are designed footprints in the operations layer and a grey
+massing model in the browser, not generated or reconstructed geometry
+(Table~\ref{tab:provenance}). The community kitchen was captured later by
+local training only.
 
 \begin{table}[t]
 \caption{Provenance of each part of the representative food bank twin.}
@@ -250,9 +251,10 @@ reconstructed geometry (Table~\ref{tab:provenance}).
 \toprule
 Part of the twin & Kind & Source \\
 \midrule
-Racking aisle, sorting room, client market (geometry) & Captured, partial & 20 frames of a public walkthrough of a Central Texas Food Bank building; world-model depth fused locally. The racking aisle is also trained locally from 72 frames. \\
+Racking aisle, sorting room, client market (geometry) & Captured, partial & 20 frames of a public walkthrough of a Central Texas Food Bank building; world-model depth fused locally. The same three are also trained locally from 49 to 72 frames each (Table~\ref{tab:photoreal}). \\
+Community kitchen interior (geometry) & Captured, partial & Trained locally from 65 frames of the same video; no world-model capture. \\
 Absolute scale & Estimated & The world model's metric depth; not checked against a survey. \\
-Building shell, receiving, freezer, cooler, order staging, kitchen annex & Designed & Footprints chosen for this paper; drawn as grey massing or outlines, never as splats. \\
+Building shell, receiving, freezer, cooler, order staging, kitchen annex footprint & Designed & Footprints chosen for this paper; drawn as grey massing or outlines, never as splats. \\
 Annual volume, agencies, floor area, pallet positions, cold storage, docks, kitchen equipment, meals per day & Published & Figures for the Central Texas Food Bank's Austin facility (Table~\ref{tab:published}). \\
 Source and channel shares, product mix, capacities, recipes, step times & Estimated & Set for this paper and flagged as estimates in the master data. \\
 Temperatures, door events, forklifts, daily flows and inventory & Simulated & Computed from the clock; every payload carries \code{simulated: true}. \\
@@ -343,7 +345,7 @@ viewpoints. No generated views are included.}
 \label{fig:results}
 \end{figure}
 
-\subsection{Locally trained splats make one zone photorealistic at no credit cost}
+\subsection{Locally trained splats make four zones photorealistic at no credit cost}
 To separate what the world model contributes from what Gaussian splatting
 contributes, the racking aisle was also reconstructed the conventional way,
 without any paid call. A 100\,s segment of the tour (from 6:08) was sampled at
@@ -353,27 +355,66 @@ moved were kept, leaving 72 frames, nine times as many as the world-model
 capture used. Camera poses came from structure-from-motion on the CPU
 \cite{schoenberger2016sfm,colmap}, and a 3D Gaussian Splatting model
 \cite{kerbl20233d} was trained on the CPU with a trainer written for this work.
-The exported zone holds 181{,}556 splats spanning about
-28\,$\times$\,9\,$\times$\,33\,m, in a 2.9\,MB SPZ file and an 11.9\,MB USDZ
-package with the same contract as the world-model zones, and cost 0 credits.
 Near the filmed path, the racking, wrapped pallets, shelf labels and the bottle
 bin read photographically, where the world-model capture shows sparse
-fragments (Figure~\ref{fig:photoreal}). Two trade-offs remain. Structure from
-motion has no metric scale, so the scene was scaled by assuming the camera was
-held 1.6\,m above the floor, where the world model measured depth directly
-from eight frames. And the areas behind the presenters, who stand in the same
-place through most of the segment, were never filmed and train to a soft grey
-fill. \TBD{training steps and wall-clock time for the racking zone; results for
-the sorting room and market}.
+fragments (Figure~\ref{fig:photoreal}).
+
+The same route was then run on the sorting room, the client market and the
+community kitchen, which the world model never captured (Table~\ref{tab:photoreal}).
+The four zones hold 105{,}899 to 161{,}425 splats in 1.6 to 2.5\,MB SPZ files
+and 6.9 to 10.6\,MB USDZ packages, with the same contract as the world-model
+zones, and cost 0 credits. Two changes to the trainer made the difference
+between a usable zone and a hazy one. The presenters walk with the camera, so
+the space behind them is masked in nearly every frame; the trainer now fills
+the masked pixels with background warped in from frames where they had moved,
+and every 250 steps it removes splats that sit inside their visual hull. The
+sorting room, white walls over a grey floor, needed exhaustive feature
+matching before structure from motion would converge. In the browser, all four
+zones sit in the representative building, the kitchen in its annex
+(Figure~\ref{fig:photoreal4}). Three trade-offs remain. Structure from
+motion has no metric scale, so each scene was scaled by assuming the camera
+was held 1.6\,m above the floor, where the world model measured depth
+directly. The spot right behind the presenters was never filmed and trains to
+a soft blur rather than to holes or ghosts. And quality falls off quickly away
+from the filmed path, because the walkthrough moves mostly forward.
+
+\begin{table}[t]
+\caption{Locally trained zones. Frames are the posed frames recorded in each
+zone's export metadata; sizes are the committed files. All cost 0 credits.}
+\centering\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Zone & Video segment & Frames & Splats & SPZ (MB) & USDZ (MB) \\
+\midrule
+Racking aisle & 6:08, 100\,s & 72 & 128{,}884 & 2.1 & 8.4 \\
+Volunteer sorting room & 0:52, 30\,s & 68 & 111{,}400 & 1.8 & 7.3 \\
+Client market & 9:13, 45\,s & 49 & 105{,}899 & 1.6 & 6.9 \\
+Community kitchen & 14:23, 34\,s & 65 & 161{,}425 & 2.5 & 10.6 \\
+\bottomrule
+\end{tabular}
+\label{tab:photoreal}
+\end{table}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{photoreal_before_after.jpg}
 \caption{The racking aisle in the browser viewer. Left: the world-model capture,
 posed and fused from 8 frames. Right: a 3D Gaussian Splatting model trained
-locally from 72 frames of the same video, from a source camera. The grey haze
-on the right is where the masked presenters stood.}
+locally from 72 frames of the same video, from a source camera, in the first
+training run; the grey haze is where the masked presenters stood, which the
+background fill and hull carving described above later reduced to a soft blur.}
 \label{fig:photoreal}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{photoreal_four_zones.jpg}
+\caption{The four locally trained zones in the browser viewer, each from one
+of its source cameras: racking aisle (top left), client market (top right),
+community kitchen (bottom left) and volunteer sorting room (bottom right). The
+panels show simulated telemetry. Soft regions are where the presenters stood or
+the camera did not look.}
+\label{fig:photoreal4}
 \end{figure}
 
 \subsection{World-model output becomes a valid, metric OpenUSD asset}
@@ -424,16 +465,19 @@ file the browser uses, so Omniverse, the browser and the API share one frame
 that only overrides the opacities of splats outside the crop box (0.5\,MB,
 against about 37\,MB for copying the cropped splats), so the capture library
 is never copied or edited, and a test fails if the placements in the stage and
-in the browser configuration drift apart.
+in the browser configuration drift apart. The stage composes the world-model
+captures; the locally trained zones have their own USDZ packages with the same
+contract and are composed only in the browser so far.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.85\linewidth]{twin_alignment.jpg}
 \caption{Top view of the composed OpenUSD stage, rendered on the CPU from
 \code{twin.usda}, with the operations-layer footprints drawn over it (pink: areas;
-yellow: building). The sorting room, dry racking and market captures land in
-their areas; the racking capture extends slightly past its footprint. The other
-areas have no capture and exist only in the operations layer.}
+yellow: building). The world-model captures of the sorting room, dry racking
+and market land in their areas; the racking capture extends slightly past its
+footprint. The other areas have no world-model capture and exist only in the
+operations layer in this stage.}
 \label{fig:alignment}
 \end{figure}
 
@@ -480,9 +524,11 @@ About 950 kitchen meals per day for after-school, summer and child-care meal pro
 \end{table}
 
 \subsection{The browser shows the twin with live telemetry}
-The browser viewer renders all three zones with Spark from their SPZ files,
-5.9\,MB in total (2.1, 2.2 and 1.6\,MB), placed by the same configuration as
-the composed USD stage (Figure~\ref{fig:browser}). Because the captures are partial, the
+The browser viewer renders the zones with Spark from their SPZ files. By
+default it loads the four locally trained zones (8.0\,MB in total), using each
+in place of the world-model capture of the same area; a URL switch shows the
+three world-model captures instead (5.9\,MB). Both are placed by the same
+configuration as the composed USD stage (Figure~\ref{fig:browser}). Because the captures are partial, the
 viewer sets them inside a procedurally generated building with cold rooms,
 racking and pallets, which is clearly not reconstructed from the video, and
 overlays the simulated cold-chain and forklift telemetry as labels, rings and
@@ -568,8 +614,7 @@ USDZ size, racking / site (MB) & 17.5 / 48.5 & committed files \\
 World-model generation time (min) & \TBD{measure} & operation start to completion \\
 SPZ to USDZ, 270k / 182k splats (s) & 5.2 / 3.9 & wall clock, 4 cores \\
 Fusion time (s) & \TBD{measure} & wall clock \\
-Local 3DGS racking: frames; splats & 72; 181{,}556 & export metadata \\
-Local 3DGS racking: SPZ; USDZ (MB) & 2.9; 11.9 & committed files \\
+Locally trained zones (credits) & 0 & four zones, Table~\ref{tab:photoreal} \\
 Hold-out PSNR (dB) / SSIM / LPIPS & \TBD{measure} & frames not used as input \\
 Telemetry latency, p50 / p95 (ms) & \TBD{pending AWS} & client side, 1{,}000 requests \\
 Monthly AWS cost (USD) & \TBD{pending AWS} & billing, demo traffic \\
@@ -726,20 +771,31 @@ The photoreal route uses no paid service. Frames from a zone's segment of the
 video are extracted at 4 to 6 frames per second and 960 pixels wide. People are
 masked with a DeepLab v3 segmentation model run through MediaPipe, the masks
 are grown by 35 pixels and unioned with neighboring frames, and the broadcast
-graphic is masked by a fixed box. Frames are kept if they are not in the
+graphic is masked by a fixed box. Under the masks, a background plate is built
+from pixels warped by homography from frames up to 15\,s away in which the
+presenters had moved, with a blurred inpaint where no frame saw the
+background. Frames are kept if they are not in the
 blurriest 20\%, at least 35\% of their pixels are unmasked, and the median
 optical flow since the last kept frame is at least 14 pixels. COLMAP 3.9
-estimates poses with masked SIFT features on the CPU. The trainer implements
+estimates poses with masked SIFT features on the CPU, with sequential matching,
+or exhaustive matching and a 3$^\circ$ initial triangulation angle for the
+low-texture sorting room. The trainer implements
 3D Gaussian Splatting \cite{kerbl20233d} in plain PyTorch with a sparse
 per-pixel rasterizer, so that it runs without a GPU (about 1\,s per step at
 480 pixels on four cores): elliptical weighted average projection, front-to-back
-compositing, an L1 plus 0.2 D-SSIM loss with masked pixels down-weighted against
-a soft inpainted fill, adaptive cloning, splitting and pruning, and opacity
+compositing, an L1 plus 0.2 D-SSIM loss that sees the background plate at 0.3
+weight under the masks, visual-hull carving every 250 steps (a splat is removed
+when its center falls on a presenter mask in more than half of the five or
+more frames that see it), adaptive cloning, splitting and pruning, and opacity
 resets every 3{,}000 steps, at half resolution for the first quarter of the
-steps. Export levels the scene to the mean camera up direction, places the
-floor at the densest low slab of opaque splats, scales so that the cameras sit
-1.6\,m above it, keeps splats seen by at least six cameras within 30\,m of the
-path, and writes the same SPZ, USDZ and index files as the world-model zones.
+steps. The documented run trains each zone for 6{,}000 steps, roughly 1.7\,h
+at the rate above; per-zone wall-clock times were not recorded. Export levels
+the scene to the mean camera up direction, takes the floor from the lowest
+well-supported band of structure-from-motion points below the cameras, scales
+so that the cameras sit 1.6\,m above it, keeps splats inside at least six
+camera frustums and within 80\,m of the path, and writes the same SPZ, USDZ
+and index files as the world-model zones; the composed twin crops each zone to
+its room.
 
 \subsection{Conversion to OpenUSD}
 The splat world is converted with \code{usd-convert-gsplat} 0.1.15
@@ -761,7 +817,8 @@ converter's direct USDZ output is an ASCII layer zipped without the 64-byte
 alignment the USDZ specification requires, so we convert to binary
 \code{.usdc} and package with OpenUSD's \code{UsdUtils.CreateNewUsdzPackage}.
 Conversion took 5.2\,s for the 270{,}423-splat world-model racking zone and
-3.9\,s for the 181{,}556-splat locally trained one on four CPU cores. The schema
+3.9\,s for a 181{,}556-splat first version of the locally trained one on four
+CPU cores. The schema
 defines half-precision attributes that would roughly halve file size; the
 converter does not yet write them.
 
