@@ -417,8 +417,12 @@ async function captureList(cfg) {
   const placed = cfg.captures || {};
   const [zj, pj] = await Promise.all([cfg.zones && getJSON(cfg.zones), cfg.photoreal && !params.has("atlas") && getJSON(cfg.photoreal)]);
   const trained = new Map((pj?.zones || []).map((z) => [z.name, z]));
-  if (zj?.zones?.length) {
-    return zj.zones.filter((z) => placed[z.name] || console.info(`No placement for captured zone ${z.name}; skipping it.`))
+  // Zones trained from video with no Atlas capture (the kitchen) only exist in photoreal.json.
+  const atlasNames = new Set((zj?.zones || []).map((z) => z.name));
+  const trainedOnly = [...trained.values()].filter((t) => !atlasNames.has(t.name) && placed[t.name]?.photoreal);
+  if (zj?.zones?.length || trainedOnly.length) {
+    return [...(zj?.zones || []), ...trainedOnly]
+      .filter((z) => placed[z.name] || console.info(`No placement for captured zone ${z.name}; skipping it.`))
       .map((z) => {
         const { photoreal, ...atlas } = placed[z.name];
         const t = photoreal && trained.get(z.name);

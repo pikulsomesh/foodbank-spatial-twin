@@ -1,0 +1,11 @@
+{
+  "_comment": "Video segments for the photoreal route (scripts/photoreal_twin.py). Times are seconds into the uploaded tour video. Each segment is a stretch where the camera moves around one space, which is what structure-from-motion needs. overlay_boxes are broadcast graphics to mask, as fractions of the frame (x0, y0, x1, y1).",
+  "video": "Inside-the-NEW-SnapYT.App.mp4",
+  "overlay_boxes": [[0.02, 0.72, 0.48, 0.93]],
+  "zones": {
+    "racking": {"label": "Racking storage (bays DC21B-DC24B)", "start": 368, "duration": 100, "fps": 4},
+    "sorting": {"label": "Volunteer sorting room (roller conveyors)", "start": 52, "duration": 30, "fps": 6},
+    "market": {"label": "Client grocery market", "start": 553, "duration": 45, "fps": 4},
+    "kitchen": {"label": "Community kitchen", "start": 863, "duration": 34, "fps": 4}
+  }
+}
