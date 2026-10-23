@@ -48,27 +48,28 @@
         "dilate": 1,
         "crop": {
           "min": [
-            -4.5,
+            -8,
             -0.5,
             -28
           ],
           "max": [
-            4.5,
-            7,
-            1.5
+            8,
+            6,
+            1
           ]
         },
         "clear": {
           "x": [
-            15.5,
-            24.5
+            12,
+            26
           ],
           "z": [
             -0.5,
             10
           ],
           "walls": true
-        }
+        },
+        "source_view": 4
       }
     },
     "Sorting": {
@@ -102,7 +103,40 @@
           20
         ]
       },
-      "dilate": 1.6
+      "dilate": 1.6,
+      "photoreal": {
+        "position": [
+          1.5,
+          0,
+          16.75
+        ],
+        "yaw_deg": -90,
+        "dilate": 1,
+        "crop": {
+          "min": [
+            -3.25,
+            -0.5,
+            -14.5
+          ],
+          "max": [
+            3.25,
+            5,
+            0.5
+          ]
+        },
+        "clear": {
+          "x": [
+            1.5,
+            16
+          ],
+          "z": [
+            13.5,
+            20
+          ],
+          "walls": true
+        },
+        "source_view": 3
+      }
     },
     "Market": {
       "title": "client market",
@@ -135,7 +169,76 @@
           20
         ]
       },
-      "dilate": 1.6
+      "dilate": 1.6,
+      "photoreal": {
+        "position": [
+          26,
+          0,
+          16.5
+        ],
+        "yaw_deg": 90,
+        "dilate": 1,
+        "crop": {
+          "min": [
+            -4,
+            -0.5,
+            -10
+          ],
+          "max": [
+            2,
+            6,
+            0.5
+          ]
+        },
+        "clear": {
+          "x": [
+            16,
+            26
+          ],
+          "z": [
+            14.5,
+            20
+          ],
+          "walls": true
+        },
+        "source_view": 3
+      }
+    },
+    "Kitchen": {
+      "title": "community kitchen",
+      "button": "Kitchen",
+      "photoreal": {
+        "position": [
+          26.5,
+          0,
+          4.5
+        ],
+        "yaw_deg": -90,
+        "dilate": 1,
+        "crop": {
+          "min": [
+            -4.5,
+            -0.5,
+            -11.5
+          ],
+          "max": [
+            6.5,
+            5,
+            0.3
+          ]
+        },
+        "clear": {
+          "x": [
+            26.5,
+            38
+          ],
+          "z": [
+            0,
+            11
+          ],
+          "walls": true
+        }
+      }
     }
   },
   "telemetryApi": "",
