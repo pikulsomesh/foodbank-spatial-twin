@@ -1,0 +1,639 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def Xform "Operations" (
+        doc = "Food bank operations layer: areas, kitchen stations and flows keyed by GET /operations ids. Telemetry frame: metres, Y up, origin at the dock-door corner."
+    )
+    {
+        custom string twin:feed = "/operations"
+        custom string twin:sampleTime = "2027-01-15T13:00:00Z"
+        custom string twin:site = "Central Texas Food Bank"
+
+        def Scope "Areas"
+        {
+            def Xform "receiving" (
+                doc = "Receiving dock"
+            )
+            {
+                custom int twin:capacityPallets = 120
+                custom string twin:capture = ""
+                custom bool twin:estimated = 1
+                custom string twin:id = "receiving"
+                custom token twin:kind = "dock"
+                custom string twin:label = "Receiving dock"
+                custom float twin:onHandLbs = 25494
+                custom int twin:pallets = 30
+                custom string twin:telemetryZone = ""
+                custom token twin:temp = "ambient"
+                custom float twin:utilisation = 0.247
+
+                def Mesh "Footprint"
+                {
+                    uniform bool doubleSided = 1
+                    float3[] extent = [(0.5, 0.02, 7.5), (5, 0.02, 17.5)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    point3f[] points = [(0.5, 0.02, 7.5), (0.5, 0.02, 17.5), (5, 0.02, 17.5), (5, 0.02, 7.5)]
+                    color3f[] primvars:displayColor = [(0.6, 0.65, 0.69)]
+                    float[] primvars:displayOpacity = [0.35]
+                }
+            }
+
+            def Xform "sorting" (
+                doc = "Product recovery and sorting"
+            )
+            {
+                custom int twin:capacityPallets = 80
+                custom string twin:capture = "Sorting"
+                custom bool twin:estimated = 0
+                custom string twin:id = "sorting"
+                custom token twin:kind = "sorting"
+                custom string twin:label = "Product recovery and sorting"
+                custom float twin:onHandLbs = 18906
+                custom int twin:pallets = 27
+                custom string twin:telemetryZone = ""
+                custom token twin:temp = "ambient"
+                custom float twin:utilisation = 0.343
+
+                def Mesh "Footprint"
+                {
+                    uniform bool doubleSided = 1
+                    float3[] extent = [(5.5, 0.02, 13.5), (16.5, 0.02, 20)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    point3f[] points = [(5.5, 0.02, 13.5), (5.5, 0.02, 20), (16.5, 0.02, 20), (16.5, 0.02, 13.5)]
+                    color3f[] primvars:displayColor = [(0.85, 0.35, 0.15)]
+                    float[] primvars:displayOpacity = [0.35]
+                }
+            }
+
+            def Xform "freezer" (
+                doc = "Freezer"
+            )
+            {
+                custom int twin:capacityPallets = 900
+                custom string twin:capture = ""
+                custom bool twin:estimated = 1
+                custom string twin:id = "freezer"
+                custom token twin:kind = "storage"
+                custom string twin:label = "Freezer"
+                custom float twin:onHandLbs = 856897
+                custom int twin:pallets = 779
+                custom string twin:telemetryZone = "freezer-1"
+                custom token twin:temp = "frozen"
+                custom float twin:utilisation = 0.866
+
+                def Mesh "Footprint"
+                {
+                    uniform bool doubleSided = 1
+                    float3[] extent = [(1, 0.02, 0), (7, 0.02, 5.5)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    point3f[] points = [(1, 0.02, 0), (1, 0.02, 5.5), (7, 0.02, 5.5), (7, 0.02, 0)]
+                    color3f[] primvars:displayColor = [(0.22, 0.53, 0.9)]
+                    float[] primvars:displayOpacity = [0.35]
+                }
+            }
+
+            def Xform "cooler" (
+                doc = "Cooler"
+            )
+            {
+                custom int twin:capacityPallets = 800
+                custom string twin:capture = ""
+                custom bool twin:estimated = 1
+                custom string twin:id = "cooler"
+                custom token twin:kind = "storage"
+                custom string twin:label = "Cooler"
+                custom float twin:onHandLbs = 398596
+                custom int twin:pallets = 481
+                custom string twin:telemetryZone = "cooler-1"
+                custom token twin:temp = "chilled"
+                custom float twin:utilisation = 0.601
+
+                def Mesh "Footprint"
+                {
+                    uniform bool doubleSided = 1
+                    float3[] extent = [(9, 0.02, 0), (15, 0.02, 5.5)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    point3f[] points = [(9, 0.02, 0), (9, 0.02, 5.5), (15, 0.02, 5.5), (15, 0.02, 0)]
+                    color3f[] primvars:displayColor = [(0.22, 0.53, 0.9)]
+                    float[] primvars:displayOpacity = [0.35]
+                }
+            }
+
+            def Xform "dry" (
+                doc = "Dry storage racking"
+            )
+            {
+                custom int twin:capacityPallets = 5000
+                custom string twin:capture = "Racking"
+                custom bool twin:estimated = 1
+                custom string twin:id = "dry"
+                custom token twin:kind = "storage"
+                custom string twin:label = "Dry storage racking"
+                custom float twin:onHandLbs = 3339723
+                custom int twin:pallets = 3143
+                custom string twin:telemetryZone = "dry-1"
+                custom token twin:temp = "ambient"
+                custom float twin:utilisation = 0.629
+
+                def Mesh "Footprint"
+                {
+                    uniform bool doubleSided = 1
+                    float3[] extent = [(17, 0.02, 0.5), (26, 0.02, 9)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    point3f[] points = [(17, 0.02, 0.5), (17, 0.02, 9), (26, 0.02, 9), (26, 0.02, 0.5)]
+                    color3f[] primvars:displayColor = [(0.22, 0.53, 0.9)]
+                    float[] primvars:displayOpacity = [0.35]
+                }
+            }
+
+            def Xform "staging" (
+                doc = "Partner order staging"
+            )
+            {
+                custom int twin:capacityPallets = 90
+                custom string twin:capture = ""
+                custom bool twin:estimated = 1
+                custom string twin:id = "staging"
+                custom token twin:kind = "staging"
+                custom string twin:label = "Partner order staging"
+                custom float twin:onHandLbs = 28603
+                custom int twin:pallets = 34
+                custom string twin:telemetryZone = ""
+                custom token twin:temp = "ambient"
+                custom float twin:utilisation = 0.379
+
+                def Mesh "Footprint"
+                {
+                    uniform bool doubleSided = 1
+                    float3[] extent = [(6.5, 0.02, 7.5), (11, 0.02, 11)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    point3f[] points = [(6.5, 0.02, 7.5), (6.5, 0.02, 11), (11, 0.02, 11), (11, 0.02, 7.5)]
+                    color3f[] primvars:displayColor = [(0.79, 0.52, 0)]
+                    float[] primvars:displayOpacity = [0.35]
+                }
+            }
+
+            def Xform "market" (
+                doc = "Client grocery market"
+            )
+            {
+                custom int twin:capacityPallets = 30
+                custom string twin:capture = "Market"
+                custom bool twin:estimated = 1
+                custom string twin:id = "market"
+                custom token twin:kind = "market"
+                custom string twin:label = "Client grocery market"
+                custom float twin:onHandLbs = 1826
+                custom int twin:pallets = 2
+                custom string twin:telemetryZone = ""
+                custom token twin:temp = "ambient"
+                custom float twin:utilisation = 0.073
+
+                def Mesh "Footprint"
+                {
+                    uniform bool doubleSided = 1
+                    float3[] extent = [(19, 0.02, 13), (26, 0.02, 20)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    point3f[] points = [(19, 0.02, 13), (19, 0.02, 20), (26, 0.02, 20), (26, 0.02, 13)]
+                    color3f[] primvars:displayColor = [(0.1, 0.62, 0.44)]
+                    float[] primvars:displayOpacity = [0.35]
+                }
+            }
+
+            def Xform "kitchen" (
+                doc = "Community kitchen"
+            )
+            {
+                custom int twin:capacityPallets = 24
+                custom string twin:capture = "Kitchen"
+                custom bool twin:estimated = 0
+                custom string twin:id = "kitchen"
+                custom token twin:kind = "kitchen"
+                custom string twin:label = "Community kitchen"
+                custom float twin:onHandLbs = 637
+                custom int twin:pallets = 1
+                custom string twin:telemetryZone = "kitchen-1"
+                custom token twin:temp = "ambient"
+                custom float twin:utilisation = 0.028
+
+                def Mesh "Footprint"
+                {
+                    uniform bool doubleSided = 1
+                    float3[] extent = [(26.5, 0.02, 0), (38, 0.02, 11)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    point3f[] points = [(26.5, 0.02, 0), (26.5, 0.02, 11), (38, 0.02, 11), (38, 0.02, 0)]
+                    color3f[] primvars:displayColor = [(0.84, 0.32, 0.51)]
+                    float[] primvars:displayOpacity = [0.35]
+                }
+            }
+        }
+
+        def Scope "Kitchen"
+        {
+            def Xform "kettle" (
+                doc = "Steam-jacketed kettles"
+            )
+            {
+                custom int twin:count = 3
+                custom string twin:id = "kettle"
+                custom int twin:inUse = 0
+                custom string twin:label = "Steam-jacketed kettles"
+                double3 xformOp:translate = (29, 0.45, 2)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Footprint"
+                {
+                    color3f[] primvars:displayColor = [(0.84, 0.32, 0.51)]
+                    float[] primvars:displayOpacity = [0.5]
+                    double size = 1
+                    float3 xformOp:scale = (2.2, 0.9, 1.4)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+
+            def Xform "skillet" (
+                doc = "Tilt skillets"
+            )
+            {
+                custom int twin:count = 2
+                custom string twin:id = "skillet"
+                custom int twin:inUse = 0
+                custom string twin:label = "Tilt skillets"
+                double3 xformOp:translate = (31.5, 0.45, 2)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Footprint"
+                {
+                    color3f[] primvars:displayColor = [(0.84, 0.32, 0.51)]
+                    float[] primvars:displayOpacity = [0.5]
+                    double size = 1
+                    float3 xformOp:scale = (1.8, 0.9, 1.4)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+
+            def Xform "combi" (
+                doc = "Combi ovens"
+            )
+            {
+                custom int twin:count = 2
+                custom string twin:id = "combi"
+                custom int twin:inUse = 1
+                custom string twin:label = "Combi ovens"
+                double3 xformOp:translate = (34, 0.45, 2)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Footprint"
+                {
+                    color3f[] primvars:displayColor = [(0.84, 0.32, 0.51)]
+                    float[] primvars:displayOpacity = [0.5]
+                    double size = 1
+                    float3 xformOp:scale = (1.8, 0.9, 1.4)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+
+            def Xform "chiller" (
+                doc = "Blast chillers"
+            )
+            {
+                custom int twin:count = 2
+                custom string twin:id = "chiller"
+                custom int twin:inUse = 1
+                custom string twin:label = "Blast chillers"
+                double3 xformOp:translate = (36.5, 0.45, 5)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Footprint"
+                {
+                    color3f[] primvars:displayColor = [(0.84, 0.32, 0.51)]
+                    float[] primvars:displayOpacity = [0.5]
+                    double size = 1
+                    float3 xformOp:scale = (1.8, 0.9, 1.4)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+
+            def Xform "prep" (
+                doc = "Prep and training tables"
+            )
+            {
+                custom int twin:count = 4
+                custom string twin:id = "prep"
+                custom int twin:inUse = 1
+                custom string twin:label = "Prep and training tables"
+                double3 xformOp:translate = (30.5, 0.45, 6)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Footprint"
+                {
+                    color3f[] primvars:displayColor = [(0.84, 0.32, 0.51)]
+                    float[] primvars:displayOpacity = [0.5]
+                    double size = 1
+                    float3 xformOp:scale = (2.6, 0.9, 1.4)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+
+            def Xform "pack" (
+                doc = "Portion and pack line"
+            )
+            {
+                custom int twin:count = 1
+                custom string twin:id = "pack"
+                custom int twin:inUse = 0
+                custom string twin:label = "Portion and pack line"
+                double3 xformOp:translate = (33.5, 0.45, 9)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Footprint"
+                {
+                    color3f[] primvars:displayColor = [(0.84, 0.32, 0.51)]
+                    float[] primvars:displayOpacity = [0.5]
+                    double size = 1
+                    float3 xformOp:scale = (1.4, 0.9, 1.4)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+
+            def Xform "walkin" (
+                doc = "Kitchen walk-in cooler"
+            )
+            {
+                custom int twin:count = 1
+                custom string twin:id = "walkin"
+                custom int twin:inUse = 0
+                custom string twin:label = "Kitchen walk-in cooler"
+                double3 xformOp:translate = (36.5, 0.45, 9)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Cube "Footprint"
+                {
+                    color3f[] primvars:displayColor = [(0.84, 0.32, 0.51)]
+                    float[] primvars:displayOpacity = [0.5]
+                    double size = 1
+                    float3 xformOp:scale = (1.4, 0.9, 1.4)
+                    uniform token[] xformOpOrder = ["xformOp:scale"]
+                }
+            }
+        }
+
+        def Scope "Flows"
+        {
+            def BasisCurves "receiving_to_sorting"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(2.75, 0.3, 12.5), (6.875, 1.8, 14.625), (11, 0.3, 16.75)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "receiving"
+                custom float twin:lbsPlan = 84025
+                custom float twin:lbsToday = 18906
+                custom string twin:to = "sorting"
+                uniform token type = "linear"
+                float[] widths = [2.100625] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "receiving_to_cooler"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(2.75, 0.3, 12.5), (7.375, 1.8, 7.625), (12, 0.3, 2.75)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "receiving"
+                custom float twin:lbsPlan = 78933
+                custom float twin:lbsToday = 14800
+                custom string twin:to = "cooler"
+                uniform token type = "linear"
+                float[] widths = [1.973325] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "sorting_to_cooler"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(11, 0.3, 16.75), (11.5, 1.8, 9.75), (12, 0.3, 2.75)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "sorting"
+                custom float twin:lbsPlan = 32082
+                custom float twin:lbsToday = 0
+                custom string twin:to = "cooler"
+                uniform token type = "linear"
+                float[] widths = [0.80205] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "cooler_to_kitchen"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(12, 0.3, 2.75), (22.125, 1.8, 4.125), (32.25, 0.3, 5.5)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "cooler"
+                custom float twin:lbsPlan = 196
+                custom float twin:lbsToday = 196
+                custom string twin:to = "kitchen"
+                uniform token type = "linear"
+                float[] widths = [0.05] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "cooler_to_staging"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(12, 0.3, 2.75), (10.375, 1.8, 6), (8.75, 0.3, 9.25)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "cooler"
+                custom float twin:lbsPlan = 104401
+                custom float twin:lbsToday = 24360
+                custom string twin:to = "staging"
+                uniform token type = "linear"
+                float[] widths = [2.610025] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "cooler_to_market"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(12, 0.3, 2.75), (17.25, 1.8, 9.625), (22.5, 0.3, 16.5)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "cooler"
+                custom float twin:lbsPlan = 6664
+                custom float twin:lbsToday = 1555
+                custom string twin:to = "market"
+                uniform token type = "linear"
+                float[] widths = [0.1666] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "receiving_to_freezer"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(2.75, 0.3, 12.5), (3.375, 1.8, 7.625), (4, 0.3, 2.75)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "receiving"
+                custom float twin:lbsPlan = 23298
+                custom float twin:lbsToday = 4368
+                custom string twin:to = "freezer"
+                uniform token type = "linear"
+                float[] widths = [0.58245] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "sorting_to_freezer"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(11, 0.3, 16.75), (7.5, 1.8, 9.75), (4, 0.3, 2.75)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "sorting"
+                custom float twin:lbsPlan = 7129
+                custom float twin:lbsToday = 0
+                custom string twin:to = "freezer"
+                uniform token type = "linear"
+                float[] widths = [0.178225] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "freezer_to_kitchen"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(4, 0.3, 2.75), (18.125, 1.8, 4.125), (32.25, 0.3, 5.5)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "freezer"
+                custom float twin:lbsPlan = 147
+                custom float twin:lbsToday = 147
+                custom string twin:to = "kitchen"
+                uniform token type = "linear"
+                float[] widths = [0.05] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "freezer_to_staging"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(4, 0.3, 2.75), (6.375, 1.8, 6), (8.75, 0.3, 9.25)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "freezer"
+                custom float twin:lbsPlan = 24033
+                custom float twin:lbsToday = 5608
+                custom string twin:to = "staging"
+                uniform token type = "linear"
+                float[] widths = [0.600825] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "freezer_to_market"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(4, 0.3, 2.75), (13.25, 1.8, 9.625), (22.5, 0.3, 16.5)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "freezer"
+                custom float twin:lbsPlan = 1534
+                custom float twin:lbsToday = 358
+                custom string twin:to = "market"
+                uniform token type = "linear"
+                float[] widths = [0.05] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "receiving_to_dry"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(2.75, 0.3, 12.5), (12.125, 1.8, 8.625), (21.5, 0.3, 4.75)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "receiving"
+                custom float twin:lbsPlan = 68366
+                custom float twin:lbsToday = 12819
+                custom string twin:to = "dry"
+                uniform token type = "linear"
+                float[] widths = [1.70915] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "sorting_to_dry"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(11, 0.3, 16.75), (16.25, 1.8, 10.75), (21.5, 0.3, 4.75)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "sorting"
+                custom float twin:lbsPlan = 44813
+                custom float twin:lbsToday = 0
+                custom string twin:to = "dry"
+                uniform token type = "linear"
+                float[] widths = [1.120325] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "dry_to_kitchen"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(21.5, 0.3, 4.75), (26.875, 1.8, 5.125), (32.25, 0.3, 5.5)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "dry"
+                custom float twin:lbsPlan = 294
+                custom float twin:lbsToday = 294
+                custom string twin:to = "kitchen"
+                uniform token type = "linear"
+                float[] widths = [0.05] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "dry_to_staging"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(21.5, 0.3, 4.75), (15.125, 1.8, 7), (8.75, 0.3, 9.25)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "dry"
+                custom float twin:lbsPlan = 116734
+                custom float twin:lbsToday = 27238
+                custom string twin:to = "staging"
+                uniform token type = "linear"
+                float[] widths = [2.91835] (
+                    interpolation = "constant"
+                )
+            }
+
+            def BasisCurves "dry_to_market"
+            {
+                int[] curveVertexCounts = [3]
+                point3f[] points = [(21.5, 0.3, 4.75), (22, 1.8, 10.625), (22.5, 0.3, 16.5)]
+                color3f[] primvars:displayColor = [(0.85, 0.87, 0.9)]
+                custom string twin:from = "dry"
+                custom float twin:lbsPlan = 7451
+                custom float twin:lbsToday = 1739
+                custom string twin:to = "market"
+                uniform token type = "linear"
+                float[] widths = [0.186275] (
+                    interpolation = "constant"
+                )
+            }
+        }
+    }
+}
+

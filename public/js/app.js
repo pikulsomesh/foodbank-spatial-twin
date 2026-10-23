@@ -5,6 +5,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 import { buildPlaceholder } from "./placeholder.js";
 import { startFeed, simulate, forklift as simForklift } from "./telemetry.js";
+import { addOpsOverlay } from "./ops-overlay.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -166,7 +167,7 @@ async function initScene(cfg) {
   controls.dampingFactor = 0.08;
   controls.maxPolarAngle = Math.PI * 0.49;
   controls.minDistance = 2;
-  controls.maxDistance = 60;
+  controls.maxDistance = 75;
   controls.autoRotateSpeed = 0.6;
 
   // Twin: the World Labs captures placed into the procedural building, or the building alone.
@@ -180,6 +181,12 @@ async function initScene(cfg) {
     const mesh = new SplatMesh({ constructSplats: (splats) => { buildPlaceholder(splats, { density: phone ? 1.45 : 1, clear, massing }); } });
     scene.add(mesh);
     await mesh.initialized;
+  }
+  // Operational areas (receiving, storage, staging, the community kitchen annex) from the ops model.
+  const ops = params.has("noops") ? null : await getJSON(cfg.operations || "ops/operations.json");
+  if (ops?.zones) {
+    const kitchenCaptured = captures.some((c) => c.name === "Kitchen");
+    addOpsOverlay(scene, ops.zones, { annex: ["kitchen"], stations: kitchenCaptured ? [] : ops.kitchen?.equipment || [] });
   }
   const pill = $("twin-pill");
   if (captures.length) {
@@ -219,17 +226,19 @@ async function initScene(cfg) {
   fit();
   addEventListener("resize", fit);
 
-  // Overview backs off until the 26 m building fits the screen width (portrait phones need more room).
+  // Overview backs off until the 26 m building and the kitchen annex east of it (x 0-38 m) fit the
+  // screen width (portrait phones need more room).
   const overview = () => {
     const halfW = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(camera.aspect, 1.6);
-    const d = THREE.MathUtils.clamp(16 / halfW, 34, 62);
+    const d = THREE.MathUtils.clamp(22 / halfW, 40, 74);
     const dir = new THREE.Vector3(0.05, camera.aspect < 1 ? 0.78 : 0.55, 1).normalize();
-    return [dir.multiplyScalar(d).add(new THREE.Vector3(13, 0, 9)).toArray(), [13, 0, camera.aspect < 1 ? 7 : 8.5]];
+    return [dir.multiplyScalar(d).add(new THREE.Vector3(19, 0, 9)).toArray(), [19, 0, camera.aspect < 1 ? 7 : 8.5]];
   };
   // Camera presets in the telemetry frame.
   const VIEWS = {
     get overview() { return overview(); },
     cold: [[8, 7, 15], [8, 1.5, 3]],
+    kitchen: [[30, 9, 20], [32.25, 0.5, 5.5]],
     aisle: [[20, 2, 13], [20, 1.5, 5]],
   };
   // `photo`: a capture seen from its source camera, which the forklift would otherwise drive through.
@@ -252,6 +261,7 @@ async function initScene(cfg) {
   // One button per capture, looking the way its source cameras looked (-Z in the capture frame).
   if (captures.length) {
     document.querySelector('#views [data-view="aisle"]')?.remove();
+    if (captures.some((c) => c.name === "Kitchen")) document.querySelector('#views [data-view="kitchen"]')?.remove();
     const followBtn = document.querySelector('#views [data-view="follow"]');
     captures.forEach((c, i) => {
       const yaw = THREE.MathUtils.degToRad(c.yaw_deg || 0), dir = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
