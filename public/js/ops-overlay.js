@@ -1,12 +1,15 @@
 // Operational areas drawn on the twin's floor: an outline per area from ops/operations.json (the
-// same footprints GET /operations reports), and a floor slab for areas no capture or schematic
-// covers yet, such as the community kitchen annex, so they read as part of the building, with
-// floor marks where its stations stand until the kitchen capture lands.
+// same footprints GET /operations reports). Areas outside the generated building (the community
+// kitchen annex) get a floor slab and walls in the building's style around their capture: a
+// full-height back wall and low cutaway walls on the open sides. `stations` adds floor marks where
+// the kitchen equipment stands, for when no kitchen capture is loaded.
 import * as THREE from "three";
 
 const KIND_COLOR = { dock: 0x9aa5b1, sorting: 0xd95926, storage: 0x3987e5, staging: 0xc98500, market: 0x199e70, kitchen: 0xd55181 };
 
-export function addOpsOverlay(scene, zones, { uncovered = ["kitchen"], stations = [] } = {}) {
+const WALL_HEIGHT = 7, CUTAWAY = 1.2, T = 0.15;
+
+export function addOpsOverlay(scene, zones, { annex = ["kitchen"], stations = [] } = {}) {
   const group = new THREE.Group();
   group.name = "operations-overlay";
   for (const z of zones) {
@@ -17,11 +20,16 @@ export function addOpsOverlay(scene, zones, { uncovered = ["kitchen"], stations 
       new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false }));
     line.userData.zone = z.id;
     group.add(line);
-    if (uncovered.includes(z.id)) {
-      const slab = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2),
-        new THREE.MeshStandardMaterial({ color: 0x8f9499, roughness: 0.9 }));
-      slab.position.set((x0 + x1) / 2, 0.01, (z0 + z1) / 2);
-      group.add(slab);
+    if (annex.includes(z.id)) {
+      const floor = new THREE.MeshStandardMaterial({ color: 0x8f9499, roughness: 0.9 });
+      const wall = new THREE.MeshStandardMaterial({ color: 0xd5d9dd, roughness: 0.85 });
+      const box = (w, h, d, x, y, zz, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, zz); group.add(m); };
+      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+      box(x1 - x0, 0.02, z1 - z0, cx, -0.01, cz, floor);                          // slab, just under the capture's floor
+      box(x1 - x0 + T, WALL_HEIGHT, T, cx, WALL_HEIGHT / 2, z0 - T / 2, wall);   // back wall, in line with the building's
+      box(T, CUTAWAY, z1 - z0, x1 + T / 2, CUTAWAY / 2, cz, wall);              // east cutaway
+      box(x1 - x0 + T, CUTAWAY, T, cx, CUTAWAY / 2, z1 + T / 2, wall);          // front cutaway
+      box(T, CUTAWAY, z1 - z0, x0 - T / 2, CUTAWAY / 2, cz, wall);              // west cutaway, facing the building
     }
   }
   // Kitchen stations as floor marks where the equipment stands (positions from the ops data).

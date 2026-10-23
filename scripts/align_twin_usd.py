@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
 """Assemble the twin for Omniverse in one frame: public/twin.usda.
 
-site.usdz is the zone library the pipeline writes: each capture under /World/Site/<Zone>,
-spread out by data/site/layout.json so the zones can be inspected one by one. The browser places
-the same captures inside the building with public/twin.config.json, and the telemetry and
-operations data (zones, forklift, areas, kitchen stations, flows) live in that frame too. This
-script makes twin.config.json the single source of truth for placement in USD as well:
+The browser places every capture inside the building with public/twin.config.json, and the
+telemetry and operations data (zones, forklift, areas, kitchen stations, flows) live in that frame
+too. This script makes twin.config.json the single source of truth for placement in USD as well,
+choosing the same capture the browser shows:
 
-  /World/Site/<Zone>      references site.usdz</World/Site/<Zone>>, re-placed with the viewer's
-                          position and yaw_deg (the capture correction inside is unchanged, and
-                          matches the viewer's rotateX(180) . translate(0, -ground, 0) . scale)
+  /World/Site/<Zone>      the trained (photoreal) 3DGS zone, references zones/<zone>-3dgs.usdz,
+                          placed by the capture's `photoreal` block, when photoreal.json lists it;
+                          otherwise the World Labs capture, references site.usdz</World/Site/<Zone>>,
+                          placed by the capture's own position and yaw_deg. Either way the capture
+                          correction inside is unchanged and matches the viewer's
+                          rotateX(180) . translate(0, -ground, 0) . scale.
   /World/Operations       references operations.usda (scripts/operations_to_usd.py)
 
 so Omniverse (or Blender) opens one file with the captures, the operational areas and the
 kitchen in the same metres. Nothing is copied: the layer is a few KB of references. The viewer
 also crops each capture to its `crop` box (capture frame) so spill outside the room doesn't cover
 the building; twin_crop.usdc, a sublayer, does the same in USD by overriding only the opacities of
-the splats outside the box to 0 (about 3 MB, instead of copying every splat).
+the splats outside the box to 0 instead of copying every splat.
 
-    python scripts/align_twin_usd.py [--config public/twin.config.json] [--out public/twin.usda] [--no-crop]
+    python scripts/align_twin_usd.py [--config public/twin.config.json] [--out public/twin.usda] [--atlas] [--no-crop]
 """
 import argparse
 import json
@@ -30,18 +32,41 @@ from pxr import Gf, Sdf, Usd, UsdGeom, Vt
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 
 
+def sources(cfg, public, atlas_only=False):
+    """[(name, asset, prim path, placement)] for every capture the browser would show."""
+    site_name = cfg.get("usdz", "site.usdz")
+    site = Usd.Stage.Open(os.path.join(public, site_name)) if os.path.exists(os.path.join(public, site_name)) else None
+    library = {c.GetName() for c in site.GetPrimAtPath("/World/Site").GetChildren()} if site else set()
+    trained = {}
+    pj = os.path.join(public, cfg.get("photoreal", "zones/photoreal.json"))
+    if not atlas_only and os.path.exists(pj):
+        for z in json.load(open(pj, encoding="utf-8")).get("zones", []):
+            usdz = os.path.splitext(z["url"])[0] + ".usdz"
+            if os.path.exists(os.path.join(public, usdz)):
+                trained[z["name"]] = usdz
+    out = []
+    for name, c in cfg.get("captures", {}).items():
+        if c.get("photoreal") and name in trained:
+            out.append((name, trained[name], "/World", c["photoreal"], "photoreal 3DGS"))
+        elif name in library and "position" in c:
+            out.append((name, site_name, f"/World/Site/{name}", c, "World Labs"))
+        else:
+            print(f"skip {name}: no capture to place")
+    return out
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--config", default=os.path.join(ROOT, "public", "twin.config.json"))
     p.add_argument("--out", default=os.path.join(ROOT, "public", "twin.usda"))
+    p.add_argument("--atlas", action="store_true", help="use the World Labs captures even where a trained zone exists")
     p.add_argument("--no-crop", action="store_true", help="skip twin_crop.usdc (show whole captures)")
     a = p.parse_args()
     public = os.path.dirname(os.path.abspath(a.out))
     cfg = json.load(open(a.config, encoding="utf-8"))
-    site_name = cfg.get("usdz", "site.usdz")
-    site = Usd.Stage.Open(os.path.join(public, site_name))
-    library = {c.GetName() for c in site.GetPrimAtPath("/World/Site").GetChildren()}
 
+    if os.path.exists(a.out):
+        os.remove(a.out)
     stage = Usd.Stage.CreateNew(a.out)
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)
     UsdGeom.SetStageMetersPerUnit(stage, 1.0)
@@ -49,32 +74,30 @@ def main():
     stage.SetDefaultPrim(world.GetPrim())
     stage.GetRootLayer().customLayerData = {"autoTwin": {
         "frame": "telemetry frame: metres, Y up, origin at the dock-door corner (same as GET /telemetry and /operations)",
-        "placements": os.path.relpath(a.config, public), "captures": site_name}}
+        "placements": os.path.relpath(a.config, public)}}
     UsdGeom.Xform.Define(stage, "/World/Site")
 
     placed = []
-    for name, c in cfg.get("captures", {}).items():
-        if name not in library:
-            print(f"skip {name}: not in {site_name}")
-            continue
+    for name, asset, path, place, kind in sources(cfg, public, a.atlas):
         xf = UsdGeom.Xform.Define(stage, f"/World/Site/{name}")
         prim = xf.GetPrim()
-        prim.GetReferences().AddReference(f"./{site_name}", f"/World/Site/{name}")
-        # The library prim already has [translate, rotateY]; stronger opinions here replace its
-        # layout.json values with the viewer's.
-        prim.CreateAttribute("xformOp:translate", Sdf.ValueTypeNames.Double3).Set(Gf.Vec3d(*c.get("position", [0, 0, 0])))
-        prim.CreateAttribute("xformOp:rotateY", Sdf.ValueTypeNames.Float).Set(float(c.get("yaw_deg", 0)))
+        prim.GetReferences().AddReference(f"./{asset}", path)
+        # Author the ops as attributes: a site.usdz zone already has [translate, rotateY] and these
+        # stronger opinions replace its layout.json values with the viewer's.
+        prim.CreateAttribute("xformOp:translate", Sdf.ValueTypeNames.Double3).Set(Gf.Vec3d(*place.get("position", [0, 0, 0])))
+        prim.CreateAttribute("xformOp:rotateY", Sdf.ValueTypeNames.Float).Set(float(place.get("yaw_deg", 0)))
         xf.GetXformOpOrderAttr().Set(["xformOp:translate", "xformOp:rotateY"])
-        prim.SetCustomDataByKey("label", c.get("title", name))
-        if c.get("crop"):
+        prim.SetCustomDataByKey("label", cfg["captures"][name].get("title", name))
+        prim.SetCustomDataByKey("capture", kind)
+        if place.get("crop"):
             for k in ("min", "max"):
-                prim.CreateAttribute(f"twin:crop{k.title()}", Sdf.ValueTypeNames.Float3, custom=True).Set(Gf.Vec3f(*c["crop"][k]))
-        placed.append(name)
+                prim.CreateAttribute(f"twin:crop{k.title()}", Sdf.ValueTypeNames.Float3, custom=True).Set(Gf.Vec3f(*place["crop"][k]))
+        placed.append((name, place.get("crop"), kind))
 
     crop_name = "twin_crop.usdc"
-    crops = {n: cfg["captures"][n]["crop"] for n in placed if cfg["captures"][n].get("crop")}
+    crops = {n: c for n, c, _ in placed if c}
     if crops and not a.no_crop:
-        hidden = write_crop_layer(site, crops, os.path.join(public, crop_name))
+        hidden = write_crop_layer(stage, crops, os.path.join(public, crop_name))
         stage.GetRootLayer().subLayerPaths.append(f"./{crop_name}")
         for n, (k, total) in hidden.items():
             print(f"{n}: {k:,} of {total:,} splats outside the crop box hidden")
@@ -86,13 +109,13 @@ def main():
 
     check = Usd.Stage.Open(a.out)
     cache = UsdGeom.XformCache()
-    for name in placed:
+    for name, _, kind in placed:
         t = cache.GetLocalToWorldTransform(check.GetPrimAtPath(f"/World/Site/{name}")).ExtractTranslation()
-        print(f"{name}: origin at ({t[0]:.2f}, {t[1]:.2f}, {t[2]:.2f})")
+        print(f"{name} ({kind}): origin at ({t[0]:.2f}, {t[1]:.2f}, {t[2]:.2f})")
     print(f"wrote {os.path.relpath(a.out)}: {len(placed)} captures + operations layer")
 
 
-def write_crop_layer(site, crops, path):
+def write_crop_layer(stage, crops, path):
     """Override opacities to 0 for splats outside each capture's crop box (metres, capture frame:
     Y up, floor at 0, after the rotateX(180) . translate(0, -ground) . scale correction)."""
     if os.path.exists(path):
@@ -100,14 +123,15 @@ def write_crop_layer(site, crops, path):
     layer = Sdf.Layer.CreateNew(path)
     out = Usd.Stage.Open(layer)
     hidden = {}
+    t = Usd.TimeCode.Default()
     for name, crop in crops.items():
-        zone = site.GetPrimAtPath(f"/World/Site/{name}")
-        to_zone = np.array(UsdGeom.Xformable(zone).ComputeLocalToWorldTransform(Usd.TimeCode.Default()).GetInverse())
+        zone = stage.GetPrimAtPath(f"/World/Site/{name}")
+        to_zone = np.array(UsdGeom.Xformable(zone).ComputeLocalToWorldTransform(t).GetInverse())
         for prim in Usd.PrimRange(zone):
             if prim.GetTypeName() != "ParticleField3DGaussianSplat":
                 continue
             pos = np.array(prim.GetAttribute("positions").Get(), dtype=np.float64)
-            m = np.array(UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(Usd.TimeCode.Default())) @ to_zone
+            m = np.array(UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(t)) @ to_zone
             local = np.c_[pos, np.ones(len(pos))] @ m  # USD matrices are row-vector
             keep = np.all((local[:, :3] >= crop["min"]) & (local[:, :3] <= crop["max"]), axis=1)
             opa = np.array(prim.GetAttribute("opacities").Get(), dtype=np.float32)

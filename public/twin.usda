@@ -2,7 +2,6 @@
 (
     customLayerData = {
         dictionary autoTwin = {
-            string captures = "site.usdz"
             string frame = "telemetry frame: metres, Y up, origin at the dock-door corner (same as GET /telemetry and /operations)"
             string placements = "twin.config.json"
         }
@@ -21,43 +20,61 @@ def Xform "World"
     {
         def Xform "Racking" (
             customData = {
+                string capture = "photoreal 3DGS"
                 string label = "racking aisle"
             }
-            prepend references = @./site.usdz@</World/Site/Racking>
+            prepend references = @./zones/racking-3dgs.usdz@</World>
         )
         {
-            custom float3 twin:cropMax = (3, 4.5, -3)
-            custom float3 twin:cropMin = (-3, -0.7, -13)
-            float xformOp:rotateY = 0
-            double3 xformOp:translate = (20, 0, 13)
+            custom float3 twin:cropMax = (8, 6, 1)
+            custom float3 twin:cropMin = (-8, -0.5, -28)
+            custom float xformOp:rotateY = 0
+            custom double3 xformOp:translate = (20, 0, 13)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateY"]
         }
 
         def Xform "Sorting" (
             customData = {
+                string capture = "photoreal 3DGS"
                 string label = "volunteer sorting room"
             }
-            prepend references = @./site.usdz@</World/Site/Sorting>
+            prepend references = @./zones/sorting-3dgs.usdz@</World>
         )
         {
-            custom float3 twin:cropMax = (2.5, 4, -4)
-            custom float3 twin:cropMin = (-3.5, -0.3, -12)
-            float xformOp:rotateY = -90
-            double3 xformOp:translate = (4, 0, 17)
+            custom float3 twin:cropMax = (3.25, 5, 0.5)
+            custom float3 twin:cropMin = (-3.25, -0.5, -14.5)
+            custom float xformOp:rotateY = -90
+            custom double3 xformOp:translate = (1.5, 0, 16.75)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateY"]
         }
 
         def Xform "Market" (
             customData = {
+                string capture = "photoreal 3DGS"
                 string label = "client market"
             }
-            prepend references = @./site.usdz@</World/Site/Market>
+            prepend references = @./zones/market-3dgs.usdz@</World>
         )
         {
-            custom float3 twin:cropMax = (5.5, 3.5, -1.5)
-            custom float3 twin:cropMin = (-1.5, -0.3, -7.5)
-            float xformOp:rotateY = 180
-            double3 xformOp:translate = (24.5, -0.4, 12.5)
+            custom float3 twin:cropMax = (2, 6, 0.5)
+            custom float3 twin:cropMin = (-4, -0.5, -10)
+            custom float xformOp:rotateY = 90
+            custom double3 xformOp:translate = (26, 0, 16.5)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateY"]
+        }
+
+        def Xform "Kitchen" (
+            customData = {
+                string capture = "photoreal 3DGS"
+                string label = "community kitchen"
+            }
+            prepend references = @./zones/kitchen-3dgs.usdz@</World>
+        )
+        {
+            custom float3 twin:cropMax = (6.5, 5, 0.3)
+            custom float3 twin:cropMin = (-4.5, -0.5, -11.5)
+            custom float xformOp:rotateY = -90
+            custom double3 xformOp:translate = (26.5, 0, 4.5)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateY"]
         }
     }

@@ -185,8 +185,8 @@ async function initScene(cfg) {
   // Operational areas (receiving, storage, staging, the community kitchen annex) from the ops model.
   const ops = params.has("noops") ? null : await getJSON(cfg.operations || "ops/operations.json");
   if (ops?.zones) {
-    const bare = ops.zones.filter((z) => z.kind === "kitchen" && !captures.some((c) => c.name === z.capture)).map((z) => z.id);
-    addOpsOverlay(scene, ops.zones, { uncovered: bare, stations: bare.length ? ops.kitchen?.equipment || [] : [] });
+    const kitchenCaptured = captures.some((c) => c.name === "Kitchen");
+    addOpsOverlay(scene, ops.zones, { annex: ["kitchen"], stations: kitchenCaptured ? [] : ops.kitchen?.equipment || [] });
   }
   const pill = $("twin-pill");
   if (captures.length) {
@@ -261,6 +261,7 @@ async function initScene(cfg) {
   // One button per capture, looking the way its source cameras looked (-Z in the capture frame).
   if (captures.length) {
     document.querySelector('#views [data-view="aisle"]')?.remove();
+    if (captures.some((c) => c.name === "Kitchen")) document.querySelector('#views [data-view="kitchen"]')?.remove();
     const followBtn = document.querySelector('#views [data-view="follow"]');
     captures.forEach((c, i) => {
       const yaw = THREE.MathUtils.degToRad(c.yaw_deg || 0), dir = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
