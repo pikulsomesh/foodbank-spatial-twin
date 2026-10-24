@@ -13,6 +13,11 @@ choosing the same capture the browser shows:
                           correction inside is unchanged and matches the viewer's
                           rotateX(180) . translate(0, -ground, 0) . scale.
   /World/Operations       references operations.usda (scripts/operations_to_usd.py)
+  /World/Facility         references facility.usdz (scripts/build_facility.py), the modeled
+                          building and fit-out. It is the visible default; /World/Site, the splat
+                          captures, is authored invisible (they only read well from their source
+                          cameras) unless --show-captures is given. Toggle it in Omniverse's stage
+                          panel to compare.
 
 so Omniverse (or Blender) opens one file with the captures, the operational areas and the
 kitchen in the same metres. Nothing is copied: the layer is a few KB of references. The viewer
@@ -20,7 +25,7 @@ also crops each capture to its `crop` box (capture frame) so spill outside the r
 the building; twin_crop.usdc, a sublayer, does the same in USD by overriding only the opacities of
 the splats outside the box to 0 instead of copying every splat.
 
-    python scripts/align_twin_usd.py [--config public/twin.config.json] [--out public/twin.usda] [--atlas] [--no-crop]
+    python scripts/align_twin_usd.py [--config public/twin.config.json] [--out public/twin.usda] [--atlas] [--no-crop] [--show-captures]
 """
 import argparse
 import json
@@ -61,6 +66,7 @@ def main():
     p.add_argument("--out", default=os.path.join(ROOT, "public", "twin.usda"))
     p.add_argument("--atlas", action="store_true", help="use the World Labs captures even where a trained zone exists")
     p.add_argument("--no-crop", action="store_true", help="skip twin_crop.usdc (show whole captures)")
+    p.add_argument("--show-captures", action="store_true", help="leave the splat captures visible over the modeled facility")
     a = p.parse_args()
     public = os.path.dirname(os.path.abspath(a.out))
     cfg = json.load(open(a.config, encoding="utf-8"))
@@ -75,7 +81,13 @@ def main():
     stage.GetRootLayer().customLayerData = {"autoTwin": {
         "frame": "telemetry frame: metres, Y up, origin at the dock-door corner (same as GET /telemetry and /operations)",
         "placements": os.path.relpath(a.config, public)}}
-    UsdGeom.Xform.Define(stage, "/World/Site")
+    site_prim = UsdGeom.Xform.Define(stage, "/World/Site")
+    if os.path.exists(os.path.join(public, "facility.usdz")):
+        fac = UsdGeom.Xform.Define(stage, "/World/Facility")
+        fac.GetPrim().GetReferences().AddReference("./facility.usdz", "/Facility")
+        fac.GetPrim().SetCustomDataByKey("source", "scripts/build_facility.py (Blender)")
+        if not a.show_captures:
+            site_prim.MakeInvisible()
 
     placed = []
     for name, asset, path, place, kind in sources(cfg, public, a.atlas):
