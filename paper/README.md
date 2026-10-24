@@ -40,14 +40,13 @@ The template uses biblatex with `backend=bibtex`, so it runs BibTeX rather than 
 
 ## Placeholders
 
-Every value not yet measured is a red `\TBD{...}` in the PDF (12 at present). None are estimates. To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
+Every value not yet measured is a red `\TBD{...}` in the PDF (10 at present). None are estimates. To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
 
 | Where | What it needs | Who or what unblocks it |
 |---|---|---|
 | Results 2.6, measurements table (2 rows) | Measured monthly AWS cost and telemetry latency | AWS deployment of the SAM stack |
 | Results 2.9, measurements table | Load time and frame rate on a laptop and a phone with a hardware GPU | Somesh, on his own devices (5 minutes) |
 | Results 2.10, Figure 11, measurements table, Methods, Movie S3 | Omniverse version, splat rendering check, screenshot, frame rate, recording | A rented RTX GPU (about $3 for an hour; plan in `docs/RENDERING.md`) |
-| Human Studies, Acknowledgments | Permission from the food bank and KXXV | Somesh |
 | Movie S1 | Final recording on the modeled facility | Can be recorded headless with `scripts/record_demo.mjs` |
 
 Resolved without new data on 2026-10-24: the abstract's cloud cost is now the list-price estimate (marked as an estimate); generation time is "n/a" because both runs failed; fusion time and hold-out fidelity are reported as not measured, in the table caption and the Discussion, and Statistical Analysis now describes what was actually measured; the demo URL is filled.
@@ -57,6 +56,6 @@ The source video appears to be KXXV's tour of the Central Texas Food Bank's new 
 ## Before submitting
 
 1. Verify every entry in `refs.bib`, especially `ctfb_impact_fy24` and `fa_meal`, which point at home pages rather than the specific report pages, against its source (authors, venue, pages, DOI), and add access dates to the web entries that lack one.
-2. Get permission from the Central Texas Food Bank and the video's rights holder (25 News KXXV) before publishing renders of the reconstruction.
+2. Somesh decided (2026-10-24) that no permission is sought: the Acknowledgments credit KXXV's public video tour as inspiration and say neither organization was involved. The video is publicly available, which is not the same as public domain; renders derived from its frames remain the author's call.
 3. The AI-use declaration in the Acknowledgments is confirmed by the author. AI tools cannot be listed as authors on arXiv or in most journals.
 4. For arXiv, suggested categories are primary `cs.CV`, cross-listed to `cs.GR` and `cs.CY`. A first-time submitter in a category may need an endorsement. Upload `main.tex`, `refs.bib`, the generated `main.bbl` and `figures/`. The line numbers are a journal-review convention; remove `\linenumbers` for the arXiv version if preferred.
