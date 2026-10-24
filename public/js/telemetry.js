@@ -6,6 +6,7 @@ const ZONES = [
   { id: "freezer-1", label: "Freezer", setpoint_c: -18.0, band_c: 3.0, position: [4.0, 1.5, 3.0] },
   { id: "cooler-1", label: "Cooler", setpoint_c: 3.0, band_c: 2.5, position: [12.0, 1.5, 3.0] },
   { id: "dry-1", label: "Dry Storage", setpoint_c: 21.0, band_c: 6.0, position: [20.0, 1.5, 8.0] },
+  { id: "kitchen-1", label: "Kitchen Walk-in", setpoint_c: 3.0, band_c: 2.5, position: [36.5, 1.5, 9.0] },
 ];
 export const FORKLIFT_PATH = [[1, 0, 12], [4, 0, 6], [12, 0, 6], [20, 0, 10], [12, 0, 12]];
 const LOOP_SECONDS = 120;

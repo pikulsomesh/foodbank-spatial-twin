@@ -1,4 +1,6 @@
 {
+  "model": "facility.glb",
+  "modelUsd": "facility.usdz",
   "zones": "zones/zones.json",
   "photoreal": "zones/photoreal.json",
   "splat": "factory.spz",

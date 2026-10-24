@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Food Bank Operations</title>
+<meta name="description" content="How a food bank runs end to end, as data in its digital twin: donations and purchases in, sorting, cold chain storage, the community kitchen and partner distribution out.">
+<meta name="theme-color" content="#0f1720">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1720'/%3E%3Cpath d='M6 24V13l10-6 10 6v11h-5v-7H11v7z' fill='%2357c7a5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/operations.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./">
+    <span class="logo" aria-hidden="true"></span>
+    <span>
+      <span class="title">Food Bank Operations</span>
+      <span class="sub">The whole operation as data in the twin</span>
+    </span>
+  </a>
+  <div class="pills">
+    <a class="pill link" href="./">Open the 3D twin</a>
+    <span id="clock" class="pill" title="Local time at the food bank">--:--</span>
+    <span id="feed-pill" class="pill" title="Where the numbers come from"><i class="dot"></i><span>Connecting…</span></span>
+  </div>
+</header>
+
+<main>
+  <p class="lede">A food bank is a warehouse that runs in reverse. Donations, USDA commodities and purchased food arrive at the docks, volunteers sort what was rescued from grocery stores, pallets go into dry racking, the cooler and the freezer, the community kitchen turns some of it into meals, and partner agencies collect the rest for pantries and shelters across 21 counties. This page follows one simulated day of that flow, in the same metric frame as the 3D twin.</p>
+
+  <section aria-labelledby="kpi-h">
+    <h2 id="kpi-h" class="vh">Today at a glance</h2>
+    <div id="kpis" class="kpis"></div>
+  </section>
+
+  <section class="card" aria-labelledby="flow-h">
+    <div class="card-head">
+      <h2 id="flow-h">Supply chain, today's plan</h2>
+      <p class="hint">Band width is pounds planned for today; hover a band for how much has moved so far.</p>
+    </div>
+    <div class="legend" id="flow-legend"></div>
+    <div class="scroll"><svg id="sankey" role="img" aria-label="Supply chain flow from sources through receiving, sorting and storage to partners and meals"></svg></div>
+  </section>
+
+  <div class="grid two">
+    <section class="card" aria-labelledby="plan-h">
+      <div class="card-head">
+        <h2 id="plan-h">Site plan</h2>
+        <p class="hint">Fill shows how full each area is. Areas marked with a camera are captured from video; select one to see it in 3D.</p>
+      </div>
+      <div class="scroll"><svg id="plan" role="img" aria-label="Top-down site plan with area utilisation"></svg></div>
+      <div class="ramp" id="plan-ramp"></div>
+    </section>
+
+    <section class="card" aria-labelledby="kitchen-h">
+      <div class="card-head">
+        <h2 id="kitchen-h">Community kitchen</h2>
+        <p class="hint" id="kitchen-sub"></p>
+      </div>
+      <div id="kitchen-stats" class="mini"></div>
+      <div class="legend" id="gantt-legend"></div>
+      <div class="scroll"><svg id="gantt" role="img" aria-label="Today's kitchen batches by stage"></svg></div>
+      <div id="kitchen-eq" class="chips"></div>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="inv-h">
+    <div class="card-head">
+      <h2 id="inv-h">Inventory</h2>
+      <p class="hint">Days of supply against each family's target (the tick). Stock carries over from day to day.</p>
+    </div>
+    <div class="scroll">
+      <table class="table" id="inventory">
+        <thead><tr><th>Family</th><th>Stored in</th><th class="n">On hand</th><th class="n">Pallets</th><th>Days of supply</th><th class="n">In today</th><th class="n">Out today</th><th class="n">Shelf life</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="grid two">
+    <section class="card" aria-labelledby="in-h">
+      <div class="card-head"><h2 id="in-h">Inbound trucks</h2><p class="hint" id="in-sub"></p></div>
+      <div class="scroll"><table class="table" id="inbound"><thead><tr><th>Load</th><th>From</th><th class="n">Lbs</th><th class="n">Door</th><th class="n">Due</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="card" aria-labelledby="out-h">
+      <div class="card-head"><h2 id="out-h">Next partner pickups</h2><p class="hint" id="out-sub"></p></div>
+      <div class="scroll"><table class="table" id="outbound"><thead><tr><th>Order</th><th>Agency</th><th class="n">Lbs</th><th class="n">Door</th><th class="n">Due</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+
+  <section class="card prose" aria-labelledby="how-h">
+    <h2 id="how-h">How this fits the twin</h2>
+    <ol>
+      <li><b>Video to digital twin.</b> The racking aisle, sorting room, client market and community kitchen are captured from walkthrough video. Each area on the plan above is a footprint in the twin's metric frame, so the capture, the data and the renderer agree on where things are.</li>
+      <li><b>Existing data on AWS.</b> The same Lambda that serves the cold-chain sensors answers <code>GET /operations</code> with inventory, flows, dock loads and kitchen batches. Today it is a deterministic simulator; a warehouse management system, a donor portal or the kitchen's production sheets can replace it behind the same JSON.</li>
+      <li><b>Omniverse as the visualisation layer.</b> <a href="twin.usda" download>twin.usda</a> opens the captured zones and <a href="operations.usda" download>operations.usda</a> together in one frame. Every area, kitchen station and flow is an OpenUSD prim keyed by the same ids as the API, ready to bind to the live feed in Omniverse (or Blender).</li>
+    </ol>
+    <p class="fine">Central Texas Food Bank is the inspiration, not a replica. Published figures (yearly pounds, partner agencies, kitchen size and equipment) are cited below; everything else is a modelling estimate marked in <a href="ops/operations.json">the master data</a>.</p>
+    <ul id="refs" class="refs"></ul>
+  </section>
+</main>
+<div id="tip" class="tip" role="tooltip" hidden></div>
+<script type="module" src="js/operations-page.js"></script>
+</body>
+</html>

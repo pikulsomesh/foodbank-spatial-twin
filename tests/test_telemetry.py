@@ -9,7 +9,7 @@ import app  # noqa: E402
 def test_payload_shape_and_determinism():
     a, b = app.build_payload(1_800_000_000.0), app.build_payload(1_800_000_000.0)
     assert a == b
-    assert {z["id"] for z in a["zones"]} == {"freezer-1", "cooler-1", "dry-1"}
+    assert {z["id"] for z in a["zones"]} == {"freezer-1", "cooler-1", "dry-1", "kitchen-1"}
     assert a["forklifts"][0]["position"] and a["simulated"] is True
 
 
