@@ -14,13 +14,19 @@ The content is organised around the project's three steps: video to twin with a 
 | `main.tex` | Manuscript |
 | `refs.bib` | References (biblatex; web sources are `@online` with `url`/`urldate`) |
 | `figures/overview.tikz` | Figure 1, the pipeline diagram (TikZ, included with `\input`) |
-| `figures/contact_sheet.jpg` | Figure 2, the eight input frames, copied from `data/ctfb-warehouse/` in PR 2 |
-| `figures/racking_preview.jpg`, `site_preview.jpg` | Figure 3, Spark renders of the fused zones, from PR 2 |
-| `figures/photoreal_four_zones.jpg` | Figure 5, the four locally trained zones in the browser, from PR 6 (`docs/img/photoreal/four-zones-in-twin.jpg`) |
-| `figures/twin_alignment.jpg` | Figure 6, top view of the composed `twin.usda` with the operations footprints, from PR 8 |
-| `figures/demo_overview.jpg`, `demo_aisle.jpg` | Figure 7, demo-site screenshots from PR 4 |
+| `figures/contact_sheet.jpg` | Figure 2, the eight input frames, from PR 2 |
+| `figures/racking_preview.jpg`, `site_preview.jpg` | Figure 3, Spark renders of the world-model zones, from PR 2 |
 | `figures/photoreal_before_after.jpg` | Figure 4, world-model capture vs. locally trained 3DGS, from PR 6 |
-| `figures/splat_vs_blender.jpg` | Figure 8, CPU splat renderer vs. Blender Cycles from the same cameras, from PR 5 |
+| `figures/photoreal_four_zones.jpg` | Figure 5, the four locally trained zones in the browser, from PR 6 |
+| `figures/arch_aws.pdf` (`.png`) | Figure 6, the AWS architecture (draw.io) |
+| `figures/twin_alignment.jpg` | Figure 7, alignment check of the composed stage, from PR 8 |
+| `figures/facility_cycles.jpg`, `before_after_phone.jpg` | Figure 8, the modeled facility and the phone before/after, from PR 9 |
+| `figures/facility_desktop.jpg` | Figure 9, the browser viewer on the modeled facility, from PR 9 |
+| `figures/splat_vs_blender.jpg` | Figure 10, CPU splat renderer vs. Blender Cycles, from PR 5 |
+| `figures/arch_azure.pdf`, `arch_gcp.pdf` (`.png`) | Figures 12 and 13 (appendix), the Azure and Google Cloud designs |
+| `diagrams/arch_*.drawio`, `diagrams/make_diagrams.py`, `diagrams/gcp_icons.json` | Editable draw.io sources and the script that writes them |
+
+The diagrams are generated, then exported with draw.io desktop (26.2.15, run headless with `xvfb-run`); the commands are in the docstring of `diagrams/make_diagrams.py`. Edit the `.drawio` files in draw.io directly for one-off changes, or the script to change all three clouds together.
 
 ## Build
 
@@ -34,19 +40,17 @@ The template uses biblatex with `backend=bibtex`, so it runs BibTeX rather than 
 
 ## Placeholders
 
-Every value not yet measured is a red `\TBD{...}` in the PDF (19 at present). None are estimates. Items that wait on AWS say "pending AWS". To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
+Every value not yet measured is a red `\TBD{...}` in the PDF (12 at present). None are estimates. To list them: `grep -n TBD main.tex`. Before submission, change `\drafttrue` to `\draftfalse` near the top of `main.tex`; the build then stops at the first unresolved placeholder.
 
-| Where | What it needs | Comes from |
+| Where | What it needs | Who or what unblocks it |
 |---|---|---|
-| Abstract, Results 2.6, Table 3 | Monthly AWS cost and telemetry latency (marked "pending AWS") | Deployed backend |
-| Table 3 | Generation time, fusion time, hold-out fidelity, frame rates | A successful generate run; a timed fuse; a hardware-GPU browser test |
-| Results 2.7 | Public URL, load time and frame rate | Live demo site once deployed |
-| Results 2.9, Figure 9, Methods: Visualization | Omniverse version, splat rendering check, screenshot, frame rate | Rented RTX GPU (plan in PR 5's `docs/RENDERING.md`) |
-| Methods: Statistical Analysis | Held-out frame count, dispersion statistic, pose method | Evaluation run |
+| Results 2.6, measurements table (2 rows) | Measured monthly AWS cost and telemetry latency | AWS deployment of the SAM stack |
+| Results 2.9, measurements table | Load time and frame rate on a laptop and a phone with a hardware GPU | Somesh, on his own devices (5 minutes) |
+| Results 2.10, Figure 11, measurements table, Methods, Movie S3 | Omniverse version, splat rendering check, screenshot, frame rate, recording | A rented RTX GPU (about $3 for an hour; plan in `docs/RENDERING.md`) |
 | Human Studies, Acknowledgments | Permission from the food bank and KXXV | Somesh |
-| Supplementary | Final demo recording (a draft exists in `demo-site/demo-draft.mp4`); Omniverse movie | Demo and renderer work |
+| Movie S1 | Final recording on the modeled facility | Can be recorded headless with `scripts/record_demo.mjs` |
 
-Filled from measured facts on 2026-10-19: frame counts, splat counts, SPZ and USDZ sizes and credit costs (PR 2), frame extraction time (88 s, re-run locally), SPZ to USDZ conversion time (5.2 s and 3.9 s, re-run locally), Figures 3 to 6 (PR 2 previews, PR 6 before/after, PR 4 screenshots, PR 5 renders), the locally trained racking zone (PR 6), the Kit license wording (kit-app-template README) and two cited sentences on food bank operations, and the operations layer (Results 2.7, Table 4, Methods: Operations model) from PR 8, with weekday ranges computed by running its simulator over 1 September to 26 October 2026, and the single composed stage (`twin.usda`, Figure 5) from PR 8 commit d0a3d76. The case study is framed as a representative Texas food bank with a provenance table, and the Discussion carries a list-price cost estimate for running on real floor data (`docs/COST_ESTIMATE.md`); the measured AWS bill of the demo backend is still pending. Updated on 2026-10-23 for PR 6 as merged: four locally trained zones (Table 4, Figure 5) and the final trainer (background plates, hull carving); per-zone training wall-clock times were not recorded, so the paper gives the documented step count and rate instead.
+Resolved without new data on 2026-10-24: the abstract's cloud cost is now the list-price estimate (marked as an estimate); generation time is "n/a" because both runs failed; fusion time and hold-out fidelity are reported as not measured, in the table caption and the Discussion, and Statistical Analysis now describes what was actually measured; the demo URL is filled.
 
 The source video appears to be KXXV's tour of the Central Texas Food Bank's new Waco hub (KXXV is a Waco station and the lower-third reads "Feed the Need"); the paper says "appears to be". Confirm before submission.
 

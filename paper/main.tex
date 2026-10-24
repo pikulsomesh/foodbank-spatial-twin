@@ -19,6 +19,7 @@
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{tabularx}
+\usepackage{rotating}
 \usepackage{xcolor}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
@@ -68,29 +69,29 @@ backend=bibtex]{biblatex}
 %%%%%% Abstract %%%%%%
 \begin{abstract}
 Digital twins, virtual copies of a site kept in sync with its live data, help
-warehouses plan layouts and catch failures, but building one
-usually takes laser scans, hand-drawn 3D models and simulation specialists,
-which puts twins out of reach for most non-profits. We asked whether an
-ordinary walkthrough video is enough to start one, and built an open pipeline
-in three steps. First, a world model, an AI system that infers the 3D structure
-of a scene from a few images and can generate views the camera never captured,
-estimates camera positions and real-world depth for a handful of frames, which
-are fused into a 3D Gaussian-splat scene. Second,
-the scene is connected to operational data, such as freezer temperatures and
-forklift positions, through a serverless backend on Amazon Web Services that
-costs nothing when idle. Third, NVIDIA Omniverse displays the twin with its
-live data, with a web browser and Blender as alternatives. Universal Scene
-Description, an open 3D file standard that now stores Gaussian splats natively,
-is the only interface between the steps. Applied to a representative Texas
-food bank, with three areas captured from a public news video, twenty frames produced a twin of about 747,000 splats
-in one 48.5-megabyte file for 200 world-model credits (20 US cents), plus up to
-800 more if two failed requests are billed. Generating views of unfilmed areas
-failed on the provider's side both times, so the twin shows only what the
-camera saw. Splat models trained locally from 49 to 72
-frames each, at no credit cost, made these areas and a community
-kitchen photorealistic near the filmed path. Cloud cost is \TBD{pending AWS deployment}. A phone video and
-a world model can bring a first facility twin within reach of charitable
-organizations; filling in unseen space is the open step.
+warehouses plan and catch failures, but building one usually takes
+laser scans, hand-built 3D models and simulation specialists, which puts twins
+out of reach for most non-profits. We asked whether a walkthrough
+video is enough to start one, and built an open pipeline in three steps.
+First, a world model, an AI system that infers the 3D structure of a scene from
+a few images, estimates camera positions and real-world depth for a handful of
+frames, which are fused into a 3D Gaussian-splat scene. Second, the scene is
+connected to operational data, such as freezer temperatures, through a serverless backend on Amazon Web Services that costs
+nothing when idle. Third, NVIDIA Omniverse or a web browser displays the twin
+with its live data. Universal Scene Description, an open 3D standard that now
+stores Gaussian splats natively, is the only interface between the steps.
+Applied to a representative Texas food bank, twenty frames of a public news
+video captured three areas as about 747,000 splats for 200 world-model credits
+(20 US cents). Generating views of unfilmed areas failed on the provider's side
+twice, so the captures show only what the camera saw. Splat models
+trained locally from 49 to 72 frames each, at no credit cost, made these areas
+and a community kitchen photorealistic near the filmed path. From a distance
+the captures break into fragments, so the whole-building view is a designed
+facility model, built in Blender and published in the same standard. Real
+sensors for one facility are estimated at about US\$2,700 plus \$12 a month in
+cloud services. A phone video and a world model can bring a first facility twin
+within reach of charities; filling in unseen space is the open
+step.
 \end{abstract}
 
 %%%%%% Main Text %%%%%%
@@ -239,8 +240,8 @@ forklift paths and telemetry. The volunteer sorting room and the client market
 were captured in a second run, from narrower windows in which the camera moves
 enough to give overlapping views. The other operating areas of the
 representative food bank (receiving, freezer, cooler and order staging) were
-not captured: they are designed footprints in the operations layer and a grey
-massing model in the browser, not generated or reconstructed geometry
+not captured: they are designed footprints in the operations layer, drawn by
+a modeled facility, not generated or reconstructed geometry
 (Table~\ref{tab:provenance}). The community kitchen was captured later by
 local training only.
 
@@ -254,7 +255,8 @@ Part of the twin & Kind & Source \\
 Racking aisle, sorting room, client market (geometry) & Captured, partial & 20 frames of a public walkthrough of a Central Texas Food Bank building; world-model depth fused locally. The same three are also trained locally from 49 to 72 frames each (Table~\ref{tab:photoreal}). \\
 Community kitchen interior (geometry) & Captured, partial & Trained locally from 65 frames of the same video; no world-model capture. \\
 Absolute scale & Estimated & The world model's metric depth; not checked against a survey. \\
-Building shell, receiving, freezer, cooler, order staging, kitchen annex footprint & Designed & Footprints chosen for this paper; drawn as grey massing or outlines, never as splats. \\
+Building shell, receiving, freezer, cooler, order staging, kitchen annex footprint & Designed & Footprints chosen for this paper. \\
+Modeled facility (racking, cold rooms, sorting lines, market, kitchen equipment, forklifts) & Designed & Built in Blender by one script from the designed footprints, with fit-out inspired by the video; a compact 26\,$\times$\,20\,m building plus an 11.5\,$\times$\,11\,m annex, much smaller than the facility whose volumes drive the operations model. \\
 Annual volume, agencies, floor area, pallet positions, cold storage, docks, kitchen equipment, meals per day & Published & Figures for the Central Texas Food Bank's Austin facility (Table~\ref{tab:published}). \\
 Source and channel shares, product mix, capacities, recipes, step times & Estimated & Set for this paper and flagged as estimates in the master data. \\
 Temperatures, door events, forklifts, daily flows and inventory & Simulated & Computed from the clock; every payload carries \code{simulated: true}. \\
@@ -440,9 +442,29 @@ The reference backend serves simulated cold-chain telemetry for three zones
 and $21^\circ$C) and one forklift on a closed path from the dock through the
 storage aisles. It has no virtual private cloud, NAT gateway, database or
 provisioned capacity, so an idle twin costs nothing beyond storage.
-No real data connector is deployed yet, so all telemetry in this paper is
-simulated. \TBD{pending AWS deployment: monthly cost at demo traffic, from the
-AWS bill, and client-side latency}.
+The same function also serves \code{GET /operations}, the operations layer
+described next. No real data connector is deployed yet, so all telemetry in
+this paper is simulated. Figure~\ref{fig:aws} shows the AWS pattern: the
+services in the repository's template today (object storage, the HTTP API and
+its function, logs, access roles and a budget alert) and the real-floor path
+that the Discussion prices, in which sensors and the warehouse management
+system feed the same API. Appendix~\ref{app:clouds} gives equivalent designs
+on Microsoft Azure and Google Cloud. \TBD{pending AWS deployment: monthly cost
+at demo traffic, from the AWS bill, and client-side latency}.
+
+\begin{sidewaysfigure}
+\centering
+\includegraphics[width=\linewidth]{arch_aws.pdf}
+\caption{The food bank twin on AWS. Solid borders are in the repository today
+(AWS Serverless Application Model template; simulated data); dashed borders are
+the real-floor path priced in Table~\ref{tab:costest}. Step~1 runs on a
+workstation or in continuous integration and publishes the OpenUSD twin to
+object storage; Step~2 connects floor sensors and the warehouse management
+system; Step~3 is the browser, Omniverse on an on-demand GPU instance,
+desktop tools and staff alerts. Drawn in draw.io with the AWS architecture
+icons; the source is in the repository's \code{paper/diagrams} folder.}
+\label{fig:aws}
+\end{sidewaysfigure}
 
 \subsection{An operations layer turns the geometry into a working food bank}
 The captured zones show what the building looks like; an operations layer
@@ -458,26 +480,28 @@ JavaScript port returns identical payloads offline, which a test enforces. For
 Omniverse, a script writes the layer as \code{operations.usda}, with one prim
 per area (8), kitchen station (7) and flow (16), keyed by the same identifiers
 as the API so that an extension can bind live values to them. One stage,
-\code{twin.usda}, composes the captured zones with this layer: it references
-each capture from the site package and places it with the same configuration
-file the browser uses, so Omniverse, the browser and the API share one frame
-(Fig.~\ref{fig:alignment}). Each capture is cropped to its area by a sublayer
-that only overrides the opacities of splats outside the crop box (0.5\,MB,
-against about 37\,MB for copying the cropped splats), so the capture library
-is never copied or edited, and a test fails if the placements in the stage and
-in the browser configuration drift apart. The stage composes the world-model
-captures; the locally trained zones have their own USDZ packages with the same
-contract and are composed only in the browser so far.
+\code{twin.usda}, composes the twin for Omniverse: the modeled facility
+described below (visible), the four captured zones (the locally trained
+versions, falling back to the world-model capture where an area has none;
+authored invisible so they can be switched on), and this layer. Each capture
+is referenced, not copied, and placed with the same configuration file the
+browser uses, so Omniverse, the browser and the API share one frame
+(Fig.~\ref{fig:alignment}). Each capture is cropped to its area by a 0.65\,MB
+sublayer that only overrides the opacities of splats outside the crop box, so
+the capture library is never copied or edited, and a test fails if the
+placements in the stage and in the browser configuration drift apart. Opened
+with the OpenUSD library, the stage holds 452 prims, including 137 meshes and
+four Gaussian-splat prims, in Y-up meters.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.85\linewidth]{twin_alignment.jpg}
-\caption{Top view of the composed OpenUSD stage, rendered on the CPU from
-\code{twin.usda}, with the operations-layer footprints drawn over it (pink: areas;
-yellow: building). The world-model captures of the sorting room, dry racking
-and market land in their areas; the racking capture extends slightly past its
-footprint. The other areas have no world-model capture and exist only in the
-operations layer in this stage.}
+\caption{Alignment check: top view of an earlier version of the composed
+OpenUSD stage, rendered on the CPU, with the operations-layer footprints drawn
+over it (pink: areas; yellow: building). The world-model captures of the
+sorting room, dry racking and market land in their areas; the racking capture
+extends slightly past its footprint. The current stage keeps these placements
+and adds the trained zones and the modeled facility.}
 \label{fig:alignment}
 \end{figure}
 
@@ -523,36 +547,72 @@ About 950 kitchen meals per day for after-school, summer and child-care meal pro
 \label{tab:published}
 \end{table}
 
-\subsection{The browser shows the twin with live telemetry}
-The browser viewer renders the zones with Spark from their SPZ files. By
-default it loads the four locally trained zones (8.0\,MB in total), using each
-in place of the world-model capture of the same area; a URL switch shows the
-three world-model captures instead (5.9\,MB). Both are placed by the same
-configuration as the composed USD stage (Figure~\ref{fig:browser}). Because the captures are partial, the
-viewer sets them inside a procedurally generated building with cold rooms,
-racking and pallets, which is clearly not reconstructed from the video, and
-overlays the simulated cold-chain and forklift telemetry as labels, rings and
-a side panel. It runs from static files, falls back to a local copy of the
-simulator when no backend is configured, and renders in desktop and phone
-layouts in headless Chromium. \TBD{public URL, and load time and frame rate on
-a reference laptop and phone with a hardware GPU}.
+\subsection{A modeled facility gives the whole-building view the captures cannot}
+The captures answer \emph{what does this aisle look like}, but only from near
+the camera path: from an overview they break into fragments, and a phone
+screen showed the twin as debris over a grey massing model
+(Figure~\ref{fig:facilityB}). For the view a manager or volunteer needs first,
+where everything is and how it is doing, the twin's default scene is therefore
+a modeled facility (Figure~\ref{fig:facilityA}). One script builds it headless
+with Blender's Python module \cite{blender} in the telemetry frame, from the
+operations layer's footprints and the cold-room probe positions, so the
+labels, the forklift route and the operations page line up with it. It
+contains the shell and dock doors with a trailer, the freezer and cooler as
+cutaways with racking inside, four rows of selective pallet racking, receiving
+and order staging, the volunteer sorting room with tables, roller conveyors and
+scales, the client market with wire shelving, a produce display, a fridge case
+and checkout, the community kitchen annex with kettles, tilt skillets, combi
+ovens, blast chillers, prep tables, a pack line and a walk-in, forklifts,
+painted lanes and signage. The same scene is written as a 1.8\,MB binary glTF
+file for the browser and a 1.6\,MB USDZ package for Omniverse, which the
+OpenUSD library opens as 129 meshes in Y-up meters. The model is designed, not
+reconstructed: the fit-out is inspired by the walkthrough video and the layout
+comes from the operations layer, the building is a compact 26\,$\times$\,20\,m
+stand-in plus an annex rather than a 135{,}000\,sq\,ft warehouse, and the
+viewer labels it a representative food bank, not a replica. The captures stay
+one switch away, in the browser and in the USD stage.
 
 \begin{figure}[t]
 \centering
-\begin{subfigure}{0.49\textwidth}
-  \includegraphics[width=\linewidth]{demo_overview.jpg}
-  \caption{\label{fig:browserA}}
+\begin{subfigure}{0.62\textwidth}
+  \includegraphics[width=\linewidth]{facility_cycles.jpg}
+  \caption{\label{fig:facilityA}}
 \end{subfigure}\hfill
-\begin{subfigure}{0.49\textwidth}
-  \includegraphics[width=\linewidth]{demo_aisle.jpg}
-  \caption{\label{fig:browserB}}
+\begin{subfigure}{0.36\textwidth}
+  \includegraphics[width=\linewidth]{before_after_phone.jpg}
+  \caption{\label{fig:facilityB}}
 \end{subfigure}
-\caption{The browser viewer. (\subref{fig:browserA}) Overview of the three
-captured zones inside the generated building, with live labels for the
-freezer, cooler, dry storage and forklift and the cold-chain panel.
-(\subref{fig:browserB}) The racking capture from its source viewpoint; the
-red racking and pallet in the center are reconstructed, while the walls and
-the racking on the right belong to the generated building.}
+\caption{The modeled facility. (\subref{fig:facilityA}) Cycles render of the
+Blender scene: cold storage, pallet racking, receiving and staging, the
+volunteer sorting room, the client market and the community kitchen annex.
+(\subref{fig:facilityB}) The browser overview on a phone before (captured
+splats over a massing model) and after (the modeled facility), both with
+simulated telemetry.}
+\label{fig:facility}
+\end{figure}
+
+\subsection{The browser shows the twin with live telemetry}
+The public demo at \url{https://pikulsomesh.github.io/foodbank-spatial-twin/}
+opens on the modeled facility, drawn with three.js, with labels for the
+freezer, cooler, dry storage and kitchen walk-in temperatures, the forklift's
+battery, and a cold-chain panel (Figure~\ref{fig:browser}). The model's
+forklift moves along the position and heading the telemetry reports. Preset
+views open the cold rooms, kitchen, racking, sorting room and market, and a
+portrait layout serves phones. A URL switch composites the captured zones with
+Spark \cite{spark}, using the four locally trained zones (8.0\,MB in total) in
+place of the world-model captures of the same areas (5.9\,MB), and a separate
+page compares each zone from its source cameras. The site runs from static
+files, falls back to a local copy of the simulator when no backend is
+configured, and was checked in desktop and phone layouts in headless Chromium.
+\TBD{load time and frame rate on a reference laptop and phone with a hardware
+GPU}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{facility_desktop.jpg}
+\caption{The browser viewer on a desktop, opening on the modeled facility with
+simulated telemetry labels and the cold-chain panel. The buttons open preset
+views; the panel links to the captured zones.}
 \label{fig:browser}
 \end{figure}
 
@@ -571,9 +631,12 @@ renders in Cycles that match the splat renderer shot for shot, at about 5\,s
 per 960\,$\times$\,540 frame with 8 samples. In both, each zone reads well only
 near its source viewpoints; wide shots break into fragments because the
 captures are sparse, which more frames or generated views would address, not
-a different renderer. \TBD{Omniverse version and hardware, confirmation that it
-renders the splat schema natively, measured frame rate, and a screenshot with
-telemetry overlays (Figure~\ref{fig:omniverse})}.
+a different renderer, and they are why the modeled facility is the default
+view. The modeled facility itself is ordinary meshes and materials written by
+Blender's USD exporter, so any OpenUSD reader can open it.
+\TBD{Omniverse version and hardware, confirmation that it renders the splat
+schema natively, measured frame rate, and a screenshot with telemetry overlays
+(Figure~\ref{fig:omniverse})}.
 
 \begin{figure}[t]
 \centering
@@ -598,7 +661,7 @@ Table~\ref{tab:results} collects the cost, time and fidelity measurements, the
 three properties that decide whether a small operator can adopt the approach.
 
 \begin{table}[t]
-\caption{Measurements for the three-zone twin. Values marked TBD are not yet measured.}
+\caption{Measurements for the twin. Values marked TBD are not yet measured; fusion time was not recorded, and no hold-out fidelity was measured (see Discussion).}
 \centering\small
 \begin{tabular}{@{}lll@{}}
 \toprule
@@ -611,11 +674,10 @@ World-model cost, failed generation (credits) & 0 to 800 & billing of failures u
 Splats, racking / sorting / market & 270k / 282k / 195k & fused files \\
 SPZ size, racking / sorting / market (MB) & 2.1 / 2.2 / 1.6 & committed files \\
 USDZ size, racking / site (MB) & 17.5 / 48.5 & committed files \\
-World-model generation time (min) & \TBD{measure} & operation start to completion \\
+World-model generation time (min) & n/a & both runs failed \\
 SPZ to USDZ, 270k / 182k splats (s) & 5.2 / 3.9 & wall clock, 4 cores \\
-Fusion time (s) & \TBD{measure} & wall clock \\
 Locally trained zones (credits) & 0 & four zones, Table~\ref{tab:photoreal} \\
-Hold-out PSNR (dB) / SSIM / LPIPS & \TBD{measure} & frames not used as input \\
+Modeled facility, GLB / USDZ (MB) & 1.8 / 1.6 & committed files \\
 Telemetry latency, p50 / p95 (ms) & \TBD{pending AWS} & client side, 1{,}000 requests \\
 Monthly AWS cost (USD) & \TBD{pending AWS} & billing, demo traffic \\
 Browser frame rate (fps) & \TBD{measure} & reference laptop and phone \\
@@ -641,19 +703,22 @@ browser renders with live telemetry.
 The main limitation in the current results is coverage. Twenty frames from an
 interview walkthrough recover the parts of three zones the camera pointed at,
 not whole rooms, and the generative step that should fill the rest failed on
-the provider's side. Until it works, the browser demo surrounds the captures
-with a procedural building, which is useful for explaining the twin but is not
-a reconstruction. A second limitation is that generated is not measured. A world model completes
+the provider's side. Until it works, the whole-building view is a designed
+model, which explains the operation well but is not a reconstruction; the
+honest summary is that video and world models gave the twin its photographs
+of real places, while its map is drawn. A second limitation is that generated is not measured. A world model completes
 what the camera did not see. That is useful for a planning or communication
 twin and unsafe if someone reads a generated aisle as the real one. Generated
 regions should be marked in the stage, for example with an attribute on splats
 or a separate USD layer, so renderers can show them differently.
 No generated regions exist in the twin yet, so no such marking has been
-implemented; the browser viewer draws its procedural building as a neutral grey
-massing model so it cannot be mistaken for a capture. Scale comes from the world model's metric
+implemented; designed content is kept in its own model and layer so it cannot
+be mistaken for a capture. Scale comes from the world model's metric
 estimate rather than a survey, so absolute dimensions should be checked
 against at least one known measurement before the twin informs layout
-decisions. People, motion blur, reflective steel and repetitive racking remain
+decisions. Nor did we measure fidelity on held-out frames: the zones were
+judged by eye from their source cameras, so a quantitative comparison of the
+world-model and locally trained captures remains to be done. People, motion blur, reflective steel and repetitive racking remain
 hard inputs; masking people before reconstruction would help, and the world
 model's API exposes masked inputs that we have not yet evaluated.
 
@@ -665,10 +730,10 @@ fair picture of what a Texas food bank's twin looks like, but not a record of
 any one site, and its provenance (Table~\ref{tab:provenance}) should travel
 with every image of it. A twin of a real facility would replace each designed
 or simulated row with a capture or a live feed from that facility. Keeping these sources in one frame is what lets the twin be
-used at all: one USD stage composes the captured zones (by reference, placed
-by the same configuration as the browser) with the operations layer, and
-cropping is a non-destructive opacity override, so the capture library is never
-copied. A new capture or a new data feed therefore changes one layer rather
+used at all: one USD stage composes the modeled facility, the captured zones
+(by reference, placed by the same configuration as the browser) and the
+operations layer, and cropping is a non-destructive opacity override, so the
+capture library is never copied. A new capture or a new data feed therefore changes one layer rather
 than the whole stage.
 
 Applying the approach also needs care outside the software. Walkthrough
@@ -844,7 +909,7 @@ refusal of non-draft models and ledger accounting.
 The backend is one AWS Serverless Application Model template \cite{awssam}: an
 S3 bucket serving the twin assets and web viewer; a Python 3.12 Lambda
 function on arm64 with 128\,MB of memory and a 3\,s timeout behind an HTTP API
-with \code{GET /telemetry} and \code{GET /health}, throttled to 5 requests per
+with \code{GET /telemetry}, \code{GET /operations} and \code{GET /health}, throttled to 5 requests per
 second (burst 10) as a cost ceiling; and a log group with seven-day retention.
 The telemetry function is stateless and deterministic: every value is a
 function of the wall clock, so clients in the same second see the same state
@@ -853,10 +918,10 @@ a 15-minute period plus per-5-second jitter, doors open in about 10\% of
 30-second windows, and alarm status is set when the deviation from setpoint
 exceeds the zone's band. Responses are cacheable for 2\,s and every payload
 carries \code{simulated: true}. Zone and asset anchors are in meters in the
-twin frame. In the browser viewer, each capture's placement, crop box and the
-area of generated geometry it replaces are set by hand in a configuration file.
-The simulated zone anchors have not yet been calibrated against the captures,
-so their residual error is not measured.
+twin frame, the frame the modeled facility is built in, so labels sit on the
+modeled cold rooms by construction. Each capture's placement and crop box are
+set by hand in a configuration file; their residual error against the real
+building is not measured, because no survey exists.
 
 \subsection{Operations model}
 The master data lists areas with footprints and positions in meters, six
@@ -876,44 +941,58 @@ Sunday is closed. The weekday ranges in Results were computed by evaluating the
 model at the end of each day from 1 September to 26 October 2026.
 
 \subsection{Visualization}
+The modeled facility is built by \code{scripts/build\_facility.py} with the
+\code{bpy} module of Blender on Python 3.13, without a display. Footprints
+come from the operations master data; materials use small procedural textures
+generated by the script, so the build needs no downloads. One mesh per area and
+material keeps the browser to about 150 draw calls. The script exports the
+scene as binary glTF (Y up, transforms applied) and as USDZ with materials, and
+can also save a \code{.blend} file and a Cycles still (48 samples, denoised,
+CPU). A test checks that the glTF file carries every operational area and the
+forklift node and that the building floor spans the telemetry frame.
+
 The stage to open in Omniverse is \code{twin.usda}. A script writes it from
-the browser configuration: one reference per capture into the site package with
-the viewer's translation, rotation and scale, a crop sublayer that sets the
-opacity of every splat outside the capture's crop box to zero, and a reference
-to \code{operations.usda}; a test compares the stage's placements with the
-configuration. A second script renders the stage on the CPU with the area
-footprints drawn over it as a visual check. In Omniverse, a small extension is planned that polls \code{/telemetry} and
-updates prims under the twin: zone markers change color with alarm status,
-labels show temperatures, and the forklift prim follows its reported position
-and heading. The plan is to open the same stage on a rented RTX GPU, where
-Omniverse renders particle-field prims natively, and capture the camera list
-used for the CPU renders.
-\TBD{Kit version and whether this is a Kit app template or a plain stage plus
-extension}. The browser viewer renders the zone SPZ files with Spark
-\cite{spark}, a three.js Gaussian-splat renderer, places them with the site
-plan, and overlays the same telemetry; a procedural splat layout of the
-building surrounds the captures and is labeled as generated. The site deploys
-as static files to GitHub Pages; common USD web viewers hand USDZ to AR Quick
-Look, which does not render USD particle fields. The CPU splat renderer uses
-usd-core, NumPy and Numba, projects each Gaussian with an elliptical weighted
-average filter, colors it from its degree-0 spherical harmonics and blends
-front to back. For Blender \cite{blender}, a script reads every splat prim with
-the \code{pxr} module, builds one point cloud per prim with Geometry Nodes
-(radius 1.7 times the splat scale, emission color, opacity as transparency) and
-renders with Cycles on the CPU; the scene can be saved as a \code{.blend} file
-and explored in the Blender interface. Spheres are not Gaussians, so edges are
-harder than in the splat renderer.
+the browser configuration: a reference to the modeled facility, one reference
+per capture with the viewer's translation and rotation, a crop sublayer that
+sets the opacity of every splat outside the capture's crop box to zero, and a
+reference to \code{operations.usda}; a test compares the stage's placements
+with the configuration. A second script renders the captures on the CPU with
+the area footprints drawn over them as a visual check. In Omniverse, a small
+extension is planned that polls \code{/telemetry} and updates prims under the
+twin: zone markers change color with alarm status, labels show temperatures,
+and the forklift follows its reported position and heading. The plan is to
+open the stage on a rented RTX GPU, record the Kit version, and capture the
+camera list used for the CPU renders.
+
+The browser viewer uses three.js 0.180 and its glTF loader for the modeled
+facility, and Spark 2.2 \cite{spark} only when the captures are switched on.
+It deploys as static files to GitHub Pages; common USD web viewers hand USDZ
+to AR Quick Look, which does not render USD particle fields. The CPU splat
+renderer uses usd-core, NumPy and Numba, projects each Gaussian with an
+elliptical weighted average filter, colors it from its degree-0 spherical
+harmonics and blends front to back. For the captures in Blender, a script
+reads every splat prim with the \code{pxr} module, builds one point cloud per
+prim with Geometry Nodes (radius 1.7 times the splat scale, emission color,
+opacity as transparency) and renders with Cycles on the CPU. Spheres are not
+Gaussians, so edges are harder than in the splat renderer.
+
+The architecture diagrams (Figure~\ref{fig:aws} and
+Appendix~\ref{app:clouds}) are generated as draw.io files by
+\code{paper/diagrams/make\_diagrams.py} with the AWS, Azure and Google Cloud
+icon libraries of draw.io 26.2.15 and exported to PDF with draw.io desktop.
 
 \subsection{Statistical Analysis}
-Fidelity is measured on held-out frames: frames from the extraction window
-that were not given to the world model. Their camera poses are estimated
-against the reconstruction and the twin is rendered from those poses; we
-report mean PSNR, SSIM and LPIPS over the held-out set with
-\TBD{N held-out frames and the dispersion statistic}. Because the world model
-is allowed to invent unseen content, these metrics are meaningful only in
-observed regions. Latency is reported as the 50th and 95th percentiles of
-1{,}000 client-side requests. \TBD{confirm protocol and pose estimation
-method}.
+This is a single case study, and every value reported is a single measurement:
+counts and file sizes from the committed files, times from one wall-clock run on
+a four-core CPU machine, and costs from rate cards or list prices. No repeated
+runs, hypothesis tests or confidence intervals are reported. The weekday ranges
+of the operations model are the minimum, median and maximum over 40 simulated
+weekdays from one deterministic run. No fidelity metric on held-out frames was
+computed; when it is, frames from each extraction window that were not used for
+training should be posed against the reconstruction and compared in observed
+regions only, because generated content has no ground truth. Telemetry latency,
+once the backend is deployed, will be reported as the 50th and 95th
+percentiles of 1{,}000 client-side requests.
 
 \subsection{Animal and Human Studies}
 No human subjects research was performed. The input is a publicly broadcast
@@ -952,8 +1031,8 @@ repository; public release of renders is subject to the facility's permission.
 
 \section*{Supplementary Materials}
 Movie S1. Recorded tour of the browser twin with simulated telemetry, rendered
-frame by frame in a headless browser. \TBD{replace the draft recording with the
-final cut}
+frame by frame in a headless browser. \TBD{record the final cut on the modeled
+facility; the draft shows the earlier capture view}
 
 Movie S2. A 24\,s 1080p flythrough of the OpenUSD stage, rendered with the CPU
 Gaussian-splat renderer.
@@ -963,8 +1042,65 @@ Movie S3. The twin in NVIDIA Omniverse with live telemetry. \TBD{record}
 Data file S1. Commands to reproduce the pipeline end to end, in three files in
 the repository's \code{docs} folder: \code{CTFB\_WAREHOUSE\_RUN.md}
 (world-model zones), \code{PHOTOREAL.md} (locally trained zones) and
-\code{RENDERING.md} (CPU, Blender and planned Omniverse renders).
+\code{RENDERING.md} (CPU, Blender and planned Omniverse renders), with
+\code{scripts/build\_facility.py} for the modeled facility.
 
+Data file S2. The architecture diagrams as editable draw.io files
+(\code{paper/diagrams}).
+
+\appendix
+\section{Equivalent designs on Microsoft Azure and Google Cloud}
+\label{app:clouds}
+Nothing in the pipeline depends on AWS: the OpenUSD twin is files, and the API
+is a stateless function behind an HTTPS endpoint. Figures~\ref{fig:azure}
+and~\ref{fig:gcp} redraw Figure~\ref{fig:aws} with the same layout on the
+other two large clouds, service for service (Table~\ref{tab:clouds}). Neither
+has been deployed or priced. Two differences matter for a food bank. Azure IoT
+Hub has no built-in LoRaWAN network server, so a partner network server
+forwards the sensors' uplinks to it. Google Cloud IoT Core was retired in
+August 2023, so on Google Cloud the sensors and gateways reach Pub/Sub through
+a partner or self-hosted LoRaWAN network server and MQTT broker.
+
+\begin{table}[h]
+\caption{The same twin on three clouds.}
+\centering\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Role & AWS & Azure & Google Cloud \\
+\midrule
+LoRaWAN network server & IoT Core for LoRaWAN & Partner network server & Partner network server \\
+MQTT ingest & IoT Core & IoT Hub & Partner or self-hosted broker \\
+Routing & IoT Core rules & Event Grid & Pub/Sub \\
+Functions & Lambda & Functions & Cloud Run functions \\
+Readings store & DynamoDB & Cosmos DB (serverless) & Firestore \\
+Object storage & S3 & Blob Storage & Cloud Storage \\
+HTTP API & API Gateway HTTP API & API Management (Consumption) & Cloud Run \\
+Content delivery & CloudFront & Front Door & Cloud CDN \\
+Monitoring, alerts & CloudWatch, SNS & Azure Monitor, action groups & Cloud Logging, Cloud Monitoring \\
+Access, budgets & IAM, Budgets & Entra ID and RBAC, Cost Management & Cloud IAM, Billing budgets \\
+GPU for Omniverse & EC2 g6e.xlarge (L40S) & NVads A10 v5 & Compute Engine G2 (L4) \\
+\bottomrule
+\end{tabularx}
+\label{tab:clouds}
+\end{table}
+
+\begin{sidewaysfigure}
+\centering
+\includegraphics[width=\linewidth]{arch_azure.pdf}
+\caption{The food bank twin on Microsoft Azure: an equivalent design, not
+deployed. Drawn in draw.io with the Azure icons.}
+\label{fig:azure}
+\end{sidewaysfigure}
+
+\begin{sidewaysfigure}
+\centering
+\includegraphics[width=\linewidth]{arch_gcp.pdf}
+\caption{The food bank twin on Google Cloud: an equivalent design, not
+deployed. Drawn in draw.io with the Google Cloud icons.}
+\label{fig:gcp}
+\end{sidewaysfigure}
+
+\clearpage
 \printbibliography
 
 \end{document}
