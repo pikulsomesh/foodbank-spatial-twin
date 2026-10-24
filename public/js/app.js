@@ -1,11 +1,12 @@
-// Browser viewer for the food bank twin: Spark renders the splat, HTML badges and a few meshes
-// show telemetry from the AWS API (or the local simulator when the API is unreachable).
+// Browser viewer for the food bank twin: the modeled facility (facility.glb, built in Blender by
+// scripts/build_facility.py) with HTML badges and an animated forklift showing telemetry from the
+// AWS API (or the local simulator when the API is unreachable). ?captures switches back to the
+// video captures (Gaussian splats, rendered by Spark) composited into a massing model.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
-import { buildPlaceholder } from "./placeholder.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { startFeed, simulate, forklift as simForklift } from "./telemetry.js";
-import { addOpsOverlay } from "./ops-overlay.js";
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -19,8 +20,10 @@ const nowMs = () => (recording ? virtualMs : performance.now());
 const wallMs = () => (recording ? epoch + virtualMs : Date.now());
 const phone = matchMedia("(max-width: 720px)").matches || navigator.maxTouchPoints > 1 && Math.min(screen.width, screen.height) < 820;
 
-const DEFAULTS = { zones: "zones/zones.json", splat: "factory.spz", meta: "factory.meta.json", usdz: "factory.usdz",
-  captures: {}, telemetryApi: "" };
+const DEFAULTS = { model: "facility.glb", modelUsd: "facility.usdz", zones: "zones/zones.json", splat: "factory.spz",
+  meta: "factory.meta.json", usdz: "factory.usdz", captures: {}, telemetryApi: "" };
+// The splat captures only read well from their own source cameras, so they are opt-in.
+const withCaptures = params.has("captures") || params.has("placeholder");
 
 async function getJSON(url) {
   try { const r = await fetch(url, { cache: "no-cache" }); return r.ok ? await r.json() : null; } catch { return null; }
@@ -135,6 +138,11 @@ function makeForklift() {
   for (const x of [-0.25, 0.25]) add(new THREE.BoxGeometry(0.12, 0.05, 1.0), steel, x, 0.12, 1.4); // forks
   const wheel = new THREE.CylinderGeometry(0.25, 0.25, 0.2, 16).rotateZ(Math.PI / 2);
   for (const x of [-0.55, 0.55]) for (const z of [-0.6, 0.5]) add(wheel, dark, x, 0.25, z);
+  return withRing(g);
+}
+
+// Yellow floor ring that marks the tracked forklift.
+function withRing(g) {
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.55, 48).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: 0xf5c518, transparent: true, opacity: 0.55, depthWrite: false }));
   ring.position.y = 0.03;
@@ -146,21 +154,43 @@ const STATUS_COLOR = { ok: 0x4cc38a, warn: 0xf0b429, alarm: 0xf05252 };
 
 async function initScene(cfg) {
   const stage = $("stage");
-  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, phone ? 1.5 : 2));
+  const renderer = new THREE.WebGLRenderer({ antialias: !withCaptures, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, phone ? 1.75 : 2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.setClearColor(0x0f1720);
   stage.append(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x0f1720, 45, 90);
+  scene.fog = new THREE.Fog(0x0f1720, withCaptures ? 45 : 60, withCaptures ? 90 : 120);
   const camera = new THREE.PerspectiveCamera(phone ? 60 : 50, innerWidth / innerHeight, 0.1, 200);
-  const spark = new SparkRenderer({ renderer });
-  scene.add(spark);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-  sun.position.set(10, 20, 15);
-  scene.add(sun);
+  if (withCaptures) {
+    const { SparkRenderer } = await import("@sparkjsdev/spark");
+    scene.add(new SparkRenderer({ renderer }));
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+    sun.position.set(10, 20, 15);
+    scene.add(sun);
+  } else {
+    // Soft studio lighting for the model: an environment for the steel and glass, a sky fill and
+    // one shadow-casting sun over the whole site (x -20..46, z -8..34).
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environmentIntensity = 0.55;
+    scene.add(new THREE.HemisphereLight(0xeef4ff, 0x6b6257, 0.8));
+    const sun = new THREE.DirectionalLight(0xfff4e5, 2.8);
+    sun.position.set(-6, 30, 26);
+    sun.target.position.set(16, 0, 10);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(phone ? 2048 : 4096, phone ? 2048 : 4096);
+    Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 24, bottom: -24, near: 5, far: 80 });
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 0.03;
+    scene.add(sun, sun.target);
+  }
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -170,11 +200,37 @@ async function initScene(cfg) {
   controls.maxDistance = 75;
   controls.autoRotateSpeed = 0.6;
 
-  // Twin: the World Labs captures placed into the procedural building, or the building alone.
   const loadingText = $("loading-text");
-  const captures = params.has("placeholder") ? [] : await loadCaptures(cfg, scene, loadingText);
-  const withContext = !captures.length || cfg.context !== false;
+  const pill = $("twin-pill");
+  let captures = [], rig = null;
+  if (!withCaptures) {
+    // The modeled facility; its ForkliftRig node becomes the forklift the telemetry drives.
+    loadingText.textContent = "Loading the facility model…";
+    const gltf = await new GLTFLoader().loadAsync(cfg.model);
+    const model = gltf.scene;
+    rig = model.getObjectByName("ForkliftRig");
+    rig?.removeFromParent();
+    const glassy = /glass|strip_curtain/;
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      o.receiveShadow = true;
+      o.castShadow = !/^(Site|Shell_floor|Markings)/.test(o.name) && !glassy.test(o.material.name);
+      if (glassy.test(o.material.name)) o.material.depthWrite = false;
+    });
+    scene.add(model);
+    pill.textContent = "Modeled facility";
+    pill.title = "Modeled in Blender from the walkthrough video and the operations layout; the same scene is in OpenUSD for Omniverse.";
+    $("about-text").innerHTML = "The facility is modeled in Blender from the walkthrough video and the operations layout " +
+      "(scripts/build_facility.py), in the same metric frame as the telemetry. It is a representative food bank, not a replica " +
+      "of one building. The same scene ships as OpenUSD for Omniverse. <a href=\"photoreal.html\">See the video captures</a> " +
+      "(Gaussian splats) of four zones from their source cameras.";
+    if (cfg.modelUsd) { $("usdz-link").href = cfg.modelUsd; $("usdz-link").hidden = false; }
+  }
+  // Twin (?captures): the World Labs captures placed into the procedural building, or the building alone.
+  if (withCaptures) captures = params.has("placeholder") ? [] : await loadCaptures(cfg, scene, loadingText);
+  const withContext = withCaptures && (!captures.length || cfg.context !== false);
   if (withContext) {
+    const [{ SplatMesh }, { buildPlaceholder }] = await Promise.all([import("@sparkjsdev/spark"), import("./placeholder.js")]);
     loadingText.textContent = "Building the facility layout…";
     const clear = captures.map((c) => c.clear).filter(Boolean);
     const massing = captures.length > 0 && cfg.context?.style !== "colour";
@@ -183,13 +239,16 @@ async function initScene(cfg) {
     await mesh.initialized;
   }
   // Operational areas (receiving, storage, staging, the community kitchen annex) from the ops model.
-  const ops = params.has("noops") ? null : await getJSON(cfg.operations || "ops/operations.json");
+  // The modeled facility already has them as walls and painted floor lines.
+  const ops = !withCaptures || params.has("noops") ? null : await getJSON(cfg.operations || "ops/operations.json");
   if (ops?.zones) {
+    const { addOpsOverlay } = await import("./ops-overlay.js");
     const kitchenCaptured = captures.some((c) => c.name === "Kitchen");
     addOpsOverlay(scene, ops.zones, { annex: ["kitchen"], stations: kitchenCaptured ? [] : ops.kitchen?.equipment || [] });
   }
-  const pill = $("twin-pill");
-  if (captures.length) {
+  if (!withCaptures) {
+    // Modeled facility: set up above.
+  } else if (captures.length) {
     const names = captures.map((c) => c.title || c.name);
     const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
     pill.textContent = withContext ? `${captures.length} captured zone${captures.length > 1 ? "s" : ""} + layout` : "World Labs capture";
@@ -202,14 +261,15 @@ async function initScene(cfg) {
     pill.textContent = "Placeholder layout";
     pill.title = "Procedural splat stand-in until the World Labs capture is published.";
   }
-  if (cfg.usdz) fetch(cfg.usdz, { method: "HEAD" }).then((r) => {
+  if (withCaptures && cfg.usdz) fetch(cfg.usdz, { method: "HEAD" }).then((r) => {
     if (r.ok && !(r.headers.get("content-type") || "").includes("text/html")) { $("usdz-link").href = cfg.usdz; $("usdz-link").hidden = false; }
   }).catch(() => {});
 
   // Telemetry markers
   const zoneRings = new Map();
   const ringGeo = new THREE.RingGeometry(0.9, 1.15, 48).rotateX(-Math.PI / 2);
-  const fork = makeForklift();
+  const fork = rig ? withRing(rig) : makeForklift();
+  if (rig) fork.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   scene.add(fork);
   const forkTarget = { pos: new THREE.Vector3(1, 0, 12), yaw: 0, live: false };
   const anchors = new Map(); // id -> Vector3 where the badge points
@@ -229,17 +289,25 @@ async function initScene(cfg) {
   // Overview backs off until the 26 m building and the kitchen annex east of it (x 0-38 m) fit the
   // screen width (portrait phones need more room).
   const overview = () => {
+    // Portrait phones look along the building from the east, so its long side runs up the screen.
+    if (camera.aspect < 0.8 && !withCaptures) {
+      const k = THREE.MathUtils.clamp(0.46 / camera.aspect, 0.85, 1.4);
+      return [[18 + 41 * k, 40 * k, 9.5 + 12 * k], [18, 0, 9.5]];
+    }
     const halfW = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(camera.aspect, 1.6);
     const d = THREE.MathUtils.clamp(22 / halfW, 40, 74);
     const dir = new THREE.Vector3(0.05, camera.aspect < 1 ? 0.78 : 0.55, 1).normalize();
     return [dir.multiplyScalar(d).add(new THREE.Vector3(19, 0, 9)).toArray(), [19, 0, camera.aspect < 1 ? 7 : 8.5]];
   };
-  // Camera presets in the telemetry frame.
+  // Camera presets in the telemetry frame. Tall (portrait) screens step back so each area fits.
+  const tall = () => camera.aspect < 1;
   const VIEWS = {
     get overview() { return overview(); },
-    cold: [[8, 7, 15], [8, 1.5, 3]],
-    kitchen: [[30, 9, 20], [32.25, 0.5, 5.5]],
-    aisle: [[20, 2, 13], [20, 1.5, 5]],
+    get cold() { return tall() ? [[8, 13, 22], [8, 1.2, 3.5]] : [[8, 8, 16], [8, 1.2, 3]]; },
+    get kitchen() { return tall() ? [[32, 14, 24], [32.2, 0.5, 5]] : [[31, 9, 19], [32.2, 0.5, 5.5]]; },
+    get aisle() { return tall() ? [[20, 2.2, 15.5], [20, 2.6, 4]] : [[20, 2, 14], [20, 2.2, 4.5]]; },
+    get sorting() { return tall() ? [[11, 13.5, 26.5], [11, 0, 15.4]] : [[11, 8.5, 25], [11, 0.5, 16.5]]; },
+    get market() { return tall() ? [[22.5, 11.5, 25.5], [22.6, 0, 15.3]] : [[22, 7, 25], [22.5, 0.6, 16.3]]; },
   };
   // `photo`: a capture seen from its source camera, which the forklift would otherwise drive through.
   let follow = false, photo = false, tween = null;
@@ -259,6 +327,9 @@ async function initScene(cfg) {
   camera.position.set(...VIEWS.overview[0]).add(new THREE.Vector3(6, 8, 10));
   controls.target.set(...VIEWS.overview[1]);
   // One button per capture, looking the way its source cameras looked (-Z in the capture frame).
+  if (!withCaptures) {
+    for (const v of ["sorting", "market"]) document.querySelector(`#views [data-view="${v}"]`).hidden = false;
+  }
   if (captures.length) {
     document.querySelector('#views [data-view="aisle"]')?.remove();
     if (captures.some((c) => c.name === "Kitchen")) document.querySelector('#views [data-view="kitchen"]')?.remove();
@@ -284,7 +355,9 @@ async function initScene(cfg) {
     controls.target.set(...pinned.slice(3));
   } else {
     // Land on the first capture when there is one: seen from its own cameras it looks like the video.
-    const first = captures.length && !params.has("overview") ? "capture-0" : "overview";
+    const asked = params.get("view");
+    const first = asked && document.querySelector(`#views [data-view="${asked}"]`) ? asked
+      : captures.length && !params.has("overview") ? "capture-0" : "overview";
     photo = first.startsWith("capture-");
     document.querySelectorAll("#views [data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === first));
     goView(first, 2600);
@@ -442,6 +515,7 @@ async function captureList(cfg) {
 async function loadCaptures(cfg, scene, loadingText) {
   const list = await captureList(cfg);
   if (!list.length) return [];
+  const { SplatMesh } = await import("@sparkjsdev/spark");
   loadingText.textContent = `Downloading ${list.length > 1 ? `${list.length} captured zones` : "the captured zone"}…`;
   const loaded = await Promise.all(list.map(async (c) => {
     const bytes = await fetchSplat(c.url);
@@ -474,6 +548,7 @@ async function loadCaptures(cfg, scene, loadingText) {
 // capture reads as a surface rather than a point cloud. `maxSplat` (metres) drops oversized splats,
 // which in a trained capture are mostly haze where the training views were masked (people).
 async function cropSplats(src, crop, scale, ground, dilate = 1, maxSplat = Infinity) {
+  const { SplatMesh } = await import("@sparkjsdev/spark");
   const lo = new THREE.Vector3(...(crop?.min || [-Infinity, -Infinity, -Infinity]));
   const hi = new THREE.Vector3(...(crop?.max || [Infinity, Infinity, Infinity])), p = new THREE.Vector3();
   const out = new SplatMesh({

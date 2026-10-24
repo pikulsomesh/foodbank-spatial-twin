@@ -18,6 +18,8 @@ def Xform "World"
 {
     def Xform "Site"
     {
+        token visibility = "invisible"
+
         def Xform "Racking" (
             customData = {
                 string capture = "photoreal 3DGS"
@@ -77,6 +79,15 @@ def Xform "World"
             custom double3 xformOp:translate = (26.5, 0, 4.5)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateY"]
         }
+    }
+
+    def Xform "Facility" (
+        customData = {
+            string source = "scripts/build_facility.py (Blender)"
+        }
+        prepend references = @./facility.usdz@</Facility>
+    )
+    {
     }
 
     def Xform "Operations" (

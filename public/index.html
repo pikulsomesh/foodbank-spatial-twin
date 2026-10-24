@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Food Bank Digital Twin</title>
-<meta name="description" content="A food bank warehouse twin built from video with a world model, with live cold-chain and forklift telemetry from AWS. Runs in the browser.">
+<meta name="description" content="A food bank warehouse twin modeled from walkthrough video, with live cold-chain and forklift telemetry from AWS. Runs in the browser.">
 <meta property="og:title" content="Food Bank Digital Twin">
 <meta property="og:description" content="From video to digital twin: a world-model splat of a food bank with live telemetry, in your browser.">
 <meta name="theme-color" content="#0f1720">
@@ -57,7 +57,7 @@
       <ul id="alerts"></ul>
     </section>
     <section class="about">
-      <p id="about-text">The building is a stand-in made of Gaussian splats in the twin's metric frame. The World Labs capture replaces it with no code change.</p>
+      <p id="about-text">The facility is modeled in Blender in the twin's metric frame, with live readings on top.</p>
       <p class="links">
         <a id="repo-link" href="https://github.com/pikulsomesh/foodbank-spatial-twin" target="_blank" rel="noopener">Source on GitHub</a>
         <a id="usdz-link" href="factory.usdz" hidden download>OpenUSD file for Omniverse</a>
@@ -71,6 +71,8 @@
   <button data-view="cold">Cold rooms</button>
   <button data-view="kitchen">Kitchen</button>
   <button data-view="aisle">Racking</button>
+  <button data-view="sorting" hidden>Sorting room</button>
+  <button data-view="market" hidden>Market</button>
   <button data-view="follow">Follow forklift</button>
   <button id="tour" aria-pressed="false" title="Slow orbit, handy for screen recordings">Tour</button>
 </nav>
