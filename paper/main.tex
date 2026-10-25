@@ -446,7 +446,7 @@ The same function also serves \code{GET /operations}, the operations layer
 described next. No real data connector is deployed yet, so all telemetry in
 this paper is simulated. Figure~\ref{fig:aws} shows the AWS pattern: the
 services in the repository's template today (object storage, the HTTP API and
-its function, logs, access roles and a budget alert) and the real-floor path
+its function, logs and access roles) and the real-floor path
 that the Discussion prices, in which sensors and the warehouse management
 system feed the same API. Appendix~\ref{app:clouds} gives equivalent designs
 on Microsoft Azure and Google Cloud. \TBD{pending AWS deployment: monthly cost
@@ -460,8 +460,9 @@ at demo traffic, from the AWS bill, and client-side latency}.
 the real-floor path priced in Table~\ref{tab:costest}. Step~1 runs on a
 workstation or in continuous integration and publishes the OpenUSD twin to
 object storage; Step~2 connects floor sensors and the warehouse management
-system; Step~3 is the browser, Omniverse on an on-demand GPU instance,
-desktop tools and staff alerts. Drawn in draw.io with the AWS architecture
+system; Step~3 is the browser, Omniverse on an on-demand or Spot GPU
+instance that is stopped after each session, desktop tools and staff alerts.
+The cost-controls panel lists how each part bills only while it runs. Drawn in draw.io with the AWS architecture
 icons; the source is in the repository's \code{paper/diagrams} folder.}
 \label{fig:aws}
 \end{sidewaysfigure}
@@ -761,6 +762,26 @@ Omniverse on an AWS GPU only when needed adds about \$124 a month, while an
 always-on GPU would add about \$2{,}100, which is why the browser is the
 everyday viewer. Assumptions, unit prices and sources are in the repository's
 \code{docs/COST\_ESTIMATE.md}.
+
+The same principle, paying only while something runs, extends to every part of
+the design and is drawn as a cost-controls panel in each architecture diagram
+(Figs.~\ref{fig:aws}, \ref{fig:azure} and \ref{fig:gcp}). The API and ingest
+functions already bill per request, so an idle twin costs almost nothing.
+Work that is easier to ship as a container image, such as a warehouse import
+that outlasts a function's time limit or a scene rebuild, can run on Amazon
+Elastic Container Service (ECS) with AWS Fargate, which bills per second of
+virtual CPU and memory with a one-minute minimum and costs nothing at zero
+tasks; Azure Container Apps and Google Cloud Run do the same and scale to zero
+on their own. Containers are not automatically cheaper: an always-on Fargate
+task of 0.25 virtual CPU and 0.5\,GB on ARM costs about \$7 a month at
+us-east-1 list prices, more than the whole demo API, so containers suit jobs
+rather than the polling API. Fargate offers no GPUs, so Omniverse needs an EC2
+GPU instance, started for a session and stopped afterward; Spot capacity
+lowers its price further but can be reclaimed mid-session, and a stopped
+instance's disk still bills. Azure Container Apps and Cloud Run do offer
+serverless GPUs that scale to zero, which could host a headless renderer; we
+have not tested Omniverse on them. A budget alert on each cloud catches
+anything left running.
 
 \begin{table}[t]
 \caption{Estimated cost of running the representative twin on real floor
@@ -1081,6 +1102,8 @@ Content delivery & CloudFront & Front Door & Cloud CDN \\
 Monitoring, alerts & CloudWatch, SNS & Azure Monitor, action groups & Cloud Logging, Cloud Monitoring \\
 Access, budgets & IAM, Budgets & Entra ID and RBAC, Cost Management & Cloud IAM, Billing budgets \\
 GPU for Omniverse & EC2 g6e.xlarge (L40S) & NVads A10 v5 & Compute Engine G2 (L4) \\
+Containers, pay per second & ECS on Fargate (no GPU) & Container Apps (scale to zero) & Cloud Run (scale to zero) \\
+Serverless GPU & none; EC2 on demand or Spot & Container Apps serverless GPUs & Cloud Run GPUs (L4) \\
 \bottomrule
 \end{tabularx}
 \label{tab:clouds}

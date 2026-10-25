@@ -47,7 +47,7 @@ def gcp(key):
 # Cloud-specific services: logical id -> (label, style) per cloud.
 CLOUDS = {
     "aws": {
-        "title": "AWS Cloud (us-east-1)",
+        "title": "AWS Cloud",
         "lns": ("AWS IoT Core for LoRaWAN<br>(network server)", aws("iot_core", "iot")),
         "mqtt": ("AWS IoT Core<br>(MQTT broker)", aws("iot_core", "iot")),
         "rules": ("IoT Core rules engine", aws("iot_core", "iot")),
@@ -62,7 +62,12 @@ CLOUDS = {
         "alert": ("Amazon SNS<br>excursion alerts", aws("sns", "integration")),
         "iam": ("AWS IAM", aws("identity_and_access_management", "security")),
         "budget": ("AWS Budgets", aws("budgets", "finance")),
-        "gpu": ("EC2 g6e.xlarge<br>Omniverse,<br>on demand", aws("ec2", "compute")),
+        "gpu": ("EC2 g6e.xlarge<br>Omniverse, on demand<br>or Spot, stopped after", aws("ec2", "compute")),
+        "cost": ["API and ingest: Lambda and API Gateway bill per request, so an idle twin costs almost nothing.",
+                 "Jobs packaged as a container image (WMS import, scene builds): ECS on Fargate, billed per second "
+                 "with a 1-minute minimum, scaled to 0 tasks when idle. Fargate has no GPU.",
+                 "Omniverse: an EC2 GPU on demand or Spot, started for a session and stopped after; its disk still bills.",
+                 "AWS Budgets alert on the account ($10 for the demo; not in the template)."],
         "note": "Solid: in the repository today (AWS SAM template; simulated data). "
                 "Dashed: real-floor path priced in docs/COST_ESTIMATE.md.",
     },
@@ -82,7 +87,11 @@ CLOUDS = {
         "alert": ("Azure Monitor<br>action group alerts", azure("management_governance/Alerts.svg")),
         "iam": ("Entra ID, RBAC", azure("identity/Entra_Managed_Identities.svg")),
         "budget": ("Cost Management<br>budgets", azure("general/Cost_Budgets.svg")),
-        "gpu": ("NVads A10 v5 VM<br>Omniverse,<br>on demand", azure("compute/Virtual_Machine.svg")),
+        "gpu": ("NVads A10 v5 VM<br>Omniverse, on demand<br>or Spot, deallocated after", azure("compute/Virtual_Machine.svg")),
+        "cost": ["API and ingest: Functions (Consumption) or Container Apps, which scale to zero and bill per second.",
+                 "Omniverse: a GPU VM on demand or Spot, deallocated after a session. Container Apps serverless GPUs "
+                 "(A100, T4) also scale to zero; not tested with Omniverse.",
+                 "Cost Management budget alert."],
         "note": "Equivalent design, not deployed. Azure IoT Hub has no built-in LoRaWAN network server, "
                 "so a partner network server forwards uplinks to IoT Hub.",
     },
@@ -102,7 +111,11 @@ CLOUDS = {
         "alert": ("Cloud Monitoring<br>alerting", gcp("management tools monitoring")),
         "iam": ("Cloud IAM", None),
         "budget": ("Cloud Billing budgets", None),
-        "gpu": ("Compute Engine<br>G2 (L4) VM,<br>Omniverse", gcp("compute compute engine")),
+        "gpu": ("Compute Engine G2 (L4)<br>Omniverse, on demand<br>or Spot, stopped after", gcp("compute compute engine")),
+        "cost": ["API and ingest: Cloud Run services and functions scale to zero when no requests arrive.",
+                 "Omniverse: a G2 VM on demand or Spot, stopped after a session. Cloud Run GPUs (L4) also scale "
+                 "to zero; not tested with Omniverse.",
+                 "Cloud Billing budget alert."],
         "note": "Equivalent design, not deployed. Google Cloud IoT Core was retired in August 2023, "
                 "so devices reach Pub/Sub through a partner or self-hosted MQTT broker and network server.",
     },
@@ -117,7 +130,7 @@ SERVICES = {
     "etl": (1070, 570),
     "iam": (680, 705), "budget": (820, 705), "mon": (930, 705), "alert": (1070, 705),
 }
-IMPLEMENTED = {"obj", "api", "apifn", "mon", "iam", "budget"}
+IMPLEMENTED = {"obj", "api", "apifn", "mon", "iam"}  # Budgets is set on the account, not in the template
 
 BOX = "rounded=1;whiteSpace=wrap;html=1;fontSize=11;arcSize=12;"
 BOXES = {  # id: (label, x, y, w, h, fill, implemented)
@@ -180,6 +193,9 @@ def build(name):
                     "text;html=1;fontSize=18;align=left;verticalAlign=middle;", 20, 14, 900, 40))
     out.append(cell("note", c["note"], "text;html=1;whiteSpace=wrap;fontSize=11;align=left;verticalAlign=top;fontColor=#545B64;",
                     20, 812, 1640, 40))
+    cost = "<b>Cost controls: pay only while it runs</b>" + "".join(f"<br>• {t}" for t in c["cost"])
+    out.append(cell("cost", cost, "rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=top;spacing=6;"
+                    "arcSize=4;fillColor=#FFF8E1;strokeColor=#E8A33D;", 1165, 520, 250, 172 if name == "aws" else 124))
     impl = set(IMPLEMENTED)
     # Edges first, so icon labels (with a white background) sit on top of the lines.
     for i, (s, d, label) in enumerate(EDGES):

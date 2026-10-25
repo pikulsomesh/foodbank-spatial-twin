@@ -67,6 +67,12 @@ Pound prices were converted at roughly $1.29 per pound. Industrial alternatives 
 ## Options that change the picture
 
 - **Omniverse.** The NVIDIA Omniverse Production Workstation on AWS Marketplace charges $1.00 per hour on top of the EC2 instance; on a g6e.xlarge (1× L40S, $1.861 per hour) that is $2.86 per hour, about $124 a month at 10 h a week or about $2,090 a month always on. A g5.xlarge (1× A10G) is $1.006 per hour if the listing supports it. Omniverse Enterprise is licensed per GPU; resellers quote about $4,500 per GPU per year, which we could not confirm on an NVIDIA page. Confirm licensing with NVIDIA before production use.
+- **Pay only while it runs.** Every part of the design can bill only while it is in use, which is shown as a cost-controls panel in each architecture diagram (`paper/diagrams/`).
+  - The API and ingest functions (Lambda behind API Gateway) bill per request, so an idle twin costs almost nothing. This is already the cheapest option for the polling API.
+  - Work shipped as a container image, such as a warehouse import that outlasts Lambda's 15-minute limit or a scene rebuild, can run on **Amazon ECS with AWS Fargate**: you hand AWS an image and a CPU and memory size, it runs the task with no servers to manage, and bills per second with a 1-minute minimum (us-east-1 Linux ARM: $0.0000089944 per vCPU-second, $0.0000009889 per GB-second; x86 about 25% more). At 0 tasks it costs nothing. An always-on 0.25 vCPU / 0.5 GB ARM task is about $7.21 a month, more than the whole demo API, so containers suit jobs, not the API. Fargate Spot is up to 70% cheaper for interruptible tasks.
+  - **Fargate has no GPUs**, so Omniverse runs on an EC2 GPU instance started for a session and stopped right after. Spot lowers the price but the instance can be reclaimed mid-session. A stopped instance's EBS disk still bills, so snapshot and delete it if the GPU will sit unused for weeks.
+  - Azure Container Apps and Google Cloud Run are the equivalents of Fargate and scale to zero by themselves. Both also offer serverless GPUs that scale to zero (Container Apps: A100, T4; Cloud Run: L4), which could host a headless renderer; Omniverse has not been tested on them.
+  - A budget alert (the demo AWS account has a $10 one, set on the account rather than in the template) catches anything left running.
 - **Forklift position.** BLE gives which area a truck is in, which is enough for the twin's dock and aisle views. Telematics subscriptions run about $25 to $50 per vehicle per month (ForkOn €22.70; Powerfleet and iWAREHOUSE figures are third-party estimates) and add hours, impacts and operator log-in. Centimetre-level UWB positioning is a quote-only purchase: a Pozyx kit covering about 1,000 m² starts at $4,970, and this building is about 12,500 m².
 - **AWS IoT TwinMaker or IoT SiteWise.** Not needed: the twin already has its own scene (OpenUSD) and API. TwinMaker's tiered plans start at $220 a month for 800 entities.
 - **Re-capturing the building.** A phone works; an Insta360 X4 is $425 to $560. World-model posing costs 10 credits per frame (a 20-frame zone is 200 credits, $0.20); locally trained splats cost no credits.
@@ -90,5 +96,8 @@ Pound prices were converted at roughly $1.29 per pound. Industrial alternatives 
 - Milesight EM500-PT100: https://invibitshop.com/collections/milesight/ingress-protection_ip67
 - Milesight UG65: https://embeddedworks.net/product/sens820
 - Pozyx: https://www.pozyx.io/store
+- AWS Fargate (accessed 2026-10-25): https://aws.amazon.com/fargate/pricing/
+- Azure Container Apps serverless GPUs (accessed 2026-10-25): https://learn.microsoft.com/azure/container-apps/gpu-serverless-overview
+- Cloud Run GPUs (accessed 2026-10-25): https://cloud.google.com/run/docs/configuring/services/gpu
 - Forklift telematics: https://mpi.motionminers.com/en/offerings/forkon-forkx-platform-and-forklink1-telematics, https://airpinpoint.com/equipment-tracking/forklift-tracking-system
 - Insta360 X4: https://store.insta360.com/in/product/26
