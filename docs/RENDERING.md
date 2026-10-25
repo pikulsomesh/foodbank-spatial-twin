@@ -105,3 +105,48 @@ look around the twin interactively in Blender, install Blender 5.2 and run the
 `blender -b ... --save-blend renders/twin.blend` command above from the repo
 checkout, then open `renders/twin.blend`. Apple Silicon Blender renders it with
 Metal in Cycles for faster previews.
+
+## Omniverse trial on AWS (2026-10-25): result
+
+Ran with `scripts/gpu_trial.py` (launch, render, upload through presigned S3 URLs, self-terminate)
+and `scripts/omniverse_render_shots.py`, on one `g6.xlarge` (NVIDIA L4, 4 vCPU, 16 GB) in
+us-east-2 from the Deep Learning Base OSS Nvidia Driver AMI (Ubuntu 22.04, driver 595.91),
+with the `nvcr.io/nvidia/isaac-sim:5.1.0` container (Kit 107.3).
+
+- **Runs 1 to 3, no renders.** Kit started (`app ready`) and then crashed with a segfault in
+  `librtx.scenedb.plugin.so` about a second later, for both the designed facility
+  (`facility.usdz`, plain meshes) and the splat captures (`site.usdz`). Since the meshes crash
+  too, the splat schema is not the cause; the likely suspect is the host driver (595.x is newer
+  than the 580.x branch Isaac Sim 5.1 is validated on) or the headless renderer setting. Log:
+  `docs/renders/omniverse-trial/run3.log`.
+- **Timings that hold regardless:** instance boot to user-data about 1 min; `docker pull` of
+  Isaac Sim 5.1 about 4.5 min; Kit cold start 75 s on first run, 14 s warm.
+- **Spend:** three short runs (one lost to a presigned-URL redirect bug, since fixed) totalling
+  about 26 instance-minutes, about $0.35 at the $0.8048/h on-demand list price plus a cent of
+  gp3 storage. Every instance terminated itself; no volumes remain.
+
+- **Run 4 (22:19 to 22:29 UTC):** Kit's default renderer and a bare lit cube (`USD=test`) crash
+  the same way right after `app ready`, before any stage is opened, so neither the twin files
+  nor the renderer setting is the cause. Swapping in driver 580.65.06 from NVIDIA's runfile did
+  not take: the runfile unpacked but the AMI's 595 driver stayed loaded. Log:
+  `docs/renders/omniverse-trial/run4.log`. Running total about 36 instance-minutes, about $0.48.
+
+- **Run 5 (plain Ubuntu 22.04 + `nvidia-driver-580-server`):** Kit 107.3 starts and opens the
+  stage on driver 580. It then failed writing output because the container runs as a non-root
+  user; fixed with `chmod -R a+rwX /work`, and Kit's caches are now mounted from the host so the
+  second container starts warm. Log: `docs/renders/omniverse-trial/run5.log`.
+- **Run 6:** first moving clips. Kit 107.3 draws the splat captures (`ParticleField` prims in
+  `site.usdz`) as blank grey, so clips use `facility.usdz`. The forklift floated on its side:
+  `/Facility` carries the Z-up to Y-up rotation, so a world pose must be mapped into its frame
+  (`local = rest * world * parent^-1`, see `place_rig` in `scripts/omniverse_render_clips.py`).
+- **Run 7 (working):** three 4 s clips at 1280x720, 24 fps, `rt_subframes=8`:
+  `forklift_chase` (18.6 s to render), `facility_orbit` (47.7 s), `aisle_forklift` (49.4 s).
+  g6.xlarge had no capacity in any us-east-2 zone, so the launcher now tries each zone and the
+  run used `GPU_INSTANCE_TYPE=g5.xlarge` (A10G, $1.006/h): about 22 instance-minutes, about $0.37.
+
+**Totals:** 7 runs, about 94 instance-minutes, about $1.34 at on-demand list prices. Every
+instance terminated itself; no volumes remain. These are public list prices on an individually
+created AWS account; enterprise discounts and quotas may differ, so treat them as directional.
+
+Rerun: `python scripts/gpu_trial.py launch --base ubuntu --mode clips`, then `fetch` once the
+instance has terminated. The logs `gpu_trial.py fetch` writes have the presigned URLs redacted.
