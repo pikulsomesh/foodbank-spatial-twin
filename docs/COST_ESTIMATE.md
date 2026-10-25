@@ -28,8 +28,8 @@ The whole twin was built from one publicly available news video in seven days (2
 | | Frame extraction, RGBD fusion, COLMAP and 3D Gaussian Splatting training for 4 zones, OpenUSD conversion | local CPU in a cloud container | $0 extra |
 | 1b. Blender facility model | `scripts/build_facility.py` (headless `bpy`), whole building from the designed footprints | about 5 s per build | $0 |
 | 2. Data on AWS | SAM stack (S3, HTTP API, Lambda) in us-east-2, October 2026 | Cost Explorer | **$0.00** (free tier) |
-| 3. Omniverse on a rented GPU | Three runs on one g6.xlarge (NVIDIA L4), us-east-2, 2026-10-25 21:32 to 22:10 UTC, each terminated after. **Attempted, render not yet working:** Isaac Sim 5.1 (Kit 107.3) crashed in the RTX scene database right after start for both the facility meshes and the splats, so Omniverse loading of the twin is unverified | about 26 instance-minutes (0.43 h); cold start per job about 7 min (1 min boot, 4.5 min image pull, 75 s Kit start) | **about $0.36** ($0.35 EC2 at $0.8048/h list, $0.01 gp3 disk, no data transfer); from list price, not yet posted in Cost Explorer |
-| **Total so far** | | | **about $0.56** ($0.20 credits confirmed, $0.36 GPU from list price); at most $1.36 if the failed world-model runs were billed |
+| 3. Omniverse on a rented GPU | Six runs on one g6.xlarge (NVIDIA L4) at a time, us-east-2, 2026-10-25 21:32 to ~23:17 UTC, each terminated after. Runs 1 to 4 crashed on the Deep Learning AMI's driver 595; run 5 started Kit on plain Ubuntu with driver 580; **run 6 rendered the designed facility in RTX**. The splat captures loaded but rendered blank, so Omniverse rendering of splats is not shown. See [OMNIVERSE_LEARNINGS.md](OMNIVERSE_LEARNINGS.md) | about 72 instance-minutes (1.2 h); cold start about 12 min on a fresh instance; 96 frames at 1280×720 in 17 to 46 s once warm | **about $0.97** at $0.8048/h list plus about a cent of gp3 disk; from list price, not yet posted in Cost Explorer |
+| **Total so far** | | | **about $1.17** ($0.20 credits confirmed, $0.97 GPU from list price); at most $1.97 if the failed world-model runs were billed |
 
 ## Scaled to a full facility (directional)
 

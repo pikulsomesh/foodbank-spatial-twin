@@ -6,6 +6,10 @@ Costs are worked out from the public on-demand list price ($0.8048 an hour for g
 
 ## Short version
 
+**Result:** Omniverse (Kit 107.3 in Isaac Sim 5.1) rendered the designed Blender facility in RTX on a g6.xlarge on run 6. The Gaussian-splat captures loaded but rendered blank grey, so Omniverse rendering of the splats is **not** shown. Total GPU time across six runs was about 72 instance-minutes, about $0.97 at list price.
+
+![Omniverse RTX frame of the designed facility, run 6](../public/wiki/img/omniverse_orbit.jpg)
+
 - **Use the driver branch Isaac Sim is validated on.** Isaac Sim 5.1 (Kit 107.3) crashed a second after start on the AWS Deep Learning AMI's 595 driver, even with an empty scene. It started cleanly on plain Ubuntu 22.04 with `nvidia-driver-580-server` (580.178.04).
 - **Test with a cube before your scene.** A one-cube stage separates "the GPU stack is broken" from "my USD file is broken". It took four runs to learn that the twin files were never the problem.
 - **Budget about 12 minutes before the first frame.** On a cold instance that is about 1 min to boot, about 4.5 min to pull the Isaac Sim image, and about 5 min for Kit to build its shader cache on first start. Render everything in one session.
@@ -30,9 +34,9 @@ Costs are worked out from the public on-demand list price ($0.8048 an hour for g
 | 2, 3 | to 22:10 | same | `facility.usdz` (plain meshes), then `site.usdz` (Gaussian splats) | Kit reached `app ready`, then segfaulted in `librtx.scenedb.plugin.so` about a second later, for both files. |
 | 4 | 22:19 to 22:29 | same, plus NVIDIA's 580.65.06 runfile | A bare lit cube with the default renderer; swap the driver in place | The cube crashed the same way, so the twin files were not the cause. The runfile unpacked, but the AMI's 595 module stayed loaded. |
 | 5 | 22:34 to ~22:57 | Plain Ubuntu 22.04; user data installs `nvidia-driver-580-server` (580.178.04), Docker and the NVIDIA container toolkit | Cube test, then clips | **Kit started and did not crash.** First start took about 5 min (shader cache). The render script then failed writing its output folder (permission denied on the mounted `/work/out`), and later container starts failed with `nvml error: driver/library version mismatch`. |
-| 6 | from 23:02 | same as run 5, with write permissions and caches fixed | Forklift, facility orbit and aisle clips (4 s each) | In progress; this page is updated when it finishes. |
+| 6 | 23:02 to ~23:17 | same as run 5, with write permissions fixed and Kit caches mounted from the host | Forklift, facility orbit and aisle clips (4 s, 96 frames at 1280×720, 8 subframes) | **Frames rendered.** The facility rendered in RTX: 16.7 s for one clip and 45.7 s for the wide orbit, and the second container start was warm. The splat file (`site.usdz`) loaded but rendered blank grey. The forklift floated above the building because its pose ignored the parent's Z-up to Y-up rotation (fixed in the script). Only the orbit clip is usable. |
 
-Running total through run 5: about 57 instance-minutes, about **$0.77**. Every instance terminated itself, and no volumes were left behind.
+Running total through run 6: about 72 instance-minutes, about **$0.97**. Every instance terminated itself, and no volumes were left behind.
 
 ## Pitfalls and fixes
 
@@ -40,15 +44,16 @@ Running total through run 5: about 57 instance-minutes, about **$0.77**. Every i
 2. **Driver swaps don't take on a running AMI.** Installing a runfile over the AMI's packaged driver leaves the old kernel module loaded. Install the driver you want from a clean image in user data, then load it with `modprobe nvidia` and check it with `nvidia-smi`.
 3. **`driver/library version mismatch`.** The container toolkit couldn't talk to the driver because the driver's user-space libraries no longer matched the loaded kernel module. The likely cause is packages changing after the module loaded. Install the driver once, check `nvidia-smi` just before every `docker run`, and keep unattended upgrades from touching NVIDIA packages during the job.
 4. **Container can't write to the host folder.** Isaac Sim's container doesn't run as the host's root user, so a root-owned bind mount is read-only to it. Create output and cache folders on the host and make them writable (`chmod -R a+rwX`), or run the container with a matching `--user`.
-5. **First start is slow.** Kit builds its shader cache on first start (about 5 min on an L4; about 14 s on a warm start). Keep the cache folders on the host mount so a second job in the same session reuses them.
+5. **First start is slow.** Kit builds its shader cache on first start (about 5 min on an L4; about 14 s on a warm start). Mount `/isaac-sim/kit/cache`, `/isaac-sim/.cache` and `/isaac-sim/.nv` from the host so a second container in the same session starts warm.
 6. **Image pull dominates short jobs.** The Isaac Sim image takes about 4.5 min to pull. For repeated use, bake it into a custom AMI or pull it from ECR in the same region.
 7. **Test the GPU stack before the scene.** Render a one-cube stage first. If the cube crashes, nothing about your USD will help.
 8. **GPU quota starts at 0.** Open the quota request on day one. Approval can mean an escalated support case, and the new limit takes about 30 minutes to apply after approval.
-9. **Splats in Omniverse are unverified.** OpenUSD 26.03 defines `ParticleField3DGaussianSplat` and Kit ships a schema for it, but until a render succeeds we can't say Kit 107.3 draws the twin's splats. Blender's USD importer doesn't read them either. The browser (Spark) and our CPU splat renderer do.
+9. **Splats rendered blank in Kit 107.3.** OpenUSD 26.03 defines `ParticleField3DGaussianSplat` and NVIDIA documents particle-field rendering, but Isaac Sim 5.1 loaded the twin's splat file and drew a blank grey frame. Use a Kit release whose notes list the particle-field schema, or show meshes in Omniverse and splats in the browser (Spark) or our CPU splat renderer. Blender's USD importer doesn't read them either.
+12. **Animate in the right frame.** The facility comes from Blender, so `/World/Facility` carries a Z-up to Y-up rotation. A prim under it, like the forklift rig, needs its world pose mapped through the parent's transform, or it ends up floating above the building.
 10. **Strip presigned URLs from logs before you publish them.** They carry the access key id and work until they expire.
 11. **Fargate has no GPUs.** For regular use, run the same container as an ECS service or AWS Batch job on a GPU Auto Scaling group with a minimum of 0, so an instance exists only while a render runs.
 
-## A recipe that starts Kit (as of run 5)
+## A recipe that renders the facility (as of run 6)
 
 ```bash
 # EC2 user data on Ubuntu 22.04, g6.xlarge
@@ -59,7 +64,8 @@ modprobe nvidia && nvidia-smi                      # expect Driver Version: 580.
 nvidia-ctk runtime configure --runtime=docker && systemctl restart docker
 mkdir -p /work/out /work/cache && chmod -R a+rwX /work
 docker run --rm --gpus all -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
-  -v /work:/work nvcr.io/nvidia/isaac-sim:5.1.0 ./python.sh /work/render.py
+  -v /work:/work -v /work/cache/kit:/isaac-sim/kit/cache -v /work/cache/dot:/isaac-sim/.cache \
+  -v /work/cache/nv:/isaac-sim/.nv nvcr.io/nvidia/isaac-sim:5.1.0 ./python.sh /work/render.py
 ```
 
 ## Cost of learning this
@@ -69,6 +75,7 @@ docker run --rm --gpus all -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
 | Runs 1 to 3 | about 26 | about $0.36 |
 | Run 4 | about 10 | about $0.12 |
 | Run 5 | about 21 | about $0.29 |
-| **Total through run 5** | **about 57** | **about $0.77** |
+| Run 6 | about 15 | about $0.20 |
+| **Total, six runs** | **about 72** | **about $0.97** |
 
-Even with five attempts, finding the working setup cost under a dollar of GPU time. The slow part was the GPU quota request, not the spend.
+Six attempts, including the first working render, cost under a dollar of GPU time. The slow part was the GPU quota request, not the spend.
