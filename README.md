@@ -71,6 +71,7 @@ Editable draw.io sources: [AWS](paper/diagrams/arch_aws.drawio), [Azure](paper/d
 | Operations, inventory and supply-chain layer | [docs/OPERATIONS.md](docs/OPERATIONS.md) |
 | Browser viewer | [docs/VIEWER.md](docs/VIEWER.md) |
 | Rendering in Blender and Omniverse | [docs/RENDERING.md](docs/RENDERING.md) |
+| Omniverse on AWS: every GPU run, what failed, what fixed it | [docs/OMNIVERSE_LEARNINGS.md](docs/OMNIVERSE_LEARNINGS.md) |
 | Cost estimate | [docs/COST_ESTIMATE.md](docs/COST_ESTIMATE.md) |
 
 The same pages, laid out as a wiki, are on the demo site at [`/wiki/`](https://pikulsomesh.github.io/foodbank-spatial-twin/wiki/).
