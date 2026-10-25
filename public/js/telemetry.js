@@ -53,7 +53,7 @@ export function simulate(nowMs = Date.now()) {
   const now = nowMs / 1000;
   const zones = ZONES.map((z) => zone(z, now));
   return {
-    site: "Central Texas Food Bank", simulated: true,
+    site: "Representative food bank (inspired by Central Texas Food Bank)", simulated: true,
     timestamp: new Date(Math.floor(now) * 1000).toISOString().replace(".000", ""),
     units: { temperature: "C", position: "m", speed: "m/s" },
     zones, forklifts: [forklift(now)],

@@ -13,7 +13,7 @@ def Xform "World"
     {
         custom string twin:feed = "/operations"
         custom string twin:sampleTime = "2027-01-15T13:00:00Z"
-        custom string twin:site = "Central Texas Food Bank"
+        custom string twin:site = "Representative food bank (inspired by Central Texas Food Bank)"
 
         def Scope "Areas"
         {
