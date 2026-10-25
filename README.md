@@ -1,146 +1,147 @@
-# Auto-Twin: video to digital twin to open renderers
+# From video to digital twin, with no CAD
 
-Turn a walkthrough video of the Central Texas Food Bank into a live digital twin: a World Labs world-model splat, converted to OpenUSD, bound to AWS-hosted telemetry, and rendered in a browser, Omniverse, or Blender. OpenUSD is the open contract between all layers. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+This repository builds a working digital twin of a food bank from a publicly available news video. It runs three steps end to end:
 
-| Layer | What | Where |
+1. **Video to world model.** Frames from the video go to the World Labs Marble world model (camera poses, metric depth) and to a local 3D Gaussian Splatting trainer. The result is a set of splat captures in OpenUSD.
+2. **Blender for the 3D facility.** A headless Blender script models the whole building, the parts the video never showed included, from the facility's own footprints. No CAD drawings, laser scans or site visits are used.
+3. **Omniverse and the browser as the digital twin.** AWS serves live (today simulated) telemetry and operations data in the same metric frame, and the twin is viewed in a browser on GitHub Pages, in NVIDIA Omniverse on a rented GPU, or in Blender. OpenUSD is the open contract between all three steps.
+
+It was built in seven days (2026-10-19 to 2026-10-25) for **$0.20 of confirmed world-model credits** and **$0.00 of AWS charges** so far. The point is that existing tools are now good enough to stand up a useful twin from footage that already exists, much faster and cheaper than a CAD-first project.
+
+**Live demo:** <https://pikulsomesh.github.io/foodbank-spatial-twin/> · **Docs wiki:** <https://pikulsomesh.github.io/foodbank-spatial-twin/wiki/> · **Cost page:** <https://pikulsomesh.github.io/foodbank-spatial-twin/wiki/cost.html>
+
+> **What this is, honestly.** The twin is a **representative food bank inspired by the Central Texas Food Bank**, not a model of any one site. The source video is a publicly available tour by 25 News KXXV; neither KXXV nor the Central Texas Food Bank was involved in this work or has endorsed it. Every part of the twin is labeled as captured, designed, published, estimated or simulated (see [Provenance](#provenance)). Cost figures are directional: they come from public list prices and what one individual AWS account could access, and enterprise discounts, quotas and policies may differ.
+
+## This is a real deployment, not a mock-up
+
+| Part | Status | Where |
 |---|---|---|
-| 1. Video to twin | yt-dlp + ffmpeg, Marble draft world, usd-convert-gsplat | `scripts/` (below) |
-| 2. Data on AWS | S3 site + Lambda/HTTP API telemetry (SAM) | `template.yaml`, `src/` (Thread 2 section) |
-| 3. Renderers | Browser (Spark), headless CPU splat renderer, Blender 5.2, Omniverse (planned) | `public/`, `scripts/render_usd_splats.py`, `scripts/blender_render_twin.py`, [docs/RENDERING.md](docs/RENDERING.md) |
+| World-model captures | **Ran** on World Labs Marble 2 (3 zones, 200 credits) | [docs/CTFB_WAREHOUSE_RUN.md](docs/CTFB_WAREHOUSE_RUN.md) |
+| Photoreal splats trained from the video | **Ran** locally for 4 zones (0 credits) | [docs/PHOTOREAL.md](docs/PHOTOREAL.md) |
+| Blender facility model | **Built** by `scripts/build_facility.py`, published as GLB and USDZ | [docs/VIEWER.md](docs/VIEWER.md) |
+| AWS backend | **Deployed** in us-east-2: S3, API Gateway HTTP API, Lambda (AWS SAM) | [docs/BACKEND.md](docs/BACKEND.md) |
+| Browser twin | **Live** on GitHub Pages, reading the AWS API | [live site](https://pikulsomesh.github.io/foodbank-spatial-twin/) |
+| Omniverse on an AWS GPU (EC2 g6.xlarge) | **Pending**: quota granted 2026-10-25, trial run and measured cost to follow | [docs/RENDERING.md](docs/RENDERING.md) |
+| Real sensors on a food bank floor | **Designed and priced**, not installed (dashed in the diagram) | [docs/COST_ESTIMATE.md](docs/COST_ESTIMATE.md) |
 
-# Auto-Twin: Thread 1, the AI spatial pipeline
+Live API: <https://f2ck9o1rx0.execute-api.us-east-2.amazonaws.com/telemetry> and [`/operations`](https://f2ck9o1rx0.execute-api.us-east-2.amazonaws.com/operations). Its data is simulated, and every payload says so (`simulated: true`).
 
-This stage turns a walkthrough video of the Central Texas Food Bank into an Omniverse-ready OpenUSD twin.
+## Solution architecture
+
+The AWS diagram is the reference architecture. **Solid** borders are implemented in this repository today (the SAM template, with simulated data); **dashed** borders are the real-floor path, designed and priced in the cost estimate. Each diagram has a cost-controls panel: everything bills only while it runs.
+
+![Food bank digital twin on AWS](paper/figures/arch_aws.png)
+
+The same design maps onto Azure and Google Cloud. **These two are designs only and have never been deployed.** Azure IoT Hub has no LoRaWAN network server, so it needs a partner server; Google Cloud IoT Core was retired in August 2023.
+
+| Azure (design only) | Google Cloud (design only) |
+|---|---|
+| ![Azure design](paper/figures/arch_azure.png) | ![Google Cloud design](paper/figures/arch_gcp.png) |
+
+Editable draw.io sources: [AWS](paper/diagrams/arch_aws.drawio), [Azure](paper/diagrams/arch_azure.drawio), [Google Cloud](paper/diagrams/arch_gcp.drawio). They are generated by [`paper/diagrams/make_diagrams.py`](paper/diagrams/make_diagrams.py). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the contracts between steps.
+
+## How it works
 
 ```
-YouTube ──yt-dlp──► /tmp/autotwin/source.* ──ffmpeg (blur-aware, 1 fps, ≤40)──► input_images/
-        ──pick 8 sharpest, evenly spread──► World Labs media assets (free)
-        ──POST /worlds:generate  model=marble-1.0-draft (250 credits)──► poll operation (free)
-        ──download .spz──► usd-convert-gsplat ──► ParticleField3DGaussianSplat (.usdc)
-        ──metric/ground/Y-up wrapper + UsdUtils packaging──► public/factory.usdz
-                                                            public/factory.spz        (for the web viewer)
-                                                            public/factory.meta.json  (alignment + provenance)
+ STEP 1  Video -> world model -> OpenUSD captures         scripts/atlas_twin.py, scripts/photoreal_twin.py
+   news video (MP4) -> ffmpeg frames, people masked
+     -> World Labs Marble 2: images2PosedRGBD (poses + metric depth) -> local RGBD fusion -> zone .spz / .usdz
+     -> COLMAP + local 3DGS trainer (CPU or GPU)                    -> photoreal zone .spz / .usdz
+
+ STEP 1b Blender facility model                            scripts/build_facility.py
+   footprints from the operations master data -> headless bpy -> facility.glb (browser) + facility.usdz (Omniverse)
+
+                         OpenUSD contract: twin.usda (Y-up, metres, floor at y = 0)
+                         = facility.usdz + captures (placed and cropped) + operations.usda
+
+ STEP 2  Data on AWS                                       template.yaml, src/telemetry/
+   S3 + API Gateway HTTP API + Lambda: GET /telemetry, GET /operations, same metric frame
+   today simulated; real path: LoRaWAN and BLE sensors -> IoT Core -> Lambda -> DynamoDB
+
+ STEP 3  Visualize                                          public/, docs/RENDERING.md
+   browser (three.js + Spark, GitHub Pages)  |  Omniverse Kit on an EC2 GPU  |  Blender / usdview
 ```
 
-## Quick start
+| Step | Guide |
+|---|---|
+| Original single-call world-model pipeline and its cost guards | [docs/PIPELINE.md](docs/PIPELINE.md) |
+| The run on the news video: zones, frames, Marble 2 route | [docs/CTFB_WAREHOUSE_RUN.md](docs/CTFB_WAREHOUSE_RUN.md) |
+| Photoreal splats trained from the video | [docs/PHOTOREAL.md](docs/PHOTOREAL.md) |
+| AWS backend and the deployed instance | [docs/BACKEND.md](docs/BACKEND.md) |
+| Operations, inventory and supply-chain layer | [docs/OPERATIONS.md](docs/OPERATIONS.md) |
+| Browser viewer | [docs/VIEWER.md](docs/VIEWER.md) |
+| Rendering in Blender and Omniverse | [docs/RENDERING.md](docs/RENDERING.md) |
+| Cost estimate | [docs/COST_ESTIMATE.md](docs/COST_ESTIMATE.md) |
+
+The same pages, laid out as a wiki, are on the demo site at [`/wiki/`](https://pikulsomesh.github.io/foodbank-spatial-twin/wiki/).
+
+## Run it
 
 ```bash
-python3.12 -m venv .venv && . .venv/bin/activate
-python -m pip install -r requirements.txt
-chmod +x scripts/ingest_and_build.sh
+# Tests (what CI runs)
+python -m pip install pytest && pytest -q tests && node --test tests/*.test.mjs
 
-scripts/ingest_and_build.sh --ingest-only          # frames only, 0 credits
-scripts/ingest_and_build.sh --dry-run              # prints the exact API payload, 0 credits
-export WORLD_LABS_API_KEY=...                      # never commit this
-scripts/ingest_and_build.sh                        # one draft world, about 250 credits ($0.20)
+# View the twin locally
+python -m http.server -d public 8000          # open http://localhost:8000
+
+# Step 1: world-model capture (paid; resumes instead of re-paying)
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt numpy scipy OpenEXR
+export WLT_API_KEY=...                         # never commit keys
+.venv/bin/python scripts/atlas_twin.py pose
+.venv/bin/python scripts/atlas_twin.py fuse
+
+# Step 1, free: photoreal splats trained locally (see docs/PHOTOREAL.md for every stage)
+.venv/bin/python scripts/photoreal_twin.py frames --zone racking --video path/to/tour.mp4
+
+# Step 1b: Blender facility model (Python 3.13, pip install bpy pillow numpy)
+python scripts/build_facility.py
+
+# OpenUSD twin for Omniverse
+pip install -r requirements-render.txt
+python scripts/operations_to_usd.py && python scripts/align_twin_usd.py   # writes public/twin.usda
+
+# Step 2: deploy the AWS backend (SAM CLI and AWS credentials; defaults to us-east-2)
+scripts/deploy.sh
 ```
 
-If YouTube blocks the download (it usually does from cloud and CI IPs), download the video on a workstation and run `scripts/ingest_and_build.sh --video-file path/to/video.mp4`. Use `--start SECONDS` to choose which 40-second window of the tour to capture. For a long tour, `--interval N` keeps one frame every N seconds (so 40 frames span 40N seconds) and `--crop-bottom PX` removes burned-in broadcast graphics. The first real run, on the Central Texas Food Bank warehouse aisle, is written up in [docs/CTFB_WAREHOUSE_RUN.md](docs/CTFB_WAREHOUSE_RUN.md).
+## Cost
 
-Arguments after `--` go to the Python stage, for example `scripts/ingest_and_build.sh -- --spz-resolution 100k`.
-
-## Cost protection
-
-| Guard | What it does |
+| | Cost |
 |---|---|
-| Draft only | Any model other than `marble-1.0-draft` is refused without `--allow-non-draft`. The payload is checked again just before the POST, and the returned world's model is checked afterwards. |
-| One generation per run | There is a single billable call site, and it runs at most once per process. |
-| Resume, never resubmit | The operation id is saved the moment the job is accepted. A crash, timeout or Ctrl-C means the next run resumes polling instead of paying again. |
-| Reuse finished worlds | Re-running after success converts the saved world for 0 credits. A new world needs `--force-new`. |
-| Lifetime ledger | `build/ledger.json` records every charge. A run is refused if it would push the total past `--budget-credits` (default 10,000). |
-| Live balance floor | `GET /credits` must show the estimate plus `--reserve-credits` (default 500) before anything is submitted. |
-| No blind retries of paid calls | The generate POST is retried only on HTTP 429, which the docs define as "not accepted". A timeout or 5xx stops the run with exit code 3, so you can check the dashboard instead of risking a double charge. |
-| Frame ceiling | The bash stage hard-caps extraction at 40 frames. No flag can raise it. |
+| This build (world model, local training, Blender, AWS) | **$0.20 confirmed**, at most $1.00, plus the GPU trial (pending) |
+| Capture to deployed twin for a full ~135,000 sq ft facility | about **$25 to $50** of cloud spend (directional) |
+| Running it on real sensors | about **$2,700** hardware once, about **$12 a month** on AWS |
+| Omniverse on demand, 10 hours a week | about **$124 a month** (Marketplace g6e.xlarge) |
 
-Keep `build/` between runs, because it holds the state file and the ledger. Deleting it removes the resume and reuse protection.
+Details, assumptions and sources: [docs/COST_ESTIMATE.md](docs/COST_ESTIMATE.md) and the [cost page](https://pikulsomesh.github.io/foodbank-spatial-twin/wiki/cost.html). Figures use public list prices checked 2026-10-19 and an individual AWS account; they are directional, not a quote.
 
-## Corrections to the original brief (checked on docs.worldlabs.ai, 2026-10-18)
+## Provenance
 
-- **Pricing is lower than assumed.** A draft multi-image world costs 250 credits ($0.20), not 750. A standard world costs 1,600, not 3,000. The 10,000 credits cover about 38 drafts while keeping the 500-credit reserve. [Pricing](https://docs.worldlabs.ai/api/pricing.md)
-- **The API accepts at most 8 images.** That limit applies with `reconstruct_images: true`. Without reconstruction the limit is 4. The 40 extracted frames are therefore a candidate pool: the script splits them into 8 segments and sends the sharpest frame from each (variance of the Laplacian). Reconstruction also requires every image to have the same resolution, so the script drops any frames that differ. [Generate](https://docs.worldlabs.ai/api/reference/worlds/generate.md), [Multi-image guide](https://docs.worldlabs.ai/marble/create/prompt-guides/multi-image-prompt.md)
-- **Video input costs the same.** A video prompt (up to 100 MB) is also 250 credits on draft. It is available with `--mode video --video-file clip.mp4` and is worth an A/B test against the 8 frames.
-- **Auth uses the `WLT-Api-Key` header** against `https://api.worldlabs.ai/marble/v1`. The model name `marble-1.0-draft` is real.
+| Part of the twin | Kind | Source |
+|---|---|---|
+| Racking aisle, sorting room, client market | Captured, partial | Frames of the public news tour; world-model depth fused locally, and trained locally as 3DGS |
+| Community kitchen interior | Captured, partial | Trained locally from frames of the same video; no world-model capture |
+| Absolute scale | Estimated | The world model's metric depth; not checked against a survey |
+| Building shell, receiving, freezer, cooler, order staging, kitchen annex | Designed | Footprints chosen for this project |
+| Modeled facility (racking, cold rooms, sorting lines, market, kitchen equipment, forklifts) | Designed | Built in Blender by one script, fit-out inspired by the video |
+| Annual volume, agencies, floor area, pallet positions, docks, meals per day | Published | Central Texas Food Bank's public figures for its Austin facility |
+| Shares, product mix, capacities, recipes, step times | Estimated | Flagged `est: true` in the master data |
+| Temperatures, doors, forklifts, daily flows, inventory | Simulated | Computed from the clock; every payload carries `simulated: true` |
 
-## Technical assessment: from `.spz` to `ParticleField3DGaussianSplat`
+## Repository map
 
-**1. Quantized data becomes float32, so files grow about 8×.** SPZ packs each splat tightly: 24-bit fixed-point positions, 8-bit log-scales, opacity and colour, 3 to 4 bytes of rotation, 8-bit SH, then gzip. usd-convert-gsplat decodes all of this to `point3f[]` positions, `float3[]` scales (after exp), `quatf[]` orientations, `float[]` opacities (after sigmoid) and `float3[]` SH coefficients. USDZ is uncompressed by specification, so the growth carries straight through to the download. In the test run, 20,000 SH-degree-1 splats went from 262 KB of SPZ to 2.0 MB of USDZ (7.7×), and SH degree 3 would grow more. Optimization opportunities:
-   - Choose the splat tier. Use `--spz-resolution 500k` (the default) for Omniverse and `100k` for anything sent to a browser.
-   - Use half precision. The schema already defines half-precision twins (`positionsh`, `scalesh`, `orientationsh`, `opacitiesh`, `radiance:sphericalHarmonicsCoefficientsh`), but converter 0.1.15 writes only the float32 versions. Writing the half versions would roughly halve the file. This is the best follow-up if size becomes a problem.
-   - Truncate SH for the web. Dropping to SH degree 0 removes most of the payload, at the cost of view-dependent shine.
-
-**2. The converter's direct `.usdz` path is a bottleneck, so the pipeline bypasses it.** In v0.1.15, `-o x.usdz` writes an ASCII `.usda` layer and zips it with Python's `zipfile`. That makes the file larger and slower to load, and it skips the 64-byte alignment the USDZ spec requires. The pipeline converts to binary `.usdc` instead and packages with OpenUSD's `UsdUtils.CreateNewUsdzPackage`. The converter also loops per splat in Python, so a `full_res` world can take minutes. `--convert-timeout` guards against that.
-
-**3. Marble's coordinate frame has to be corrected.** World Labs SPZ files use an OpenCV-style frame (Y down) in arbitrary units. Each world ships `metric_scale_factor` and `ground_plane_offset`. The pipeline leaves the splat payload untouched and applies `rotateX(180) · translate(0, −offset, 0) · scale(s)` on a parent Xform, following the order in [Rendering SPZ](https://docs.worldlabs.ai/api/rendering-spz.md). The stage is Y-up with `metersPerUnit = 1`. With synthetic data, the ground landed at exactly y = 0. Metric units matter for later threads: IoT badges and forklift positions can then be placed in metres.
-
-**4. The wrapper prim has to stay untyped.** A `def Xform` that references the splat would override its `ParticleField3DGaussianSplat` type and hide it. The pipeline wraps it as `/World/FoodBank` (Xform, holding the corrections) with an untyped child `/World/FoodBank/Splat` (the reference). The script re-opens the final USDZ and fails unless it finds that prim with positions.
-
-**5. Edge cases handled**
-- Motion blur in a handheld walkthrough: ffmpeg scores 4 candidates per second with `blurdetect` and keeps the sharpest. Python then ranks again with Laplacian variance.
-- Interlaced sources: `bwdif` runs only on frames flagged as interlaced.
-- Videos shorter than `--start` plus 40 seconds: the capture window is clamped.
-- Signed SPZ URLs that expire: the world record is fetched again.
-- Rate limits: the default tier allows about 3 starts per minute. The script honours `Retry-After` and uses exponential backoff with jitter.
-- Unsupported SPZ versions or a corrupt gzip file are caught before conversion.
-
-## Implications for later threads
-
-- **Thread 3 should not depend on `<model-viewer>` to show the splat.** It renders glTF. It opens `.usdz` only by handing off to iOS AR Quick Look, which does not render USD particle fields. The recommendation is to render `public/factory.spz` with Spark (World Labs' three.js splat renderer) in the browser, and keep `factory.usdz` as the Omniverse deliverable. Alternatively, show the world's collider GLB (URL in `factory.meta.json`) in `<model-viewer>`. `factory.meta.json` has the scale and offset needed to align IoT badges.
-- **Thread 2:** USDZ files are large and static. Serve them from S3 with long `Cache-Control` headers. CloudFront is optional, but it would make the download cheaper than direct S3 egress.
-
-## What was verified and what wasn't
-
-Verified in this session:
-- Both scripts ran end to end against a local mock of the World Labs API, using real `usd-convert-gsplat` 0.1.15 with OpenUSD on Python 3.12.
-- The mock checked the full submission path: the 429 retry on generate, a 503 during polling, the resume-in-flight path (exactly 1 generate call across 3 runs), reuse of a finished world, refusal of non-draft models, ledger accounting, and that the API key never reaches the signed upload URL.
-- The output USDZ opens in OpenUSD with a `ParticleField3DGaussianSplat` prim and correct ground alignment.
-- Blur-aware extraction ran on a synthetic 1080p video.
-
-Not verified:
-- **Real World Labs calls.** No API key was used. In particular, whether draft worlds offer every SPZ tier (`100k`, `500k`, `full_res`) is unknown. If a tier is missing, the script stops and lists the tiers that are available.
-- **Whether `reconstruct_images` costs extra.** The pricing page lists no surcharge for it.
-- **The YouTube download.** This sandbox's network blocks YouTube.
-- **Rendering in Omniverse.** There was no RTX machine available.
-
-Also worth confirming before a public showcase: permission from the Central Texas Food Bank (or whoever owns the video) to publish a reconstruction of their facility.
-
-# Thread 2: AWS serverless backend
-
-`template.yaml` (AWS SAM) defines everything with no standing cost:
-
-| Resource | Notes |
-|---|---|
-| S3 bucket (static website) | Public read for `public/` (viewer, `factory.usdz`, `factory.spz`). Website hosting is HTTP only. |
-| Lambda `python3.12`, arm64, 128 MB, 3 s timeout | `src/telemetry/app.py`. Stateless and deterministic, so there is no database. |
-| HTTP API | `GET /telemetry`, `GET /operations`, `GET /health`, CORS open, throttled to 5 rps / 10 burst by default. |
-| Log group | 7-day retention. |
-
-`GET /telemetry` returns freezer, cooler and dry-storage temperature, humidity, door state, alarm status, and a forklift looping through the building. Positions are in metres in the twin's frame, so the viewer can pin badges to them. Calibrate `ZONES` and `FORKLIFT_PATH` once the real `factory.usdz` extents are known.
-
-```bash
-python -m pip install pytest && pytest tests
-scripts/deploy.sh        # sam build + deploy, syncs public/ to the bucket, prints the URLs
+```
+scripts/        step 1 pipelines (atlas_twin, photoreal_twin, splat_train, world_labs_to_usd),
+                build_facility (Blender), align_twin_usd + operations_to_usd (OpenUSD), deploy.sh, renderers
+data/           frames, masks and layout used for the published run
+template.yaml   step 2, AWS SAM
+src/telemetry/  step 2 Lambda (telemetry and operations simulators)
+public/         step 3 browser twin, published assets, and the docs wiki (public/wiki/)
+paper/          LaTeX paper and the draw.io architecture diagrams
+docs/           the engineering guides linked above
+tests/          Python and Node tests, run by .github/workflows/pages.yml
 ```
 
-**Expected cost:** the free tier covers 1M Lambda requests and 1M HTTP API requests per month for the first 12 months, S3 is pennies at this size. Past that, a viewer polling every 5 seconds around the clock is about 520k requests per month, roughly $0.50 in API Gateway plus $0.10 in Lambda. The throttle caps the worst case.
+## Paper
 
-# Thread 3: browser demo (GitHub Pages)
-
-**Live site:** <https://pikulsomesh.github.io/foodbank-spatial-twin/> (deployed from `main` by `.github/workflows/pages.yml`).
-
-Open it on any laptop or phone, no install. Drag to orbit, pinch or scroll to zoom, and use the buttons at the bottom for preset views, following the forklift, or a slow **Tour** orbit for screen recordings. `?tour=1` starts the tour, `?cam=px,py,pz,tx,ty,tz` pins the camera for screenshots, `?view=cold|aisle|sorting|market|kitchen` opens on a preset, `?sim=1` forces the offline feed, `?captures` brings back the splat captures over the massing model (the pre-model view), and `?placeholder=1` shows the massing model alone.
-
-| File | Role |
-|---|---|
-| `public/index.html`, `public/css/`, `public/js/app.js` | Viewer: three.js 0.180 from jsDelivr showing the modeled facility (Spark 2.2 only with `?captures`), HTML badges pinned to telemetry positions, forklift and zone rings. |
-| `public/facility.glb`, `public/facility.usdz`, `scripts/build_facility.py` | **The default scene.** The whole food bank modeled in Blender (headless `bpy`) in the telemetry frame: shell and dock doors with a trailer, freezer and cooler (cutaway, racked inside), four rows of red selective racking with pallets, receiving and order staging, the volunteer sorting room (tables, roller conveyors, scales), the client market (wire shelving, produce, fridge case, checkout), the community kitchen annex (kettles, tilt skillets, combi ovens, blast chillers, prep tables, pack line, walk-in), forklifts, painted lanes and signage. Footprints come from `public/ops/operations.json`. One script writes the GLB for the browser (~1.8 MB, ~150 draw calls; its `ForkliftRig` node is the forklift the telemetry drives) and the USDZ for Omniverse; `--blend` and `--render` save a .blend and a Cycles still. Rebuild with `python scripts/build_facility.py` (Python 3.13, `pip install bpy pillow numpy`). |
-| `public/js/placeholder.js` | Procedural splat layout of a plausible food bank (freezer, cooler, racking, dock doors, sorting, staging) in the telemetry frame. It is the whole twin when no capture is published, and the surrounding building when one is. |
-| `public/operations.html`, `public/js/operations.js`, `public/js/ops-overlay.js` | The whole operation as data: supply chain flow, site plan, inventory, docks and the community kitchen. `operations.js` ports `src/telemetry/operations.py` (`GET /operations`) for offline use; the overlay draws each area's footprint and the kitchen annex in the 3D view. See [docs/OPERATIONS.md](docs/OPERATIONS.md). |
-| `public/twin.usda`, `public/twin_crop.usdc` | The twin for Omniverse in one frame: `/World/Facility` (the modeled facility, visible) and, authored invisible so they can be toggled on, the same captures the browser shows (trained 3DGS zones, else `site.usdz`), placed and cropped as in the browser, plus `operations.usda`. Written by `scripts/align_twin_usd.py`. |
-| `public/js/telemetry.js` | Polls `GET /telemetry`; when the API is unset or unreachable it runs a JS port of `src/telemetry/app.py` and re-tries the API every 30 s. `tests/telemetry.test.mjs` keeps the two in sync. |
-| `public/twin.config.json` | The one file to edit: where each captured zone sits in the building, its crop box, what generated scenery it replaces, and the API URL. |
-
-**Captured zones (`?captures`).** The splat captures only read well from their own source cameras, so the default view is the modeled facility and the captures are opt-in: `?captures` composites them as below, and `photoreal.html` compares each zone from its source cameras. With `?captures` the viewer reads `public/zones/zones.json` (written by the pipeline's `site` stage: one SPZ per zone plus its `ground_plane_offset`). Each zone with an entry under `captures` in `twin.config.json` is corrected like the USD wrapper (`rotateX(180) · translate(0, -ground, 0) · scale(s)`), cropped to `crop` (metres, Y-up, floor at 0, capture frame), then placed with `position` and `yaw_deg` in the telemetry frame. `clear` removes the generated racking, sorting tables and staging pallets on that patch of floor, and each placed zone gets a camera button that looks the way its source cameras did. Zones without an entry are skipped. When `public/zones/photoreal.json` (the trained 3DGS zones from `scripts/photoreal_twin.py`) lists a zone, the viewer uses the trained splat instead, placed by that zone's `photoreal` block (which can open the generated walls with `"walls": true` in `clear`), opens on its first real source camera with the video's lens, and hides the forklift in that view. `?atlas` shows the Atlas captures for comparison. Without `zones.json`, the viewer falls back to `public/factory.spz` as the racking aisle. Set `"context": false` to show the captures without the generated building. The panel links `site.usdz` for Omniverse when it is published.
-
-**Live data.** Once the SAM stack is deployed, `scripts/deploy.sh` sets it up end to end: with an authenticated `gh` it sets the repository variable `TWIN_API_URL` and redeploys Pages; otherwise it prints those two steps. By hand: set the repository variable `TWIN_API_URL` (Settings, Secrets and variables, Actions, Variables) to the `ApiBaseUrl` output and re-run the workflow. Until then the site shows "Simulated feed (offline)" and uses the same sensor model locally; when the API answers it switches to "Live from AWS" on its own. `scripts/deploy.sh` writes the URL into the S3 copy of the site the same way.
-
-**Demo video.** `scripts/record_demo.mjs` drives a scripted tour (overview, each captured zone, cold rooms, forklift) through the viewer's `?record=1` mode, which advances time only when the script asks for a frame, so a machine without a GPU still renders smooth footage. Its header has the commands.
+*From Video to Digital Twin: Accelerating Spatial Twins with World Models and NVIDIA Omniverse*, Somesh Mohapatra. LaTeX source in [`paper/`](paper/).

@@ -1,5 +1,7 @@
 # Architecture: video to world-model twin, AWS data, open renderers
 
+The draw.io solution architecture (AWS deployed, Azure and Google Cloud designs) is in the [README](../README.md#solution-architecture) and on the docs wiki at `public/wiki/architecture.html`. This page covers the OpenUSD framing and the contracts between steps.
+
 One idea: **OpenUSD is the open interchange contract.** Everything upstream produces it, everything downstream renders it, and the AWS layer binds live data to prims in it. No renderer is "the" open one or "the" proprietary one.
 
 ```

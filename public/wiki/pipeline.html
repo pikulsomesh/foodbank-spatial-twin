@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Twin Pipeline</title>
+<meta name="description" content="The video to world model to Blender pipeline that builds the twin, stage by stage.">
+<meta name="theme-color" content="#0f1720">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1720'/%3E%3Cpath d='M6 24V13l10-6 10 6v11h-5v-7H11v7z' fill='%2357c7a5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+<!-- Generated page of the docs wiki; the engineering guides in docs/ hold the full detail. -->
+<header class="top">
+  <a class="brand" href="index.html"><i class="logo" aria-hidden="true"></i><span><b>Twin Docs</b><span>Video to world model to Blender to Omniverse</span></span></a>
+  <div class="pills">
+    <a class="pill" href="../">3D twin</a>
+    <a class="pill" href="../operations.html">Operations</a>
+    <a class="pill" href="https://github.com/pikulsomesh/foodbank-spatial-twin">GitHub</a>
+  </div>
+</header>
+<div class="layout">
+<nav class="side" aria-label="Docs"><ol><li><a href="index.html">Overview</a></li><li><a href="pipeline.html" aria-current="page">Pipeline</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="data.html">Data on AWS</a></li><li><a href="visualize.html">Visualize</a></li><li><a href="run.html">Run it</a></li><li><a href="cost.html">Cost</a></li><li><a href="provenance.html">Provenance</a></li></ol></nav>
+<article>
+<h1>Pipeline: video to world model to Blender</h1>
+<p class="lede">Step 1 turns a video into OpenUSD captures of the spaces it shows. Step 1b models the rest of the building in Blender. Everything lands in one metric, Y-up frame with the floor at y = 0.</p>
+<pre><code>news video (MP4, 18:32, 1080p)
+  -> ffmpeg: blur-aware frame extraction, broadcast graphic cropped, people masked
+  -> World Labs Marble 2  images2PosedRGBD   (camera poses + metric depth, 10 credits a frame)
+       -> local RGBD fusion, 1 cm voxels      -> zone .spz (browser) + .usdz (ParticleField3DGaussianSplat)
+  -> COLMAP + local 3DGS trainer (CPU or GPU)
+       -> level, floor at y = 0, metric scale -> photoreal zone .spz + .usdz
+  -> Blender (headless bpy) from facility footprints
+       -> facility.glb (browser) + facility.usdz (Omniverse)
+  -> align_twin_usd.py -> twin.usda = facility + captures (placed, cropped) + operations</code></pre>
+
+<h2 id="source">The source video</h2>
+<p>"Inside the NEW Central Texas Food Bank" by 25 News KXXV (July 2026): 18 min 32 s, 1920×1080 at 59.94 fps. It is an interview walkthrough, so two people are in almost every shot and a lower-third graphic is burned into every frame. That makes it a realistic input rather than a curated capture. Candidate zones were surveyed at one frame every 10 s.</p>
+<div class="table-wrap"><table><thead><tr><th>Time</th><th>Zone</th><th>Used for</th></tr></thead><tbody><tr><td>0:48 to 1:06</td><td>Volunteer sorting room</td><td>World-model capture, trained splats</td></tr><tr><td>6:10 to 7:45</td><td>Pallet-racking aisle</td><td>World-model capture (first run), trained splats</td></tr><tr><td>9:13 to 9:50</td><td>Client grocery market</td><td>World-model capture, trained splats</td></tr><tr><td>14:23 to 14:57</td><td>Community kitchen</td><td>Trained splats only (stainless steel is hard for the world model)</td></tr><tr><td>other segments</td><td>Freezer and cooler doors, docks</td><td>Not captured: blank walls, fog, or people filling the frame</td></tr></tbody></table></div>
+<figure class="photo"><img src="img/contact_sheet.jpg" alt="Eight hand-picked frames of the racking aisle" loading="lazy"><figcaption>The eight hand-picked racking-aisle frames. The automatic sharpness picker favoured in-focus faces, so inputs were chosen for viewpoint spread and fewest people.</figcaption></figure>
+
+<h2 id="world-model">World model: Marble 2</h2>
+<p><a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/scripts/atlas_twin.py"><code>scripts/atlas_twin.py</code></a> runs three stages. Each paid stage records its operation id before waiting, and submissions carry an idempotency key, so a rerun resumes instead of paying again.</p>
+<div class="table-wrap"><table><thead><tr><th>Stage</th><th>Call</th><th>Cost</th></tr></thead><tbody><tr><td><code>pose</code></td><td><code>images2PosedRGBD</code>: camera, metric depth and confidence per frame</td><td>10 credits a frame</td></tr><tr><td><code>generate</code></td><td><code>atlasGenerate</code>: new views around the zone, people masked out</td><td>50 credits a view (failed twice for this account; retries paused)</td></tr><tr><td><code>fuse</code></td><td>Local: unproject every RGBD view, keep the most confident sample per 1 cm voxel, write Gaussians as PLY and SPZ, convert to USDZ</td><td>free</td></tr><tr><td><code>site</code></td><td>Local: place zones on a plan and write <code>site.usdz</code> + <code>zones/*.spz</code></td><td>free</td></tr></tbody></table></div>
+<p>Three zones were posed (8, 6 and 6 frames): 200 credits, $0.20. The depth is metric: the first racking beam lands about 0.4 m above the lens, as on a real beam about 1.9 m high. Full write-up: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/docs/CTFB_WAREHOUSE_RUN.md"><code>docs/CTFB_WAREHOUSE_RUN.md</code></a>. The original single-call Marble v1 route, with its cost guards (draft only, one generation per run, resume never resubmit, lifetime ledger), is in <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/docs/PIPELINE.md"><code>docs/PIPELINE.md</code></a>.</p>
+
+<h2 id="photoreal">Photoreal splats trained from the video</h2>
+<p>World-model captures from 6 to 8 frames read well only from their source cameras. <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/scripts/photoreal_twin.py"><code>scripts/photoreal_twin.py</code></a> trains a real 3D Gaussian Splatting model per zone from many more frames, locally, for 0 credits. The trainer, <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/scripts/splat_train.py"><code>scripts/splat_train.py</code></a>, is the 3DGS method in plain PyTorch tensor code, so it runs on a CPU (about 1 s a step at 480 px on 4 cores) as well as on CUDA.</p>
+<div class="table-wrap"><table><thead><tr><th>Zone</th><th>Video segment</th><th class=num>Frames</th><th class=num>Splats</th><th class=num>SPZ (MB)</th><th class=num>USDZ (MB)</th></tr></thead><tbody><tr><td>Racking aisle</td><td>6:08, 100 s</td><td class=num>72</td><td class=num>128,884</td><td class=num>2.1</td><td class=num>8.4</td></tr><tr><td>Volunteer sorting room</td><td>0:52, 30 s</td><td class=num>68</td><td class=num>111,400</td><td class=num>1.8</td><td class=num>7.3</td></tr><tr><td>Client market</td><td>9:13, 45 s</td><td class=num>49</td><td class=num>105,899</td><td class=num>1.6</td><td class=num>6.9</td></tr><tr><td>Community kitchen</td><td>14:23, 34 s</td><td class=num>65</td><td class=num>161,425</td><td class=num>2.5</td><td class=num>10.6</td></tr></tbody></table></div>
+<p>Stages: frames, person masks (MediaPipe), keyframe selection, background plates warped from nearby frames under the masks, COLMAP poses, training with masked L1 + D-SSIM loss and visual-hull carving of the hosts, then export levelled with the floor at y = 0 and cameras at 1.6 m. Details: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/docs/PHOTOREAL.md"><code>docs/PHOTOREAL.md</code></a>.</p>
+<figure class="photo"><img src="img/photoreal_before_after.jpg" alt="Racking aisle, world-model capture versus trained splats" loading="lazy"><figcaption>Racking aisle: world-model capture from 8 frames versus splats trained from 72 frames.</figcaption></figure>
+
+<h2 id="blender">Blender: the whole facility, no CAD</h2>
+<p>The video shows a few rooms. A twin needs the whole operation. <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/scripts/build_facility.py"><code>scripts/build_facility.py</code></a> (Blender 5.2 as the <code>bpy</code> module, about 5 s) models the building from the footprints in the operations master data: shell and dock doors with a trailer, freezer and cooler with racking inside, four rows of selective racking with pallets, receiving and order staging, the sorting room, the client market, the community kitchen annex (kettles, tilt skillets, combi ovens, blast chillers), forklifts, painted lanes and signage. It writes <code>facility.glb</code> for the browser (about 1.8 MB, 150 draw calls) and <code>facility.usdz</code> for Omniverse, and can save a <code>.blend</code> and a Cycles still.</p>
+<figure class="photo"><img src="img/facility_cycles.jpg" alt="The modeled facility rendered in Blender Cycles" loading="lazy"><figcaption>The modeled facility in Blender Cycles. Designed, not captured: footprints from master data, fit-out inspired by the video.</figcaption></figure>
+
+<h2 id="usd">One OpenUSD twin</h2>
+<p><a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/scripts/align_twin_usd.py"><code>scripts/align_twin_usd.py</code></a> writes <code>public/twin.usda</code>: <code>/World/Facility</code> (the Blender model, visible), the captured zones placed and cropped exactly as the browser places them (authored invisible so they can be toggled on), and <code>operations.usda</code> with each area's live attributes. <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/public/twin.config.json"><code>public/twin.config.json</code></a> is the single source of placement for the browser and for USD.</p>
+<footer class="page">Representative food bank inspired by the Central Texas Food Bank; not affiliated with or endorsed by it. Costs are directional. Source: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin">github.com/pikulsomesh/foodbank-spatial-twin</a>.</footer>
+</article>
+</div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Cost estimate: running the twin on real floor data
 
-This estimate covers one representative food bank of about 135,000 sq ft, the size the operations model is anchored to, with real sensors in place of the simulator. It is an **estimate from list prices checked on 2026-10-19**, not a quote and not a measured bill. Taxes, shipping, installation labour and staff time are not included. The assumptions behind each count are listed below so that any of them can be changed.
+This estimate covers one representative food bank of about 135,000 sq ft, the size the operations model is anchored to, with real sensors in place of the simulator. It is an **estimate from list prices checked on 2026-10-19**, not a quote and not a measured bill. All prices are public list prices, and what was tried was limited to what an individual AWS account could access (its quotas and organization policies). An enterprise account may see negotiated discounts, savings plans, different quotas and region policies, so treat every figure as directional. Taxes, shipping, installation labour and staff time are not included. The assumptions behind each count are listed below so that any of them can be changed.
 
 ## Summary
 
@@ -12,6 +12,48 @@ This estimate covers one representative food bank of about 135,000 sq ft, the si
 | Optional: 360° camera to re-capture the building | **$400 to $560** | none |
 
 At this scale the AWS bill is small. A new account's free tier covers most of it for the first year. The real costs are the hardware, installing it, and the staff time to keep the master data (zones, docks, products) current. A GPU running Omniverse around the clock would dominate everything else at about $2,100 a month, so the plan is to view the twin in the browser day to day and start Omniverse only when needed.
+
+## Measured so far (demo, simulated data)
+
+The SAM stack was deployed to us-east-2 on 2026-10-25 (the account's organization policy blocks Lambda, CloudFormation and API Gateway in us-east-1). AWS Cost Explorer showed **$0.00** billed for October 2026 at that date: Lambda, the HTTP API and S3 sit inside the free tier at demo traffic. Over 1,000 sequential `GET /telemetry` requests from a US cloud container, paced at about 3 per second, all succeeded, with a 67 ms median and 78 ms 95th-percentile round trip. In an earlier run of the same size, 1.4% of requests were throttled (HTTP 429) by the API's deliberate 5-per-second cost ceiling.
+
+## Building the twin: measured cost of this run
+
+The whole twin was built from one publicly available news video in seven days (2026-10-19 to 2026-10-25), with no CAD drawings, no laser scan and no site visit. What that cost:
+
+| Step | What ran | Measured | Cost |
+|---|---|---|---|
+| 1. Video to world-model capture | World Labs Marble 2 `images2PosedRGBD` on 20 frames for 3 zones (8 + 6 + 6) | 200 credits | **$0.20** |
+| | Two `atlasGenerate` attempts that failed (`EXECUTION_FAILED`) | not shown on the usage page; worst case 800 credits at list price | at most $0.80 |
+| | Frame extraction, RGBD fusion, COLMAP and 3D Gaussian Splatting training for 4 zones, OpenUSD conversion | local CPU in a cloud container | $0 extra |
+| 1b. Blender facility model | `scripts/build_facility.py` (headless `bpy`), whole building from the designed footprints | about 5 s per build | $0 |
+| 2. Data on AWS | SAM stack (S3, HTTP API, Lambda) in us-east-2, October 2026 | Cost Explorer | **$0.00** (free tier) |
+| 3. Omniverse on a rented GPU | One g6.xlarge (NVIDIA L4), Omniverse Kit headless, renders `twin.usda`, then terminates | **Pending:** runtime, instance-hours and billed cost will be filled in from the trial | **Pending** (planned at about $0.80 an hour, $2 to $3 in total) |
+| **Total so far** | | | **$0.20 confirmed, at most $1.00**, before the GPU trial |
+
+## Scaled to a full facility (directional)
+
+The run above captured 3 zones partially and designed the rest. A complete capture of a facility of about 135,000 sq ft, using the same tools at list prices, might look like this. The zone count, frames per zone and GPU hours are assumptions; replace the GPU rate with the trial's measured figure once it is in.
+
+| Item | Assumption | Estimate |
+|---|---|---|
+| World-model poses | 12 zones × 8 frames × 10 credits | about $1 |
+| World-model generated views | 12 zones × 8 views × 50 credits | about $5 |
+| 3DGS training on a GPU | about 1 GPU-hour per zone on a g6.xlarge at about $0.80 an hour | about $10 |
+| Blender facility model | one script run from the facility's own footprints (master data) | $0 |
+| Omniverse review sessions | 10 GPU-hours on g6.xlarge (compute only) or g6e.xlarge via the Marketplace listing ($2.86 an hour) | $8 to $29 |
+| **Capture to deployed twin** | cloud spend only, staff time not included | **about $25 to $50** |
+
+Running it afterwards, per facility, from the tables below:
+
+| Scenario | One-time | Monthly | First year |
+|---|---|---|---|
+| Browser twin on simulated or exported data | none | about $0 to $12 | under $150 |
+| Real sensors, browser twin | about $2,700 | about $12 | about **$2,850** |
+| Real sensors, browser twin, Omniverse on demand 10 h a week | about $2,700 | about $136 | about **$4,330** |
+| Ten facilities, real sensors, one shared on-demand Omniverse workstation | about $27,000 | about $244 | about **$30,000** |
+
+The pattern is the point: capturing and modeling the building costs tens of dollars, and the AWS bill stays in the tens of dollars a month. The real costs are sensors, installation and the staff time to keep master data current. Omniverse Enterprise licensing for production use is separate and must be confirmed with NVIDIA.
 
 ## What gets tracked, and how
 
@@ -70,7 +112,7 @@ Pound prices were converted at roughly $1.29 per pound. Industrial alternatives 
 - **Pay only while it runs.** Every part of the design can bill only while it is in use, which is shown as a cost-controls panel in each architecture diagram (`paper/diagrams/`).
   - The API and ingest functions (Lambda behind API Gateway) bill per request, so an idle twin costs almost nothing. This is already the cheapest option for the polling API.
   - Work shipped as a container image, such as a warehouse import that outlasts Lambda's 15-minute limit or a scene rebuild, can run on **Amazon ECS with AWS Fargate**: you hand AWS an image and a CPU and memory size, it runs the task with no servers to manage, and bills per second with a 1-minute minimum (us-east-1 Linux ARM: $0.0000089944 per vCPU-second, $0.0000009889 per GB-second; x86 about 25% more). At 0 tasks it costs nothing. An always-on 0.25 vCPU / 0.5 GB ARM task is about $7.21 a month, more than the whole demo API, so containers suit jobs, not the API. Fargate Spot is up to 70% cheaper for interruptible tasks.
-  - **Fargate has no GPUs**, so Omniverse runs on an EC2 GPU instance started for a session and stopped right after. Spot lowers the price but the instance can be reclaimed mid-session. A stopped instance's EBS disk still bills, so snapshot and delete it if the GPU will sit unused for weeks.
+  - **Fargate has no GPUs**, so Omniverse runs on EC2 GPU capacity: an ECS service or AWS Batch job whose Auto Scaling group has a minimum of 0, so an instance exists only while a render runs (or, by hand, an instance started for a session and stopped right after). A new account starts with 0 on-demand GPU (G and VT) vCPU quota, so request it before the first run. Spot lowers the price but the instance can be reclaimed mid-session. A stopped instance's EBS disk still bills, so snapshot and delete it if the GPU will sit unused for weeks.
   - Azure Container Apps and Google Cloud Run are the equivalents of Fargate and scale to zero by themselves. Both also offer serverless GPUs that scale to zero (Container Apps: A100, T4; Cloud Run: L4), which could host a headless renderer; Omniverse has not been tested on them.
   - A budget alert (the demo AWS account has a $10 one, set on the account rather than in the template) catches anything left running.
 - **Forklift position.** BLE gives which area a truck is in, which is enough for the twin's dock and aisle views. Telematics subscriptions run about $25 to $50 per vehicle per month (ForkOn €22.70; Powerfleet and iWAREHOUSE figures are third-party estimates) and add hours, impacts and operator log-in. Centimetre-level UWB positioning is a quote-only purchase: a Pozyx kit covering about 1,000 m² starts at $4,970, and this building is about 12,500 m².
