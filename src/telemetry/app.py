@@ -1,4 +1,4 @@
-"""Simulated cold-chain IoT telemetry for the Central Texas Food Bank twin.
+"""Simulated cold-chain IoT telemetry for a representative food bank twin (inspired by Central Texas Food Bank).
 
 Stateless and deterministic: every value is a pure function of the wall clock, so
 there is no database to pay for and two callers in the same second see the same data.
@@ -14,7 +14,7 @@ import time
 
 import operations
 
-SITE = os.environ.get("SITE_NAME", "Central Texas Food Bank")
+SITE = os.environ.get("SITE_NAME", "Representative food bank (inspired by Central Texas Food Bank)")
 
 # id, label, setpoint C, alarm band C (+/-), anchor [x, y, z] in metres
 ZONES = [

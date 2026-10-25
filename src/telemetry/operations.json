@@ -1,7 +1,7 @@
 {
   "_comment": "Operations master data for the food bank twin: zones, inventory families, inbound sources, outbound channels and the community kitchen. Positions and footprints are metres in the telemetry frame (Y up, origin at the dock-door corner), the same frame as /telemetry. Volumes are for the whole real facility; the twin's building is a scaled-down stand-in. Records with \"est\": true are modelling estimates, everything else cites `src` ids in `sources`. public/ops/operations.json must stay byte-identical (tests check it).",
   "site": {
-    "name": "Central Texas Food Bank",
+    "name": "Representative food bank (inspired by Central Texas Food Bank)",
     "inspiration_only": true,
     "utc_offset_hours": -5,
     "annual_lbs": 74000000,

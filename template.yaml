@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  Auto-Twin Thread 2. Serverless backend for the Central Texas Food Bank digital twin:
+  Auto-Twin Thread 2. Serverless backend for a representative food bank digital twin (inspired by Central Texas Food Bank):
   a public S3 static website (viewer + factory.usdz/.spz) and an HTTP API that returns
   simulated cold-chain IoT telemetry from one small Lambda. No standing cost: no NAT,
   no VPC, no provisioned capacity, no database.
@@ -78,7 +78,7 @@ Resources:
       Description: Simulated cold-chain telemetry for the food bank twin
       Environment:
         Variables:
-          SITE_NAME: Central Texas Food Bank
+          SITE_NAME: Representative food bank (inspired by Central Texas Food Bank)
       Events:
         GetTelemetry:
           Type: HttpApi
