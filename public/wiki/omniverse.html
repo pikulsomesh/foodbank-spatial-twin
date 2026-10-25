@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Omniverse Learnings</title>
+<meta name="description" content="Run-by-run learnings and pitfalls from rendering the food bank twin in NVIDIA Omniverse on an AWS GPU: drivers, quotas, timings and costs.">
+<meta name="theme-color" content="#0f1720">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1720'/%3E%3Cpath d='M6 24V13l10-6 10 6v11h-5v-7H11v7z' fill='%2357c7a5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+<!-- Generated page of the docs wiki; the engineering guides in docs/ hold the full detail. -->
+<header class="top">
+  <a class="brand" href="index.html"><i class="logo" aria-hidden="true"></i><span><b>Twin Docs</b><span>Video to world model to Blender to Omniverse</span></span></a>
+  <div class="pills">
+    <a class="pill" href="../">3D twin</a>
+    <a class="pill" href="../operations.html">Operations</a>
+    <a class="pill" href="https://github.com/pikulsomesh/foodbank-spatial-twin">GitHub</a>
+  </div>
+</header>
+<div class="layout">
+<nav class="side" aria-label="Docs"><ol><li><a href="index.html">Overview</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="data.html">Data on AWS</a></li><li><a href="visualize.html">Visualize</a></li><li><a href="omniverse.html" aria-current="page">Omniverse learnings</a></li><li><a href="run.html">Run it</a></li><li><a href="cost.html">Cost</a></li><li><a href="provenance.html">Provenance</a></li></ol></nav>
+<article>
+<h1>Omniverse on AWS: learnings and pitfalls</h1>
+<p>What happened when we tried to render the twin in NVIDIA Omniverse on a rented AWS GPU, run by run. It covers what failed, why it failed and what fixed it, so the next person can skip the dead ends. Scripts: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/scripts/gpu_trial.py"><code>scripts/gpu_trial.py</code></a> (launch, render, upload, self-terminate), <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/scripts/omniverse_render_shots.py"><code>scripts/omniverse_render_shots.py</code></a> (stills) and <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/scripts/omniverse_render_clips.py"><code>scripts/omniverse_render_clips.py</code></a> (4 s moving clips). Full logs are in <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/tree/main/docs/renders/omniverse-trial/"><code>docs/renders/omniverse-trial/</code></a>.</p>
+<div class="note warn"><p>Costs are worked out from the public on-demand list price ($0.8048 an hour for g6.xlarge in us-east-2) on one individual AWS account. They are directional; enterprise accounts may see different prices, quotas and policies.</p></div>
+<h2>Short version</h2>
+<ul>
+<li><strong>Use the driver branch Isaac Sim is validated on.</strong> Isaac Sim 5.1 (Kit 107.3) crashed a second after start on the AWS Deep Learning AMI's 595 driver, even with an empty scene. It started cleanly on plain Ubuntu 22.04 with <code>nvidia-driver-580-server</code> (580.178.04).</li>
+<li><strong>Test with a cube before your scene.</strong> A one-cube stage separates "the GPU stack is broken" from "my USD file is broken". It took four runs to learn that the twin files were never the problem.</li>
+<li><strong>Budget about 12 minutes before the first frame.</strong> On a cold instance that is about 1 min to boot, about 4.5 min to pull the Isaac Sim image, and about 5 min for Kit to build its shader cache on first start. Render everything in one session.</li>
+<li><strong>New AWS accounts have 0 GPU quota.</strong> Request "Running On-Demand G and VT instances" vCPUs early (4 is enough for one g6.xlarge). Ours was escalated, approved after about an hour, and took another 30 minutes or so to apply.</li>
+<li><strong>Make the instance unable to outlive the job.</strong> No SSH key, no IAM role, inputs and outputs through presigned S3 URLs, <code>shutdown -h +N</code> as a hard cap, and shutdown behaviour set to terminate.</li>
+</ul>
+<h2>The setup</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Choice</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Instance</td>
+<td><code>g6.xlarge</code>: 1× NVIDIA L4 (24 GB), 4 vCPU, 16 GB RAM</td>
+<td>Cheapest current RTX-class GPU on EC2 that fits a 4-vCPU quota</td>
+</tr>
+<tr>
+<td>Region</td>
+<td>us-east-2</td>
+<td>The account's organisation policy blocks us-east-1 and us-west-2</td>
+</tr>
+<tr>
+<td>Omniverse</td>
+<td><code>nvcr.io/nvidia/isaac-sim:5.1.0</code> container (Kit 107.3), headless, <code>./python.sh</code> script</td>
+<td>Ready-made Kit with RTX; no build step. Needs <code>ACCEPT_EULA=Y</code> and <code>PRIVACY_CONSENT=Y</code>, so the account owner accepts NVIDIA's licence first</td>
+</tr>
+<tr>
+<td>Inputs and outputs</td>
+<td>Presigned S3 GET and PUT URLs in user data</td>
+<td>No credentials on the box</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td><code>shutdown -h +150</code>, <code>InstanceInitiatedShutdownBehavior=terminate</code>, project tag, IAM policy limited to tagged g6/g5.xlarge</td>
+<td>A forgotten instance can't run up a bill</td>
+</tr>
+</tbody>
+</table></div>
+<h2>Run by run</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Run</th>
+<th>When (UTC, 2026-10-25)</th>
+<th>Base image and driver</th>
+<th>What was tried</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>21:32</td>
+<td>AWS Deep Learning Base OSS Nvidia Driver AMI (Ubuntu 22.04), driver 595.91</td>
+<td>Facility and splats</td>
+<td>Lost before rendering: presigned URLs from the global S3 endpoint were redirected and the download failed. <strong>Fix:</strong> sign URLs against the regional endpoint.</td>
+</tr>
+<tr>
+<td>2, 3</td>
+<td>to 22:10</td>
+<td>same</td>
+<td><code>facility.usdz</code> (plain meshes), then <code>site.usdz</code> (Gaussian splats)</td>
+<td>Kit reached <code>app ready</code>, then segfaulted in <code>librtx.scenedb.plugin.so</code> about a second later, for both files.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>22:19 to 22:29</td>
+<td>same, plus NVIDIA's 580.65.06 runfile</td>
+<td>A bare lit cube with the default renderer; swap the driver in place</td>
+<td>The cube crashed the same way, so the twin files were not the cause. The runfile unpacked, but the AMI's 595 module stayed loaded.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>22:34 to ~22:57</td>
+<td>Plain Ubuntu 22.04; user data installs <code>nvidia-driver-580-server</code> (580.178.04), Docker and the NVIDIA container toolkit</td>
+<td>Cube test, then clips</td>
+<td><span class="tag live">Kit starts</span> <strong>Kit started and did not crash.</strong> First start took about 5 min (shader cache). The render script then failed writing its output folder (permission denied on the mounted <code>/work/out</code>), and later container starts failed with <code>nvml error: driver/library version mismatch</code>.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>from 23:02</td>
+<td>same as run 5, with write permissions and caches fixed</td>
+<td>Forklift, facility orbit and aisle clips (4 s each)</td>
+<td><span class="tag pending">In progress</span> This page is updated when it finishes.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Running total through run 5: about 57 instance-minutes, about <strong>$0.77</strong>. Every instance terminated itself, and no volumes were left behind.</p>
+<h2>Pitfalls and fixes</h2>
+<ol>
+<li><strong>Driver too new for Kit.</strong> The Deep Learning AMI shipped driver 595 in October 2026. Kit 107.3 crashes in the RTX scene database on that driver before it opens any stage. Start from plain Ubuntu and install the 580 server branch, or pin an AMI whose driver matches the Isaac Sim release notes.</li>
+<li><strong>Driver swaps don't take on a running AMI.</strong> Installing a runfile over the AMI's packaged driver leaves the old kernel module loaded. Install the driver you want from a clean image in user data, then load it with <code>modprobe nvidia</code> and check it with <code>nvidia-smi</code>.</li>
+<li><strong><code>driver/library version mismatch</code>.</strong> The container toolkit couldn't talk to the driver because the driver's user-space libraries no longer matched the loaded kernel module. The likely cause is packages changing after the module loaded. Install the driver once, check <code>nvidia-smi</code> just before every <code>docker run</code>, and keep unattended upgrades from touching NVIDIA packages during the job.</li>
+<li><strong>Container can't write to the host folder.</strong> Isaac Sim's container doesn't run as the host's root user, so a root-owned bind mount is read-only to it. Create output and cache folders on the host and make them writable (<code>chmod -R a+rwX</code>), or run the container with a matching <code>--user</code>.</li>
+<li><strong>First start is slow.</strong> Kit builds its shader cache on first start (about 5 min on an L4; about 14 s on a warm start). Keep the cache folders on the host mount so a second job in the same session reuses them.</li>
+<li><strong>Image pull dominates short jobs.</strong> The Isaac Sim image takes about 4.5 min to pull. For repeated use, bake it into a custom AMI or pull it from ECR in the same region.</li>
+<li><strong>Test the GPU stack before the scene.</strong> Render a one-cube stage first. If the cube crashes, nothing about your USD will help.</li>
+<li><strong>GPU quota starts at 0.</strong> Open the quota request on day one. Approval can mean an escalated support case, and the new limit takes about 30 minutes to apply after approval.</li>
+<li><strong>Splats in Omniverse are unverified.</strong> OpenUSD 26.03 defines <code>ParticleField3DGaussianSplat</code> and Kit ships a schema for it, but until a render succeeds we can't say Kit 107.3 draws the twin's splats. Blender's USD importer doesn't read them either. The browser (Spark) and our CPU splat renderer do.</li>
+<li><strong>Strip presigned URLs from logs before you publish them.</strong> They carry the access key id and work until they expire.</li>
+<li><strong>Fargate has no GPUs.</strong> For regular use, run the same container as an ECS service or AWS Batch job on a GPU Auto Scaling group with a minimum of 0, so an instance exists only while a render runs.</li>
+</ol>
+<h2>A recipe that starts Kit (as of run 5)</h2>
+<pre><code class="language-bash"># EC2 user data on Ubuntu 22.04, g6.xlarge
+apt-get update &amp;&amp; apt-get install -y linux-headers-$(uname -r) docker.io ffmpeg curl
+apt-get install -y nvidia-driver-580-server nvidia-utils-580-server
+modprobe nvidia &amp;&amp; nvidia-smi                      # expect Driver Version: 580.x
+# NVIDIA container toolkit (see scripts/gpu_trial.py for the repository setup), then:
+nvidia-ctk runtime configure --runtime=docker &amp;&amp; systemctl restart docker
+mkdir -p /work/out /work/cache &amp;&amp; chmod -R a+rwX /work
+docker run --rm --gpus all -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
+  -v /work:/work nvcr.io/nvidia/isaac-sim:5.1.0 ./python.sh /work/render.py
+</code></pre>
+<h2>Cost of learning this</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Through</th>
+<th>Instance-minutes</th>
+<th>Cost (list price)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Runs 1 to 3</td>
+<td>about 26</td>
+<td>about $0.36</td>
+</tr>
+<tr>
+<td>Run 4</td>
+<td>about 10</td>
+<td>about $0.12</td>
+</tr>
+<tr>
+<td>Run 5</td>
+<td>about 21</td>
+<td>about $0.29</td>
+</tr>
+<tr>
+<td><strong>Total through run 5</strong></td>
+<td><strong>about 57</strong></td>
+<td><strong>about $0.77</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>Even with five attempts, finding the working setup cost under a dollar of GPU time. The slow part was the GPU quota request, not the spend.</p>
+<footer class="page">Representative food bank inspired by the Central Texas Food Bank; not affiliated with or endorsed by it. Costs are directional. Source: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin">github.com/pikulsomesh/foodbank-spatial-twin</a>.</footer>
+</article>
+</div>
+</body>
+</html>

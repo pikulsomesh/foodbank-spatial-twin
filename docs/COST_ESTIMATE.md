@@ -28,18 +28,18 @@ The whole twin was built from one publicly available news video in seven days (2
 | | Frame extraction, RGBD fusion, COLMAP and 3D Gaussian Splatting training for 4 zones, OpenUSD conversion | local CPU in a cloud container | $0 extra |
 | 1b. Blender facility model | `scripts/build_facility.py` (headless `bpy`), whole building from the designed footprints | about 5 s per build | $0 |
 | 2. Data on AWS | SAM stack (S3, HTTP API, Lambda) in us-east-2, October 2026 | Cost Explorer | **$0.00** (free tier) |
-| 3. Omniverse on a rented GPU | One g6.xlarge (NVIDIA L4), Omniverse Kit headless, renders `twin.usda`, then terminates | **Pending:** runtime, instance-hours and billed cost will be filled in from the trial | **Pending** (planned at about $0.80 an hour, $2 to $3 in total) |
-| **Total so far** | | | **$0.20 confirmed, at most $1.00**, before the GPU trial |
+| 3. Omniverse on a rented GPU | Three runs on one g6.xlarge (NVIDIA L4), us-east-2, 2026-10-25 21:32 to 22:10 UTC, each terminated after. **Attempted, render not yet working:** Isaac Sim 5.1 (Kit 107.3) crashed in the RTX scene database right after start for both the facility meshes and the splats, so Omniverse loading of the twin is unverified | about 26 instance-minutes (0.43 h); cold start per job about 7 min (1 min boot, 4.5 min image pull, 75 s Kit start) | **about $0.36** ($0.35 EC2 at $0.8048/h list, $0.01 gp3 disk, no data transfer); from list price, not yet posted in Cost Explorer |
+| **Total so far** | | | **about $0.56** ($0.20 credits confirmed, $0.36 GPU from list price); at most $1.36 if the failed world-model runs were billed |
 
 ## Scaled to a full facility (directional)
 
-The run above captured 3 zones partially and designed the rest. A complete capture of a facility of about 135,000 sq ft, using the same tools at list prices, might look like this. The zone count, frames per zone and GPU hours are assumptions; replace the GPU rate with the trial's measured figure once it is in.
+The run above captured 3 zones partially and designed the rest. A complete capture of a facility of about 135,000 sq ft, using the same tools at list prices, might look like this. The zone count, frames per zone and GPU hours are assumptions; the GPU rate is the one measured in the trial.
 
 | Item | Assumption | Estimate |
 |---|---|---|
 | World-model poses | 12 zones × 8 frames × 10 credits | about $1 |
 | World-model generated views | 12 zones × 8 views × 50 credits | about $5 |
-| 3DGS training on a GPU | about 1 GPU-hour per zone on a g6.xlarge at about $0.80 an hour | about $10 |
+| 3DGS training on a GPU | about 1 GPU-hour per zone on a g6.xlarge at $0.8048 an hour (the rate used in the trial), plus about 7 min of cold start per job | about $10 |
 | Blender facility model | one script run from the facility's own footprints (master data) | $0 |
 | Omniverse review sessions | 10 GPU-hours on g6.xlarge (compute only) or g6e.xlarge via the Marketplace listing ($2.86 an hour) | $8 to $29 |
 | **Capture to deployed twin** | cloud spend only, staff time not included | **about $25 to $50** |

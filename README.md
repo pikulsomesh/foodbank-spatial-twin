@@ -6,7 +6,7 @@ This repository builds a working digital twin of a food bank from a publicly ava
 2. **Blender for the 3D facility.** A headless Blender script models the whole building, the parts the video never showed included, from the facility's own footprints. No CAD drawings, laser scans or site visits are used.
 3. **Omniverse and the browser as the digital twin.** AWS serves live (today simulated) telemetry and operations data in the same metric frame, and the twin is viewed in a browser on GitHub Pages, in NVIDIA Omniverse on a rented GPU, or in Blender. OpenUSD is the open contract between all three steps.
 
-It was built in seven days (2026-10-19 to 2026-10-25) for **$0.20 of confirmed world-model credits** and **$0.00 of AWS charges** so far. The point is that existing tools are now good enough to stand up a useful twin from footage that already exists, much faster and cheaper than a CAD-first project.
+It was built in seven days (2026-10-19 to 2026-10-25) for **$0.20 of confirmed world-model credits**, **$0.00 of AWS backend charges** and **about $0.36 of GPU time** for an Omniverse trial. The point is that existing tools are now good enough to stand up a useful twin from footage that already exists, much faster and cheaper than a CAD-first project.
 
 **Live demo:** <https://pikulsomesh.github.io/foodbank-spatial-twin/> · **Docs wiki:** <https://pikulsomesh.github.io/foodbank-spatial-twin/wiki/> · **Cost page:** <https://pikulsomesh.github.io/foodbank-spatial-twin/wiki/cost.html>
 
@@ -21,7 +21,7 @@ It was built in seven days (2026-10-19 to 2026-10-25) for **$0.20 of confirmed w
 | Blender facility model | **Built** by `scripts/build_facility.py`, published as GLB and USDZ | [docs/VIEWER.md](docs/VIEWER.md) |
 | AWS backend | **Deployed** in us-east-2: S3, API Gateway HTTP API, Lambda (AWS SAM) | [docs/BACKEND.md](docs/BACKEND.md) |
 | Browser twin | **Live** on GitHub Pages, reading the AWS API | [live site](https://pikulsomesh.github.io/foodbank-spatial-twin/) |
-| Omniverse on an AWS GPU (EC2 g6.xlarge) | **Pending**: quota granted 2026-10-25, trial run and measured cost to follow | [docs/RENDERING.md](docs/RENDERING.md) |
+| Omniverse on an AWS GPU (EC2 g6.xlarge) | **Attempted, render not yet working**: three runs on a real g6.xlarge (about 26 instance-minutes, about $0.36, terminated after); Isaac Sim 5.1 crashed on scene load, so Omniverse loading of the twin is unverified | [docs/RENDERING.md](docs/RENDERING.md) |
 | Real sensors on a food bank floor | **Designed and priced**, not installed (dashed in the diagram) | [docs/COST_ESTIMATE.md](docs/COST_ESTIMATE.md) |
 
 Live API: <https://f2ck9o1rx0.execute-api.us-east-2.amazonaws.com/telemetry> and [`/operations`](https://f2ck9o1rx0.execute-api.us-east-2.amazonaws.com/operations). Its data is simulated, and every payload says so (`simulated: true`).
@@ -71,6 +71,7 @@ Editable draw.io sources: [AWS](paper/diagrams/arch_aws.drawio), [Azure](paper/d
 | Operations, inventory and supply-chain layer | [docs/OPERATIONS.md](docs/OPERATIONS.md) |
 | Browser viewer | [docs/VIEWER.md](docs/VIEWER.md) |
 | Rendering in Blender and Omniverse | [docs/RENDERING.md](docs/RENDERING.md) |
+| Omniverse on AWS: every GPU run, what failed, what fixed it | [docs/OMNIVERSE_LEARNINGS.md](docs/OMNIVERSE_LEARNINGS.md) |
 | Cost estimate | [docs/COST_ESTIMATE.md](docs/COST_ESTIMATE.md) |
 
 The same pages, laid out as a wiki, are on the demo site at [`/wiki/`](https://pikulsomesh.github.io/foodbank-spatial-twin/wiki/).
@@ -108,7 +109,7 @@ scripts/deploy.sh
 
 | | Cost |
 |---|---|
-| This build (world model, local training, Blender, AWS) | **$0.20 confirmed**, at most $1.00, plus the GPU trial (pending) |
+| This build (world model, local training, Blender, AWS, GPU trial) | **about $0.56** ($0.20 credits confirmed, $0.36 GPU at list price); at most $1.36 |
 | Capture to deployed twin for a full ~135,000 sq ft facility | about **$25 to $50** of cloud spend (directional) |
 | Running it on real sensors | about **$2,700** hardware once, about **$12 a month** on AWS |
 | Omniverse on demand, 10 hours a week | about **$124 a month** (Marketplace g6e.xlarge) |
