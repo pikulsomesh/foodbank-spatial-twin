@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Twin Data on AWS</title>
+<meta name="description" content="The live AWS API behind the twin, its JSON contract and the real-floor sensor path.">
+<meta name="theme-color" content="#0f1720">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1720'/%3E%3Cpath d='M6 24V13l10-6 10 6v11h-5v-7H11v7z' fill='%2357c7a5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+<!-- Generated page of the docs wiki; the engineering guides in docs/ hold the full detail. -->
+<header class="top">
+  <a class="brand" href="index.html"><i class="logo" aria-hidden="true"></i><span><b>Twin Docs</b><span>Video to world model to Blender to Omniverse</span></span></a>
+  <div class="pills">
+    <a class="pill" href="../">3D twin</a>
+    <a class="pill" href="../operations.html">Operations</a>
+    <a class="pill" href="https://github.com/pikulsomesh/foodbank-spatial-twin">GitHub</a>
+  </div>
+</header>
+<div class="layout">
+<nav class="side" aria-label="Docs"><ol><li><a href="index.html">Overview</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="data.html" aria-current="page">Data on AWS</a></li><li><a href="visualize.html">Visualize</a></li><li><a href="run.html">Run it</a></li><li><a href="cost.html">Cost</a></li><li><a href="provenance.html">Provenance</a></li></ol></nav>
+<article>
+<h1>Data on AWS</h1>
+<p class="lede">Step 2 connects data. A serverless API on AWS serves telemetry and operations in the twin's own metric frame, so any renderer can pin values to the right place.</p>
+<h2 id="deployed">The deployed API</h2>
+<div class="table-wrap"><table><thead><tr><th>Endpoint</th><th>Returns</th></tr></thead><tbody><tr><td><a href='https://f2ck9o1rx0.execute-api.us-east-2.amazonaws.com/telemetry'><code>GET /telemetry</code></a></td><td>Freezer, cooler, kitchen and dry-storage temperature and humidity, door state, alarms, forklift positions</td></tr><tr><td><a href='https://f2ck9o1rx0.execute-api.us-east-2.amazonaws.com/operations'><code>GET /operations</code></a></td><td>KPIs, areas with stock and utilisation, inventory by product family, supply-chain flows, community kitchen batches, trucks</td></tr><tr><td><a href='https://f2ck9o1rx0.execute-api.us-east-2.amazonaws.com/health'><code>GET /health</code></a></td><td>Liveness</td></tr></tbody></table></div>
+<p>Region us-east-2 (Ohio), deployed with <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/scripts/deploy.sh"><code>scripts/deploy.sh</code></a> from <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/template.yaml"><code>template.yaml</code></a> (AWS SAM) on 2026-10-25. The account's organisation policy blocks Lambda, CloudFormation and API Gateway in us-east-1 and us-west-2, which is why it runs in Ohio. Measured: 1,000 sequential calls all succeeded, 67 ms median and 78 ms 95th-percentile round trip from a US cloud container.</p>
+<div class="note"><p><strong>The data is simulated.</strong> Values are computed from the clock, so the Lambda needs no database and two callers in the same second see the same numbers. Every payload carries <code>simulated: true</code>. The browser carries a line-for-line port of the simulator, kept in sync by tests, and uses it when the API is unreachable.</p></div>
+<h2 id="operations">Operations layer</h2>
+<p>A food bank is a warehouse that runs in reverse: donations, USDA commodities and purchases arrive at the docks, volunteers sort rescued food, pallets go into dry racking, the cooler and the freezer, the community kitchen turns some of it into meals, and partner agencies collect the rest. The operations model follows one simulated day of that flow. Annual volumes, agency counts and floor area are published figures; shares, capacities and recipes are estimates flagged <code>est: true</code> in <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/src/telemetry/operations.json"><code>src/telemetry/operations.json</code></a>. See the <a href="../operations.html">operations page</a> and <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/docs/OPERATIONS.md"><code>docs/OPERATIONS.md</code></a>.</p>
+<h2 id="real-floor">The real-floor path (designed, priced)</h2>
+<div class="table-wrap"><table><thead><tr><th>On the floor</th><th>Device</th><th>Into AWS</th><th>Replaces</th></tr></thead><tbody><tr><td>Cold-room and dock temperatures</td><td>LoRaWAN probe sensor, every 5 min</td><td>IoT Core for LoRaWAN, rule, Lambda, DynamoDB</td><td><code>zones[].temp_c</code></td></tr><tr><td>Cold-room and dock doors</td><td>LoRaWAN door contact</td><td>same</td><td><code>zones[].door_open</code></td></tr><tr><td>Forklift area</td><td>BLE beacon per truck, BLE-to-MQTT gateway per area</td><td>IoT Core MQTT, same rule path</td><td><code>forklifts[].position</code></td></tr><tr><td>Inventory, loads</td><td>Existing warehouse management system export</td><td>Lambda import</td><td><code>/operations</code></td></tr><tr><td>Building geometry</td><td>Phone or 360° walkthrough when the layout changes</td><td>Step 1 again</td><td>captures in <code>twin.usda</code></td></tr></tbody></table></div>
+<p>The JSON contract stays the same; real values replace the simulator and <code>simulated</code> becomes <code>false</code>. Amazon Timestream for LiveAnalytics is closed to new customers, so readings go to DynamoDB with an S3 archive. Pricing: <a href="cost.html">Cost</a>. Backend reference: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/docs/BACKEND.md"><code>docs/BACKEND.md</code></a>.</p>
+<footer class="page">Representative food bank inspired by the Central Texas Food Bank; not affiliated with or endorsed by it. Costs are directional. Source: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin">github.com/pikulsomesh/foodbank-spatial-twin</a>.</footer>
+</article>
+</div>
+</body>
+</html>

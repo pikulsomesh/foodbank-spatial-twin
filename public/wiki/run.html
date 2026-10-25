@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Run the Twin</title>
+<meta name="description" content="Commands to reproduce every step of the twin.">
+<meta name="theme-color" content="#0f1720">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1720'/%3E%3Cpath d='M6 24V13l10-6 10 6v11h-5v-7H11v7z' fill='%2357c7a5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+<!-- Generated page of the docs wiki; the engineering guides in docs/ hold the full detail. -->
+<header class="top">
+  <a class="brand" href="index.html"><i class="logo" aria-hidden="true"></i><span><b>Twin Docs</b><span>Video to world model to Blender to Omniverse</span></span></a>
+  <div class="pills">
+    <a class="pill" href="../">3D twin</a>
+    <a class="pill" href="../operations.html">Operations</a>
+    <a class="pill" href="https://github.com/pikulsomesh/foodbank-spatial-twin">GitHub</a>
+  </div>
+</header>
+<div class="layout">
+<nav class="side" aria-label="Docs"><ol><li><a href="index.html">Overview</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="data.html">Data on AWS</a></li><li><a href="visualize.html">Visualize</a></li><li><a href="run.html" aria-current="page">Run it</a></li><li><a href="cost.html">Cost</a></li><li><a href="provenance.html">Provenance</a></li></ol></nav>
+<article>
+<h1>Run it yourself</h1>
+<p class="lede">Everything below runs from a clone of <a href="https://github.com/pikulsomesh/foodbank-spatial-twin">the repository</a>. Only the world-model calls and an optional GPU cost money; every paid stage resumes rather than resubmits.</p>
+<h2>Prerequisites</h2>
+<ul>
+<li>Python 3.12 (pipeline, OpenUSD conversion) and 3.13 (the <code>bpy</code> wheel for Blender), Node 22 for tests.</li>
+<li>ffmpeg; COLMAP 3.9 for photoreal training.</li>
+<li>A World Labs API key for the world-model stages, set as <code>WLT_API_KEY</code>. Never commit keys.</li>
+<li>AWS credentials and the SAM CLI to deploy the backend.</li>
+</ul>
+<h2>Test and view</h2>
+<pre><code>python -m pip install pytest &amp;&amp; pytest -q tests
+node --test tests/*.test.mjs
+python -m http.server -d public 8000      # http://localhost:8000</code></pre>
+<h2>Step 1: video to world model</h2>
+<pre><code>python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt numpy scipy OpenEXR
+
+# frames: pick a window of the tour, crop broadcast graphics (0 credits)
+scripts/ingest_and_build.sh --video-file tour.mp4 --start 305 --interval 4 --crop-bottom 264 --ingest-only
+
+# poses and metric depth (10 credits a frame), then local fusion (free)
+.venv/bin/python scripts/atlas_twin.py pose  --input-dir data/ctfb-sorting/frames --work-dir build/atlas_sorting
+.venv/bin/python scripts/atlas_twin.py fuse  --work-dir build/atlas_sorting \
+    --mask-boxes data/ctfb-sorting/people_boxes.json --output build/atlas_sorting/out/zone.usdz
+.venv/bin/python scripts/atlas_twin.py site  # places zones from data/site/layout.json</code></pre>
+<h2>Step 1, free: photoreal splats</h2>
+<pre><code>.venv/bin/pip install mediapipe opencv-python-headless scipy torch
+sudo apt-get install colmap libgles2 libegl1
+.venv/bin/python scripts/photoreal_twin.py frames --zone racking --video tour.mp4
+for s in masks select fill pose; do .venv/bin/python scripts/photoreal_twin.py $s --zone racking; done
+.venv/bin/python scripts/photoreal_twin.py train  --zone racking --iters 6000
+.venv/bin/python scripts/photoreal_twin.py export --zone racking</code></pre>
+<p>Zones are <code>racking</code>, <code>market</code>, <code>kitchen</code> and <code>sorting</code> (sorting needs <code>--matcher exhaustive --init-tri-angle 3</code> at the pose stage). On a GPU, <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/notebooks/photoreal_gpu.ipynb"><code>notebooks/photoreal_gpu.ipynb</code></a> runs the same stages on a free Colab or Kaggle T4.</p>
+<h2>Step 1b: Blender facility</h2>
+<pre><code>python3.13 -m venv .venv-render &amp;&amp; .venv-render/bin/pip install bpy pillow numpy
+.venv-render/bin/python scripts/build_facility.py           # public/facility.glb + facility.usdz
+.venv-render/bin/python scripts/build_facility.py --blend --render   # also a .blend and a Cycles still</code></pre>
+<h2>The OpenUSD twin</h2>
+<pre><code>pip install -r requirements-render.txt
+python scripts/operations_to_usd.py      # public/operations.usda
+python scripts/align_twin_usd.py         # public/twin.usda + twin_crop.usdc</code></pre>
+<h2>Step 2: deploy to AWS</h2>
+<pre><code>scripts/deploy.sh     # sam build + deploy (us-east-2 by default), syncs public/ to S3, prints URLs</code></pre>
+<p>Then set the repository variable <code>TWIN_API_URL</code> to the printed <code>ApiBaseUrl</code> and rerun the "Demo site" workflow; the viewer switches from "Simulated feed" to "Live from AWS". <code>deploy.sh</code> does both when <code>gh</code> is signed in.</p>
+<h2>Step 3: render</h2>
+<pre><code>.venv-render/bin/python scripts/render_usd_splats.py public/site.usdz --shots docs/renders/shots.json --out renders/
+blender -b -P scripts/blender_render_twin.py -- public/site.usdz --shots docs/renders/shots.json --out renders/blender</code></pre>
+<p>Omniverse: open <code>public/twin.usda</code> in a Kit app (USD Composer or USD Viewer from the Kit App Template, or Isaac Sim) on an RTX GPU. See <a href="visualize.html#omniverse">Visualize</a>.</p>
+<footer class="page">Representative food bank inspired by the Central Texas Food Bank; not affiliated with or endorsed by it. Costs are directional. Source: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin">github.com/pikulsomesh/foodbank-spatial-twin</a>.</footer>
+</article>
+</div>
+</body>
+</html>

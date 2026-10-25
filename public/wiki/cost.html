@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Twin Cost</title>
+<meta name="description" content="Measured cost of building the twin and directional cost of running it on a full facility.">
+<meta name="theme-color" content="#0f1720">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1720'/%3E%3Cpath d='M6 24V13l10-6 10 6v11h-5v-7H11v7z' fill='%2357c7a5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+<!-- Generated page of the docs wiki; the engineering guides in docs/ hold the full detail. -->
+<header class="top">
+  <a class="brand" href="index.html"><i class="logo" aria-hidden="true"></i><span><b>Twin Docs</b><span>Video to world model to Blender to Omniverse</span></span></a>
+  <div class="pills">
+    <a class="pill" href="../">3D twin</a>
+    <a class="pill" href="../operations.html">Operations</a>
+    <a class="pill" href="https://github.com/pikulsomesh/foodbank-spatial-twin">GitHub</a>
+  </div>
+</header>
+<div class="layout">
+<nav class="side" aria-label="Docs"><ol><li><a href="index.html">Overview</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="data.html">Data on AWS</a></li><li><a href="visualize.html">Visualize</a></li><li><a href="run.html">Run it</a></li><li><a href="cost.html" aria-current="page">Cost</a></li><li><a href="provenance.html">Provenance</a></li></ol></nav>
+<article>
+<h1>What it costs</h1>
+<p class="lede">Building this twin cost cents. Running it on a real floor costs a few thousand dollars of sensors and about $12 a month on AWS. Omniverse on a rented GPU is the one line that can grow, so it runs only on demand.</p>
+<div class="note warn"><p><strong>Directional, not a quote.</strong> Prices are public list prices checked on 2026-10-19 (us-east-1 on demand unless noted). What was tried was limited to what one individual AWS account could access, including its quotas and organisation policies. An enterprise account may see negotiated discounts, savings plans and different quotas, so treat every figure as directional. Taxes, shipping, installation and staff time are not included.</p></div>
+<div class="tiles">
+  <div class="tile"><div class="label">This build, so far</div><div class="value">$0.20</div><div class="meta">confirmed; at most $1.00</div></div>
+  <div class="tile"><div class="label">Full facility, capture to twin</div><div class="value">$25 to $50</div><div class="meta">cloud spend, directional</div></div>
+  <div class="tile"><div class="label">Real sensors, one-time</div><div class="value">~$2,700</div><div class="meta">LoRaWAN + BLE hardware</div></div>
+  <div class="tile"><div class="label">AWS, monthly</div><div class="value">~$12</div><div class="meta">after the free tier</div></div>
+</div>
+
+<h2 id="measured">Measured: what this build cost</h2>
+<div class="table-wrap"><table><thead><tr><th>Step</th><th>What ran</th><th>Measured</th><th>Cost</th></tr></thead><tbody><tr><td>1. World model</td><td>Marble 2 <code>images2PosedRGBD</code>, 20 frames, 3 zones</td><td>200 credits</td><td><strong>$0.20</strong></td></tr><tr><td></td><td>Two failed <code>atlasGenerate</code> attempts</td><td>not shown on the usage page; worst case 800 credits</td><td>at most $0.80</td></tr><tr><td></td><td>Frames, RGBD fusion, COLMAP and 3DGS training (4 zones), USD conversion</td><td>local CPU</td><td>$0 extra</td></tr><tr><td>1b. Blender</td><td><code>build_facility.py</code>, whole building</td><td>about 5 s a build</td><td>$0</td></tr><tr><td>2. AWS</td><td>S3, HTTP API, Lambda in us-east-2, October 2026</td><td>Cost Explorer</td><td><strong>$0.00</strong> (free tier)</td></tr><tr><td>3. Omniverse</td><td>EC2 g6.xlarge (NVIDIA L4), Kit headless, terminated after</td><td><span class="tag pending">Pending</span> runtime and instance-hours</td><td><span class="tag pending">Pending</span> planned about $0.80 an hour, $2 to $3</td></tr><tr class="total"><td>Total so far</td><td></td><td></td><td>$0.20 confirmed, at most $1.00</td></tr></tbody></table></div>
+<p>Calendar time: seven days, 2026-10-19 to 2026-10-25, from a publicly available news video, with no CAD drawings and no site visit.</p>
+
+<h2 id="scaled">Scaled to a full facility</h2>
+<p>The build captured three zones partially and designed the rest. A complete capture of a facility of about 135,000 sq ft with the same tools might look like this. Zone count, frames and GPU hours are assumptions; the GPU rate will be replaced by the trial's measured figure.</p>
+<div class="table-wrap"><table><thead><tr><th>Item</th><th>Assumption</th><th class=num>Estimate</th></tr></thead><tbody><tr><td>World-model poses</td><td>12 zones × 8 frames × 10 credits</td><td class=num>about $1</td></tr><tr><td>World-model generated views</td><td>12 zones × 8 views × 50 credits</td><td class=num>about $5</td></tr><tr><td>3DGS training on a GPU</td><td>about 1 GPU-hour a zone on g6.xlarge, about $0.80 an hour</td><td class=num>about $10</td></tr><tr><td>Blender facility model</td><td>one script run from the facility's own footprints</td><td class=num>$0</td></tr><tr><td>Omniverse review sessions</td><td>10 GPU-hours: g6.xlarge compute only, or g6e.xlarge Marketplace listing at $2.86 an hour</td><td class=num>$8 to $29</td></tr><tr class="total"><td>Capture to deployed twin</td><td>cloud spend only, staff time excluded</td><td class=num>about $25 to $50</td></tr></tbody></table></div>
+
+<h2 id="running">Running it</h2>
+<div class="table-wrap"><table><thead><tr><th>Scenario</th><th class=num>One-time</th><th class=num>Monthly</th><th class=num>First year</th></tr></thead><tbody><tr><td>Browser twin, simulated or exported data</td><td class=num>none</td><td class=num>$0 to $12</td><td class=num>under $150</td></tr><tr><td>Real sensors, browser twin</td><td class=num>~$2,700</td><td class=num>~$12</td><td class=num>~$2,850</td></tr><tr><td>Real sensors + Omniverse on demand, 10 h a week</td><td class=num>~$2,700</td><td class=num>~$136</td><td class=num>~$4,330</td></tr><tr><td>Ten facilities, real sensors, one shared on-demand Omniverse workstation</td><td class=num>~$27,000</td><td class=num>~$244</td><td class=num>~$30,000</td></tr></tbody></table></div>
+<p>Omniverse always on would be about $2,090 a month on its own, which is why the plan is the browser day to day and Omniverse on demand. Omniverse Enterprise licensing for production use is separate; resellers quote about $4,500 per GPU per year, which could not be confirmed on an NVIDIA page.</p>
+
+<h2 id="aws">Monthly AWS breakdown (real sensors)</h2>
+<p>Assumes 24 temperature sensors, 21 door sensors, 8 forklifts with BLE, and 20 people watching the twin every 5 s, 10 h a day, 22 days a month (3.2 million API calls).</p>
+<div class="table-wrap"><table><thead><tr><th>Service</th><th>Unit price</th><th class=num>Monthly</th></tr></thead><tbody><tr><td>IoT Core for LoRaWAN</td><td>$2.30 per million messages</td><td class=num>$0.76</td></tr><tr><td>IoT Core MQTT messaging and connectivity</td><td>$1.00 per million messages; $0.08 per million connection-minutes</td><td class=num>$2.63</td></tr><tr><td>IoT rules engine</td><td>$0.15 per million rules + $0.15 per million actions</td><td class=num>$0.88</td></tr><tr><td>DynamoDB on demand</td><td>$0.625 per million writes; $0.125 per million reads</td><td class=num>$2.62</td></tr><tr><td>API Gateway HTTP API</td><td>$1.00 per million requests</td><td class=num>$3.17</td></tr><tr><td>Lambda (arm64, 128 MB)</td><td>$0.20 per million requests; $0.0000133334 per GB-second</td><td class=num>$1.58</td></tr><tr><td>CloudWatch Logs</td><td>$0.50 per GB ingested</td><td class=num>$0.53</td></tr><tr><td>S3 archive, CloudFront</td><td>$0.023 per GB-month; CloudFront free tier</td><td class=num>about $0.10</td></tr><tr class="total"><td>Total</td><td></td><td class=num>about $12</td></tr></tbody></table></div>
+
+<h2 id="hardware">Hardware (one-time)</h2>
+<div class="table-wrap"><table><thead><tr><th>Item</th><th class=num>Unit price</th><th class=num>Qty</th><th class=num>Total</th></tr></thead><tbody><tr><td>Dragino LHT65N temperature sensor with probe (US915)</td><td class=num>$46.92</td><td class=num>24</td><td class=num>$1,126</td></tr><tr><td>Dragino LDS02 door sensor (US915)</td><td class=num>$18.75</td><td class=num>21</td><td class=num>$394</td></tr><tr><td>Dragino LPS8N indoor LoRaWAN gateway</td><td class=num>$170</td><td class=num>2</td><td class=num>$340</td></tr><tr><td>BLE beacon (Minew MBT02)</td><td class=num>about $10</td><td class=num>8</td><td class=num>$80</td></tr><tr><td>BLE-to-MQTT gateway (Minew G1)</td><td class=num>about $75</td><td class=num>10</td><td class=num>$750</td></tr><tr class="total"><td>Total</td><td class=num></td><td class=num></td><td class=num>about $2,690</td></tr></tbody></table></div>
+
+<h2 id="options">Options</h2>
+<ul>
+<li><strong>Omniverse on a GPU.</strong> Marketplace Omniverse workstation on g6e.xlarge (1× L40S): $2.86 an hour, about $124 a month at 10 h a week. A self-managed g6.xlarge (1× L4) is about $0.80 an hour of compute before licensing. A stopped instance's disk still bills.</li>
+<li><strong>Forklift telematics</strong> instead of BLE: about $25 to $50 per truck per month, $200 to $400 for 8 trucks.</li>
+<li><strong>360° camera</strong> to re-capture the building when the layout changes: $400 to $560 once.</li>
+<li><strong>Containers:</strong> ECS on Fargate for jobs, billed per second and scaled to zero; an always-on 0.25 vCPU task is about $7 a month, so the API stays on Lambda.</li>
+</ul>
+<p>Full estimate with sources: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/docs/COST_ESTIMATE.md"><code>docs/COST_ESTIMATE.md</code></a>.</p>
+<footer class="page">Representative food bank inspired by the Central Texas Food Bank; not affiliated with or endorsed by it. Costs are directional. Source: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin">github.com/pikulsomesh/foodbank-spatial-twin</a>.</footer>
+</article>
+</div>
+</body>
+</html>
