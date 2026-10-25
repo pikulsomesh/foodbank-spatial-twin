@@ -4,7 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 STACK="${STACK:-foodbank-spatial-twin}"
-REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+# us-east-2: the org SCP on Root (region restriction) blocks Lambda, CloudFormation and API Gateway in us-east-1 and us-west-2.
+REGION="${AWS_DEFAULT_REGION:-us-east-2}"
 
 sam validate --lint
 sam build
