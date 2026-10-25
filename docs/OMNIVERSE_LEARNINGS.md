@@ -6,14 +6,17 @@ Costs are worked out from the public on-demand list price ($0.8048 an hour for g
 
 ## Short version
 
-**Result:** Omniverse (Kit 107.3 in Isaac Sim 5.1) rendered the designed Blender facility in RTX on a g6.xlarge on run 6. The Gaussian-splat captures loaded but rendered blank grey, so Omniverse rendering of the splats is **not** shown. Total GPU time across six runs was about 72 instance-minutes, about $0.97 at list price.
+**Result:** Omniverse (Kit 107.3 in Isaac Sim 5.1) rendered the designed Blender facility in RTX on run 6, and on run 7 rendered three 4 s clips with the forklift driving through the building. The Gaussian-splat captures loaded but rendered blank grey, so Omniverse rendering of the splats is **not** shown. Total GPU time across seven runs was about 94 instance-minutes, about $1.34 at list price.
 
-![Omniverse RTX frame of the designed facility, run 6](../public/wiki/img/omniverse_orbit.jpg)
+![Omniverse RTX frame of the designed facility, run 7](../public/wiki/img/omniverse_orbit.jpg)
+
+![Omniverse RTX frame following the forklift, run 7](../public/wiki/img/omniverse_forklift.jpg)
 
 - **Use the driver branch Isaac Sim is validated on.** Isaac Sim 5.1 (Kit 107.3) crashed a second after start on the AWS Deep Learning AMI's 595 driver, even with an empty scene. It started cleanly on plain Ubuntu 22.04 with `nvidia-driver-580-server` (580.178.04).
 - **Test with a cube before your scene.** A one-cube stage separates "the GPU stack is broken" from "my USD file is broken". It took four runs to learn that the twin files were never the problem.
 - **Budget about 12 minutes before the first frame.** On a cold instance that is about 1 min to boot, about 4.5 min to pull the Isaac Sim image, and about 5 min for Kit to build its shader cache on first start. Render everything in one session.
 - **New AWS accounts have 0 GPU quota.** Request "Running On-Demand G and VT instances" vCPUs early (4 is enough for one g6.xlarge). Ours was escalated, approved after about an hour, and took another 30 minutes or so to apply.
+- **Have a fallback instance type.** On run 7 no us-east-2 zone had g6.xlarge capacity; g5.xlarge (NVIDIA A10G, $1.006 an hour) ran the same setup unchanged.
 - **Make the instance unable to outlive the job.** No SSH key, no IAM role, inputs and outputs through presigned S3 URLs, `shutdown -h +N` as a hard cap, and shutdown behaviour set to terminate.
 
 ## The setup
@@ -35,8 +38,9 @@ Costs are worked out from the public on-demand list price ($0.8048 an hour for g
 | 4 | 22:19 to 22:29 | same, plus NVIDIA's 580.65.06 runfile | A bare lit cube with the default renderer; swap the driver in place | The cube crashed the same way, so the twin files were not the cause. The runfile unpacked, but the AMI's 595 module stayed loaded. |
 | 5 | 22:34 to ~22:57 | Plain Ubuntu 22.04; user data installs `nvidia-driver-580-server` (580.178.04), Docker and the NVIDIA container toolkit | Cube test, then clips | **Kit started and did not crash.** First start took about 5 min (shader cache). The render script then failed writing its output folder (permission denied on the mounted `/work/out`), and later container starts failed with `nvml error: driver/library version mismatch`. |
 | 6 | 23:02 to ~23:17 | same as run 5, with write permissions fixed and Kit caches mounted from the host | Forklift, facility orbit and aisle clips (4 s, 96 frames at 1280×720, 8 subframes) | **Frames rendered.** The facility rendered in RTX: 16.7 s for one clip and 45.7 s for the wide orbit, and the second container start was warm. The splat file (`site.usdz`) loaded but rendered blank grey. The forklift floated above the building because its pose ignored the parent's Z-up to Y-up rotation (fixed in the script). Only the orbit clip is usable. |
+| 7 | after 23:17, about 22 min | same as run 6, on **g5.xlarge** (A10G) because no us-east-2 zone had g6.xlarge capacity | Fixed forklift transform; forklift chase, facility orbit, aisle with forklift | **All three clips rendered.** Warm render times for 96 frames at 8 subframes: forklift chase 18.6 s, facility orbit 47.7 s, aisle 49.4 s. The rest of the ~22 min was driver and Docker install and the image pull. |
 
-Running total through run 6: about 72 instance-minutes, about **$0.97**. Every instance terminated itself, and no volumes were left behind.
+Running total through run 7: about 94 instance-minutes, about **$1.34**. Every instance terminated itself, and no volumes were left behind.
 
 ## Pitfalls and fixes
 
@@ -49,14 +53,15 @@ Running total through run 6: about 72 instance-minutes, about **$0.97**. Every i
 7. **Test the GPU stack before the scene.** Render a one-cube stage first. If the cube crashes, nothing about your USD will help.
 8. **GPU quota starts at 0.** Open the quota request on day one. Approval can mean an escalated support case, and the new limit takes about 30 minutes to apply after approval.
 9. **Splats rendered blank in Kit 107.3.** OpenUSD 26.03 defines `ParticleField3DGaussianSplat` and NVIDIA documents particle-field rendering, but Isaac Sim 5.1 loaded the twin's splat file and drew a blank grey frame. Use a Kit release whose notes list the particle-field schema, or show meshes in Omniverse and splats in the browser (Spark) or our CPU splat renderer. Blender's USD importer doesn't read them either.
-12. **Animate in the right frame.** The facility comes from Blender, so `/World/Facility` carries a Z-up to Y-up rotation. A prim under it, like the forklift rig, needs its world pose mapped through the parent's transform, or it ends up floating above the building.
+12. **Animate in the right frame.** The facility comes from Blender, so `/World/Facility` carries a Z-up to Y-up rotation. A prim under it, like the forklift rig, needs `local = rest × world × parent⁻¹`, or it ends up floating above the building or lying on its side.
+13. **GPU capacity runs out.** A zone can have no g6.xlarge capacity even with quota. `scripts/gpu_trial.py` now tries every zone, then falls back to g5.xlarge.
 10. **Strip presigned URLs from logs before you publish them.** They carry the access key id and work until they expire.
 11. **Fargate has no GPUs.** For regular use, run the same container as an ECS service or AWS Batch job on a GPU Auto Scaling group with a minimum of 0, so an instance exists only while a render runs.
 
-## A recipe that renders the facility (as of run 6)
+## A recipe that renders the facility (as of run 7)
 
 ```bash
-# EC2 user data on Ubuntu 22.04, g6.xlarge
+# EC2 user data on Ubuntu 22.04, g6.xlarge (or g5.xlarge as a fallback)
 apt-get update && apt-get install -y linux-headers-$(uname -r) docker.io ffmpeg curl
 apt-get install -y nvidia-driver-580-server nvidia-utils-580-server
 modprobe nvidia && nvidia-smi                      # expect Driver Version: 580.x
@@ -76,6 +81,7 @@ docker run --rm --gpus all -e ACCEPT_EULA=Y -e PRIVACY_CONSENT=Y \
 | Run 4 | about 10 | about $0.12 |
 | Run 5 | about 21 | about $0.29 |
 | Run 6 | about 15 | about $0.20 |
-| **Total, six runs** | **about 72** | **about $0.97** |
+| Run 7 (g5.xlarge) | about 22 | about $0.37 |
+| **Total, seven runs** | **about 94** | **about $1.34** |
 
-Six attempts, including the first working render, cost under a dollar of GPU time. The slow part was the GPU quota request, not the spend.
+Seven attempts, through to working forklift clips, cost about $1.34 of GPU time. The slow part was the GPU quota request, not the spend.
