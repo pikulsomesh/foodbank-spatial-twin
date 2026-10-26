@@ -1,6 +1,6 @@
 # Run 1: Central Texas Food Bank warehouse aisle
 
-Source: "Inside the NEW Central Texas Food Bank" (25 News KXXV, July 2026, <https://www.youtube.com/watch?v=8sQmr7JqXkI>), 18:32, 1920x1080 at 59.94 fps, no audio. It is an interview walk-through, so two people are in almost every shot and a "Feed the Need" QR lower-third is burned into the bottom-left corner of every frame.
+Source: "Inside the NEW Central Texas Food Bank" (25 News KXXV, <https://www.youtube.com/watch?v=8sQmr7JqXkI>), 18:32, 1920x1080 at 59.94 fps, no audio. It is an interview walk-through, so two people are in almost every shot and a "Feed the Need" QR lower-third is burned into the bottom-left corner of every frame.
 
 ## Which part of the facility
 
