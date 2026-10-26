@@ -62,14 +62,14 @@ CLOUDS = {
         "alert": ("Amazon SNS<br>excursion alerts", aws("sns", "integration")),
         "iam": ("AWS IAM", aws("identity_and_access_management", "security")),
         "budget": ("AWS Budgets", aws("budgets", "finance")),
-        "gpu": ("EC2 g6e.xlarge<br>Omniverse, on demand<br>or Spot, stopped after", aws("ec2", "compute")),
+        "gpu": ("ECS on EC2 GPU (g6e)<br>Omniverse, scales to 0<br>between renders", aws("ec2", "compute")),
         "cost": ["API and ingest: Lambda and API Gateway bill per request, so an idle twin costs almost nothing.",
                  "Jobs packaged as a container image (WMS import, scene builds): ECS on Fargate, billed per second "
                  "with a 1-minute minimum, scaled to 0 tasks when idle. Fargate has no GPU.",
-                 "Omniverse: an EC2 GPU on demand or Spot, started for a session and stopped after; its disk still bills.",
+                 "Omniverse: ECS or AWS Batch on EC2 GPU capacity (on demand or Spot) with a minimum of 0, so an instance exists only while a render runs. New accounts need a GPU quota request.",
                  "AWS Budgets alert on the account ($10 for the demo; not in the template)."],
-        "note": "Solid: in the repository today (AWS SAM template; simulated data). "
-                "Dashed: real-floor path priced in docs/COST_ESTIMATE.md.",
+        "note": "Solid: in the repository today and deployed in us-east-2 (AWS SAM template; simulated data). "
+                "Dashed: real-floor path priced in docs/COST_ESTIMATE.md from public list prices; directional, enterprise pricing may differ.",
     },
     "azure": {
         "title": "Microsoft Azure",
@@ -195,7 +195,7 @@ def build(name):
                     20, 812, 1640, 40))
     cost = "<b>Cost controls: pay only while it runs</b>" + "".join(f"<br>• {t}" for t in c["cost"])
     out.append(cell("cost", cost, "rounded=1;whiteSpace=wrap;html=1;fontSize=10;align=left;verticalAlign=top;spacing=6;"
-                    "arcSize=4;fillColor=#FFF8E1;strokeColor=#E8A33D;", 1165, 520, 250, 172 if name == "aws" else 124))
+                    "arcSize=4;fillColor=#FFF8E1;strokeColor=#E8A33D;", 1165, 520, 250, 180 if name == "aws" else 124))
     impl = set(IMPLEMENTED)
     # Edges first, so icon labels (with a white background) sit on top of the lines.
     for i, (s, d, label) in enumerate(EDGES):

@@ -69,29 +69,29 @@ backend=bibtex]{biblatex}
 %%%%%% Abstract %%%%%%
 \begin{abstract}
 Digital twins, virtual copies of a site kept in sync with its live data, help
-warehouses plan and catch failures, but building one usually takes
-laser scans, hand-built 3D models and simulation specialists, which puts twins
-out of reach for most non-profits. We asked whether a walkthrough
-video is enough to start one, and built an open pipeline in three steps.
-First, a world model, an AI system that infers the 3D structure of a scene from
-a few images, estimates camera positions and real-world depth for a handful of
-frames, which are fused into a 3D Gaussian-splat scene. Second, the scene is
-connected to operational data, such as freezer temperatures, through a serverless backend on Amazon Web Services that costs
-nothing when idle. Third, NVIDIA Omniverse or a web browser displays the twin
-with its live data. Universal Scene Description, an open 3D standard that now
-stores Gaussian splats natively, is the only interface between the steps.
-Applied to a representative Texas food bank, twenty frames of a public news
-video captured three areas as about 747,000 splats for 200 world-model credits
-(20 US cents). Generating views of unfilmed areas failed on the provider's side
-twice, so the captures show only what the camera saw. Splat models
-trained locally from 49 to 72 frames each, at no credit cost, made these areas
-and a community kitchen photorealistic near the filmed path. From a distance
-the captures break into fragments, so the whole-building view is a designed
-facility model, built in Blender and published in the same standard. Real
-sensors for one facility are estimated at about US\$2,700 plus \$12 a month in
-cloud services. A phone video and a world model can bring a first facility twin
-within reach of charities; filling in unseen space is the open
-step.
+warehouses plan and catch failures, but building one usually starts from
+computer-aided design (CAD) drawings or laser scans, which puts twins out of reach for most non-profits. We show that
+publicly available video is enough to start one, with no CAD drawings, scans
+or site visit, through an open pipeline from video to world model to Blender
+to NVIDIA Omniverse. First, a world model, an AI system that infers 3D
+structure from images, estimates camera positions and
+real-world depth for a few frames, which are fused into a 3D
+Gaussian-splat scene. Second, the scene is connected to operational data through a serverless backend on Amazon Web Services.
+Third, a web browser shows the twin with its live data and Omniverse renders it.
+Universal Scene Description, an open 3D standard that now stores Gaussian
+splats natively, is the only interface between the steps. Applied to a
+representative Texas food bank, twenty frames of a news video captured three
+areas as about 747,000 splats for 200 world-model credits (20 US cents). Splat
+models trained locally from 49 to 72 frames each, at no credit cost, made these
+areas and a community kitchen photorealistic near the filmed path. Generating
+views of unfilmed areas failed on the provider's side twice, so the
+whole-building view is a facility model scripted in Blender and published in
+the same standard. The twin went from first commit to a deployed backend in
+seven days; the backend has billed \$0.00 so far, and real sensors for one
+facility are estimated at about US\$2,700 plus \$12 a month.
+Online video, world models and open standards can make a first facility twin
+a matter of days and dollars; filling in unseen space is
+the open step.
 \end{abstract}
 
 %%%%%% Main Text %%%%%%
@@ -141,12 +141,16 @@ Surveys of digital twins identify geometry acquisition, data integration and
 interoperability as the recurring barriers \cite{tao2019digital,fuller2020digital}.
 This work addresses the first and third barriers directly and keeps the second
 deliberately thin. We ask whether these pieces can be composed into a twin that
-a small team can build from a phone video, quickly and at very low cost. Our
+a small team can build from a news clip or other publicly available video,
+without CAD drawings, laser scans or a site visit, quickly and at very low
+cost. Our
 answer is a three-step pipeline (Figure~\ref{fig:overview}):
 \begin{enumerate}
   \item \textbf{Video to digital twin with world models.} Blur-aware frame
         extraction feeds a world model that returns a Gaussian-splat world,
         which is converted to an OpenUSD stage in metric, Y-up coordinates.
+        Where the camera saw too little, a facility model scripted in Blender
+        fills in the building, published in the same format.
   \item \textbf{Connecting existing data systems on Amazon Web Services (AWS).}
         A serverless API exposes operational data in the twin's coordinate
         frame through a small, versioned JSON contract. The reference
@@ -154,13 +158,14 @@ answer is a three-step pipeline (Figure~\ref{fig:overview}):
         designed so that a real sensor feed or warehouse management system
         can replace the simulator without changing any renderer.
   \item \textbf{NVIDIA Omniverse as the visualization layer.} Omniverse
-        renders the USD twin with live data bound to scene objects. A
+        renders the USD twin with RTX on a rented GPU; binding live data to
+        scene objects is the planned next step. A
         browser viewer and Blender read the same USD and the same JSON, so
         the renderer is a deployment choice rather than an architectural one.
 \end{enumerate}
 
 The contributions are an open-source pipeline from walkthrough video to an
-Omniverse-ready OpenUSD Gaussian-splat twin, including the coordinate and
+OpenUSD Gaussian-splat twin, including the coordinate and
 packaging corrections needed to make world-model output a valid metric USD
 asset; an architecture in which OpenUSD and a small telemetry contract are the
 only interfaces between reconstruction, data and rendering, with a serverless
@@ -449,8 +454,17 @@ services in the repository's template today (object storage, the HTTP API and
 its function, logs and access roles) and the real-floor path
 that the Discussion prices, in which sensors and the warehouse management
 system feed the same API. Appendix~\ref{app:clouds} gives equivalent designs
-on Microsoft Azure and Google Cloud. \TBD{pending AWS deployment: monthly cost
-at demo traffic, from the AWS bill, and client-side latency}.
+on Microsoft Azure and Google Cloud. The stack was deployed on 25 October 2026
+to us-east-2, because the account's organization policy blocks the function,
+API and deployment services in us-east-1. AWS Cost Explorer showed \$0.00
+billed for October 2026 at that date: at demo traffic the function, HTTP API and
+bucket stay within the free tier. Over 1{,}000 sequential requests to
+\code{GET /telemetry} from a cloud container in the United States, paced at
+about three per second, all 1{,}000 succeeded, with a median round trip of
+67\,ms and a 95th percentile of 78\,ms. In an earlier run of the same size,
+1.4\% of requests were refused by the API's deliberate throttle (HTTP 429).
+These are measurements from one individual AWS account under its own quotas
+and policies, not a user's device or an enterprise account.
 
 \begin{sidewaysfigure}
 \centering
@@ -605,8 +619,12 @@ place of the world-model captures of the same areas (5.9\,MB), and a separate
 page compares each zone from its source cameras. The site runs from static
 files, falls back to a local copy of the simulator when no backend is
 configured, and was checked in desktop and phone layouts in headless Chromium.
-\TBD{load time and frame rate on a reference laptop and phone with a hardware
-GPU}.
+Served locally to headless Chromium with software WebGL (SwiftShader, four CPU
+cores, 1280\,$\times$\,720), the default view transferred 2.7\,MB and finished
+loading in 1.5\,s, and the view with captures transferred 60\,MB in 2.7\,s.
+Without a GPU it drew 1.1 and 0.5 frames per second, a floor rather than a
+device figure; frame rates on laptops and phones with a graphics processor were
+not measured.
 
 \begin{figure}[t]
 \centering
@@ -635,9 +653,26 @@ captures are sparse, which more frames or generated views would address, not
 a different renderer, and they are why the modeled facility is the default
 view. The modeled facility itself is ordinary meshes and materials written by
 Blender's USD exporter, so any OpenUSD reader can open it.
-\TBD{Omniverse version and hardware, confirmation that it renders the splat
-schema natively, measured frame rate, and a screenshot with telemetry overlays
-(Figure~\ref{fig:omniverse})}.
+Omniverse rendered the modeled facility on a rented GPU after six failed or
+partial runs (Figure~\ref{fig:omniverse}, Movie~S3). On 25 October 2026 we ran
+the Isaac Sim 5.1 container (Kit 107.3) headless on EC2 in us-east-2, each run
+on an instance that terminated itself. On a g6.xlarge (one NVIDIA L4) with the
+GPU image's 595-series driver, Kit crashed in its RTX scene database right
+after start, even for a bare lit cube, so neither the twin files nor the splat
+schema caused it. On plain Ubuntu with the 580-series driver the container is
+validated on, Kit opened the stage. With no g6 capacity left in the region, the
+final run used a g5.xlarge (one NVIDIA A10G) and rendered three 4\,s,
+96-frame clips of the modeled facility at 1280\,$\times$\,720 with eight RTX
+subframes per frame, in 18.6\,s, 47.7\,s and 49.4\,s, about 2 to 5 frames
+per second offline. Kit 107.3 drew the splat captures' \code{ParticleField}
+prims as blank grey, so Omniverse does not yet show the photoreal zones; the
+browser and the CPU renderers do. The clips use a scripted forklift path, not
+live telemetry. Instance boot took about 1 minute, pulling the container about
+4.5 minutes, and Kit start-up 75\,s cold and 14\,s warm. Across seven runs the
+trial used about 94 instance-minutes, about \$1.34 at on-demand list prices,
+and left no instances or volumes behind. Interactive frame rate in Omniverse, and binding live telemetry to zone
+prims there, were not measured; both need an interactive Kit session rather
+than headless clip rendering.
 
 \begin{figure}[t]
 \centering
@@ -652,8 +687,13 @@ viewpoints.}
 
 \begin{figure}[t]
 \centering
-\figplaceholder{5.5cm}{Omniverse screenshot of the case-study twin with live cold-chain overlays.}
-\caption{The food bank twin in NVIDIA Omniverse with telemetry bound to zone prims. \TBD{capture}}
+\includegraphics[width=\linewidth]{omniverse_clips.jpg}
+\caption{The modeled facility rendered by NVIDIA Omniverse (Isaac Sim 5.1, Kit
+107.3, RTX) on an EC2 g5.xlarge: an orbit over the building (left), the
+forklift in a racking aisle (middle) and a chase view toward the receiving area
+(right). Frames from the three clips of Movie~S3; the forklift follows a
+scripted path, not live telemetry, and the splat captures are not shown
+because this Kit version draws them blank.}
 \label{fig:omniverse}
 \end{figure}
 
@@ -662,7 +702,7 @@ Table~\ref{tab:results} collects the cost, time and fidelity measurements, the
 three properties that decide whether a small operator can adopt the approach.
 
 \begin{table}[t]
-\caption{Measurements for the twin. Values marked TBD are not yet measured; fusion time was not recorded, and no hold-out fidelity was measured (see Discussion).}
+\caption{Measurements for the twin. All values are single measurements; fusion time was not recorded, and no hold-out fidelity was measured (see Discussion).}
 \centering\small
 \begin{tabular}{@{}lll@{}}
 \toprule
@@ -679,21 +719,28 @@ World-model generation time (min) & n/a & both runs failed \\
 SPZ to USDZ, 270k / 182k splats (s) & 5.2 / 3.9 & wall clock, 4 cores \\
 Locally trained zones (credits) & 0 & four zones, Table~\ref{tab:photoreal} \\
 Modeled facility, GLB / USDZ (MB) & 1.8 / 1.6 & committed files \\
-Telemetry latency, p50 / p95 (ms) & \TBD{pending AWS} & client side, 1{,}000 requests \\
-Monthly AWS cost (USD) & \TBD{pending AWS} & billing, demo traffic \\
-Browser frame rate (fps) & \TBD{measure} & reference laptop and phone \\
-Omniverse frame rate (fps) & \TBD{measure} & reference GPU \\
+Telemetry latency, p50 / p95 (ms) & 67 / 78 & cloud client, 1{,}000 requests \\
+AWS cost, October 2026 to date (USD) & 0.00 & Cost Explorer, demo traffic \\
+Browser download, default / captures (MB) & 2.7 / 60 & headless Chromium \\
+Browser frame rate, no GPU (fps) & 1.1 / 0.5 & software WebGL, a floor \\
+Omniverse offline render, 96 frames (s) & 18.6 to 49.4 & A10G, 720p, 8 subframes \\
+Omniverse GPU trial, 7 runs (min; USD) & 94; 1.34 & list price, terminated \\
 \bottomrule
 \end{tabular}
 \label{tab:results}
 \end{table}
 
 \section{Discussion}
-A spatial digital twin does not have to start with a laser scanner. A short
-walkthrough video, a world model and OpenUSD's native splat schema
-produce a metric twin that Omniverse can render, and a serverless data layer
-connects it to the systems an operator already has for almost no standing
-cost. Keeping OpenUSD and a small JSON contract as the only interfaces makes
+A spatial digital twin does not have to start with a CAD model or a laser
+scanner. Every input to this one was publicly available: a broadcast news
+tour, published facility figures and open-source or pay-per-use tools. No
+drawing, scan or site visit was used. A short walkthrough video, a world model
+and OpenUSD's native splat schema produce a metric twin, Blender supplies the parts the camera never saw, and a serverless data
+layer connects it to the systems an operator already has for almost no
+standing cost. One author, working with AI coding assistants, went from the
+first commit to a deployed backend in seven days (19 to 25 October 2026). That
+speed comes from composing existing technologies through open interfaces,
+not from new models. Keeping OpenUSD and a small JSON contract as the only interfaces makes
 each step replaceable as world models, data platforms and renderers improve,
 and lets an organization choose a renderer by hardware, cost and license
 posture: OpenUSD is open source, Blender is GPL, and Omniverse combines open
@@ -760,7 +807,19 @@ month of AWS services cover the core, so the cloud is not the barrier; the
 hardware, its installation and keeping the master data current are. Running
 Omniverse on an AWS GPU only when needed adds about \$124 a month, while an
 always-on GPU would add about \$2{,}100, which is why the browser is the
-everyday viewer. Assumptions, unit prices and sources are in the repository's
+everyday viewer. The Omniverse trial gives a measured reference point: seven
+runs used about 94 instance-minutes on g6.xlarge (\$0.8048 per hour on demand)
+and g5.xlarge (\$1.006 per hour) instances, about \$1.34 computed from list
+prices because the bill lags by a day, and every instance was terminated with
+no volumes left behind. Scaled up, on-demand rendering on ECS or AWS Batch
+with a GPU minimum of zero costs about \$0.80 per GPU-hour actually used,
+plus about 6 minutes (about 8 cents) of container pull and Kit start-up per
+cold job; ten GPU-hours a week would be about \$35 a month on a g6.xlarge or
+\$44 on a g5.xlarge, with no software fee for the container in this trial. Scaled to a complete capture of a 135{,}000\,sq\,ft facility with the same
+tools (twelve zones, with world-model poses and generated views, one GPU-hour of
+splat training per zone and ten hours of Omniverse review), the cloud spend from
+video to deployed twin would be about \$25 to \$50 at list prices, before staff
+time; the assumptions are in \code{docs/COST\_ESTIMATE.md}. Assumptions, unit prices and sources are in the repository's
 \code{docs/COST\_ESTIMATE.md}.
 
 The same principle, paying only while something runs, extends to every part of
@@ -778,15 +837,23 @@ us-east-1 list prices, more than the whole demo API, so containers suit jobs
 rather than the polling API. Fargate offers no GPUs, so Omniverse needs an EC2
 GPU instance, started for a session and stopped afterward; Spot capacity
 lowers its price further but can be reclaimed mid-session, and a stopped
-instance's disk still bills. Azure Container Apps and Cloud Run do offer
-serverless GPUs that scale to zero, which could host a headless renderer; we
-have not tested Omniverse on them. A budget alert on each cloud catches
-anything left running.
+instance's disk still bills. On AWS the same pattern can be automated by
+running the Omniverse renderer as an ECS service or AWS Batch job on GPU EC2
+capacity whose Auto Scaling group has a minimum of zero, so an instance exists
+only while a render runs. A new AWS account starts with no on-demand GPU
+quota, so a quota request is part of deployment. Azure Container Apps and
+Cloud Run do offer serverless GPUs that scale to zero, which could host a
+headless renderer; we have not tested Omniverse on them. A budget alert on
+each cloud catches anything left running. All prices here are public list
+prices, and the measurements come from an individual AWS account and the
+quotas and policies it had. Enterprise accounts may differ through negotiated
+discounts, savings plans, quotas and region policies, so the figures are
+directional, not a quote.
 
 \begin{table}[t]
 \caption{Estimated cost of running the representative twin on real floor
-data, from list prices on 19 October 2026. Excludes tax, installation and
-staff time.}
+data, from public list prices on 19 October 2026. Excludes tax, installation
+and staff time. Directional: enterprise discounts and quotas may differ.}
 \centering\small
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}Xrr@{}}
 \toprule
@@ -796,9 +863,12 @@ Item & One-time & Monthly \\
 8 forklift beacons, 10 BLE gateways (area-level location) & \$830 & \\
 AWS: IoT Core, Lambda, API Gateway, DynamoDB, logs (20 viewers) & & \$12 \\
 Optional: Omniverse on a g6e.xlarge, 10\,h a week & & \$124 \\
+Measured: Omniverse trial, 7 runs, 94 instance-minutes\textsuperscript{a} & \$1.34 & \\
+Scaled: on-demand rendering on g6.xlarge, 10\,h a week & & \$35 \\
 Optional: forklift telematics, 8 vehicles & & \$200--400 \\
 \bottomrule
 \end{tabularx}
+\par\footnotesize\textsuperscript{a}Computed from list price; the bill was not yet available.
 \label{tab:costest}
 \end{table}
 
@@ -981,9 +1051,12 @@ with the configuration. A second script renders the captures on the CPU with
 the area footprints drawn over them as a visual check. In Omniverse, a small
 extension is planned that polls \code{/telemetry} and updates prims under the
 twin: zone markers change color with alarm status, labels show temperatures,
-and the forklift follows its reported position and heading. The plan is to
-open the stage on a rented RTX GPU, record the Kit version, and capture the
-camera list used for the CPU renders.
+and the forklift follows its reported position and heading. The clips in
+Movie~S3 were rendered by \code{scripts/omniverse\_render\_clips.py} inside the
+Isaac Sim 5.1 container, launched by \code{scripts/gpu\_trial.py} on an
+instance that uploads its output through presigned S3 URLs and then
+terminates itself. Because \code{/Facility} carries the Z-up to Y-up rotation,
+the forklift's world pose is mapped into that frame before it is set.
 
 The browser viewer uses three.js 0.180 and its glTF loader for the modeled
 facility, and Spark 2.2 \cite{spark} only when the captures are switched on.
@@ -1053,19 +1126,24 @@ files (SPZ), the composed USD site and the per-zone placements are in the same
 repository.
 
 \section*{Supplementary Materials}
-Movie S1. Recorded tour of the browser twin with simulated telemetry, rendered
-frame by frame in a headless browser. \TBD{record the final cut on the modeled
-facility; the draft shows the earlier capture view}
+Movie S1. A 22\,s overview of the pipeline, 1080\,$\times$\,1350: the public
+news tour that inspired the twin, a world-model splat capture, the pipeline
+diagram, three NVIDIA Omniverse RTX shots of the modeled facility (Movie~S3),
+the browser twin with simulated telemetry, and an end card. Omniverse shots are
+labeled as such.
 
 Movie S2. A 24\,s 1080p flythrough of the OpenUSD stage, rendered with the CPU
 Gaussian-splat renderer.
 
-Movie S3. The twin in NVIDIA Omniverse with live telemetry. \TBD{record}
+Movie S3. Three 4\,s NVIDIA Omniverse RTX clips of the modeled facility
+(facility orbit, racking aisle, forklift chase), 1280\,$\times$\,720 at 24 frames per
+second, rendered headless on an EC2 g5.xlarge; the forklift follows a scripted
+path.
 
 Data file S1. Commands to reproduce the pipeline end to end, in three files in
 the repository's \code{docs} folder: \code{CTFB\_WAREHOUSE\_RUN.md}
 (world-model zones), \code{PHOTOREAL.md} (locally trained zones) and
-\code{RENDERING.md} (CPU, Blender and planned Omniverse renders), with
+\code{RENDERING.md} (CPU, Blender and Omniverse renders), with
 \code{scripts/build\_facility.py} for the modeled facility.
 
 Data file S2. The architecture diagrams as editable draw.io files
