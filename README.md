@@ -6,7 +6,7 @@ This repository builds a working digital twin of a food bank from a publicly ava
 2. **Blender for the 3D facility.** A headless Blender script models the whole building, the parts the video never showed included, from the facility's own footprints. No CAD drawings, laser scans or site visits are used.
 3. **Omniverse and the browser as the digital twin.** AWS serves live (today simulated) telemetry and operations data in the same metric frame, and the twin is viewed in a browser on GitHub Pages, in NVIDIA Omniverse on a rented GPU, or in Blender. OpenUSD is the open contract between all three steps.
 
-It was built in seven days (2026-10-19 to 2026-10-25) for **$0.20 of confirmed world-model credits**, **$0.00 of AWS backend charges** and **about $0.36 of GPU time** for an Omniverse trial. The point is that existing tools are now good enough to stand up a useful twin from footage that already exists, much faster and cheaper than a CAD-first project.
+It was built in seven days (2026-10-19 to 2026-10-25) for **$0.20 of confirmed world-model credits**, **$0.00 of AWS backend charges** and **about $1.34 of GPU time** for the Omniverse trials. The point is that existing tools are now good enough to stand up a useful twin from footage that already exists, much faster and cheaper than a CAD-first project.
 
 **Live demo:** <https://pikulsomesh.github.io/foodbank-spatial-twin/> · **Docs wiki:** <https://pikulsomesh.github.io/foodbank-spatial-twin/wiki/> · **Cost page:** <https://pikulsomesh.github.io/foodbank-spatial-twin/wiki/cost.html>
 
@@ -21,7 +21,7 @@ It was built in seven days (2026-10-19 to 2026-10-25) for **$0.20 of confirmed w
 | Blender facility model | **Built** by `scripts/build_facility.py`, published as GLB and USDZ | [docs/VIEWER.md](docs/VIEWER.md) |
 | AWS backend | **Deployed** in us-east-2: S3, API Gateway HTTP API, Lambda (AWS SAM) | [docs/BACKEND.md](docs/BACKEND.md) |
 | Browser twin | **Live** on GitHub Pages, reading the AWS API | [live site](https://pikulsomesh.github.io/foodbank-spatial-twin/) |
-| Omniverse on an AWS GPU (EC2 g6.xlarge) | **Attempted, render not yet working**: three runs on a real g6.xlarge (about 26 instance-minutes, about $0.36, terminated after); Isaac Sim 5.1 crashed on scene load, so Omniverse loading of the twin is unverified | [docs/RENDERING.md](docs/RENDERING.md) |
+| Omniverse on an AWS GPU (EC2 g6.xlarge / g5.xlarge) | **Rendered (facility only)**: seven runs on real AWS GPU instances (about 94 instance-minutes, about $1.34, each terminated after). Omniverse RTX rendered the designed facility on runs 6 and 7, including 4 s clips of the forklift driving; the Gaussian-splat captures loaded but rendered blank, so Omniverse rendering of the splats is not shown. Every pitfall is in [docs/OMNIVERSE_LEARNINGS.md](docs/OMNIVERSE_LEARNINGS.md) | [docs/RENDERING.md](docs/RENDERING.md) |
 | Real sensors on a food bank floor | **Designed and priced**, not installed (dashed in the diagram) | [docs/COST_ESTIMATE.md](docs/COST_ESTIMATE.md) |
 
 Live API: <https://f2ck9o1rx0.execute-api.us-east-2.amazonaws.com/telemetry> and [`/operations`](https://f2ck9o1rx0.execute-api.us-east-2.amazonaws.com/operations). Its data is simulated, and every payload says so (`simulated: true`).
@@ -109,7 +109,7 @@ scripts/deploy.sh
 
 | | Cost |
 |---|---|
-| This build (world model, local training, Blender, AWS, GPU trial) | **about $0.56** ($0.20 credits confirmed, $0.36 GPU at list price); at most $1.36 |
+| This build (world model, local training, Blender, AWS, GPU trials) | **about $1.54** ($0.20 credits confirmed, $1.34 GPU at list price); at most $2.34 |
 | Capture to deployed twin for a full ~135,000 sq ft facility | about **$25 to $50** of cloud spend (directional) |
 | Running it on real sensors | about **$2,700** hardware once, about **$12 a month** on AWS |
 | Omniverse on demand, 10 hours a week | about **$124 a month** (Marketplace g6e.xlarge) |
