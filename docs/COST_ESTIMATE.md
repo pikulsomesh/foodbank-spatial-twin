@@ -9,7 +9,7 @@ This estimate covers one representative food bank of about 135,000 sq ft, the si
 | Core: temperature and door sensors, zone-level forklift location, AWS backend | about **$2,700** hardware | about **$12** AWS |
 | Optional: Omniverse on an AWS GPU, on demand for 10 h a week | none | about **$124** |
 | Optional: forklift telematics instead of BLE, 8 trucks | vendor-dependent | **$200 to $400** |
-| Optional: 360° camera to re-capture the building | **$400 to $560** | none |
+| Optional: 360° camera to re-capture the building | about **$560** | none |
 
 At this scale the AWS bill is small. A new account's free tier covers most of it for the first year. The real costs are the hardware, installing it, and the staff time to keep the master data (zones, docks, products) current. A GPU running Omniverse around the clock would dominate everything else at about $2,100 a month, so the plan is to view the twin in the browser day to day and start Omniverse only when needed.
 
@@ -99,12 +99,12 @@ Doubling the viewers or the sensor rate roughly doubles the relevant lines, so t
 |---|---|---|---|
 | Dragino LHT65N temperature sensor with probe (US915) | $46.92 | 24 | $1,126 |
 | Dragino LDS02 door sensor (US915) | $18.75 | 21 | $394 |
-| Dragino LPS8N indoor LoRaWAN gateway | $170 | 2 | $340 |
-| BLE beacon (Minew MBT02, about £7.41 at volume) | about $10 | 8 | $80 |
-| BLE-to-MQTT gateway (Minew G1, £58.27) | about $75 | 10 | $750 |
+| Dragino LPS8N indoor LoRaWAN gateway | $163.18 | 2 | $326 |
+| BLE beacon (Minew MBT02, £7.41 each at 100) | about $10 | 8 | $80 |
+| BLE-to-MQTT gateway (Minew G1, £58.76 ex VAT) | about $76 | 10 | $760 |
 | **Total** | | | **about $2,690** |
 
-Pound prices were converted at roughly $1.29 per pound. Industrial alternatives cost more: a Milesight EM500-PT100 freezer probe sensor is €167 to €487, and a Milesight UG65 gateway is $555. Battery life in freezers is shorter than the datasheet figure at room temperature, so plan battery checks for the freezer sensors.
+Pound prices were converted at roughly $1.29 per pound. Industrial alternatives cost more: a Milesight UG65 gateway is $467.50. Battery life in freezers is shorter than the datasheet figure at room temperature, so plan battery checks for the freezer sensors.
 
 ## Options that change the picture
 
@@ -115,11 +115,11 @@ Pound prices were converted at roughly $1.29 per pound. Industrial alternatives 
   - **Fargate has no GPUs**, so Omniverse runs on EC2 GPU capacity: an ECS service or AWS Batch job whose Auto Scaling group has a minimum of 0, so an instance exists only while a render runs (or, by hand, an instance started for a session and stopped right after). A new account starts with 0 on-demand GPU (G and VT) vCPU quota, so request it before the first run. Spot lowers the price but the instance can be reclaimed mid-session. A stopped instance's EBS disk still bills, so snapshot and delete it if the GPU will sit unused for weeks.
   - Azure Container Apps and Google Cloud Run are the equivalents of Fargate and scale to zero by themselves. Both also offer serverless GPUs that scale to zero (Container Apps: A100, T4; Cloud Run: L4), which could host a headless renderer; Omniverse has not been tested on them.
   - A budget alert (the demo AWS account has a $10 one, set on the account rather than in the template) catches anything left running.
-- **Forklift position.** BLE gives which area a truck is in, which is enough for the twin's dock and aisle views. Telematics subscriptions run about $25 to $50 per vehicle per month (ForkOn €22.70; Powerfleet and iWAREHOUSE figures are third-party estimates) and add hours, impacts and operator log-in. Centimetre-level UWB positioning is a quote-only purchase: a Pozyx kit covering about 1,000 m² starts at $4,970, and this building is about 12,500 m².
+- **Forklift position.** BLE gives which area a truck is in, which is enough for the twin's dock and aisle views. Telematics subscriptions run about $25 to $50 per vehicle per month (Powerfleet's range as listed by a third-party comparison; iWAREHOUSE is listed at $50 to $100) and add hours, impacts and operator log-in. Centimetre-level UWB positioning is a quote-only purchase: a Pozyx kit covering about 1,000 m² starts at $4,970, and this building is about 12,500 m².
 - **AWS IoT TwinMaker or IoT SiteWise.** Not needed: the twin already has its own scene (OpenUSD) and API. TwinMaker's tiered plans start at $220 a month for 800 entities.
-- **Re-capturing the building.** A phone works; an Insta360 X4 is $425 to $560. World-model posing costs 10 credits per frame (a 20-frame zone is 200 credits, $0.20); locally trained splats cost no credits.
+- **Re-capturing the building.** A phone works; an Insta360 X4 standard bundle is $559.99. World-model posing costs 10 credits per frame (a 20-frame zone is 200 credits, $0.20); locally trained splats cost no credits.
 
-## Sources (accessed 2026-10-19)
+## Sources (accessed 2026-10-19; re-checked 2026-10-26)
 
 - AWS IoT Core and IoT Core for LoRaWAN: https://aws.amazon.com/iot-core/pricing/
 - DynamoDB on-demand: https://aws.amazon.com/dynamodb/pricing/on-demand/
@@ -135,7 +135,7 @@ Pound prices were converted at roughly $1.29 per pound. Industrial alternatives 
 - Dragino LDS02: https://www.robotshop.com/products/dragino-lorawan-door-sensor-us915
 - Dragino LPS8N: https://robotshop.com/products/lps8n-indoor-lorawan-gateway-915-mhz-north-america
 - Minew G1: https://www.digikey.co.uk/en/products/detail/minew/G1/26776367
-- Milesight EM500-PT100: https://invibitshop.com/collections/milesight/ingress-protection_ip67
+- Minew MBT02: https://www.digikey.co.uk/en/products/detail/minew/MBT02/26724103
 - Milesight UG65: https://embeddedworks.net/product/sens820
 - Pozyx: https://www.pozyx.io/store
 - AWS Fargate (accessed 2026-10-25): https://aws.amazon.com/fargate/pricing/

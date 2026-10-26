@@ -71,12 +71,11 @@
     "dispatch_window": [13.0, 15.5],
     "cold_hold_setpoint_c": 3.0,
     "programs": [
-      {"id": "sfsp", "label": "USDA Summer Food Service Program", "share": 0.35, "src": ["ctfb-kitchen-history"]},
-      {"id": "cacfp", "label": "Child and Adult Care Food Program", "share": 0.4, "src": ["ctfb-kitchen-history"]},
-      {"id": "kidscafe", "label": "Kids Cafe after-school meals", "share": 0.25, "src": ["ctfb-kids-cafe"]}
+      {"id": "kidscafe", "label": "Kids Cafe after-school meals", "share": 0.6, "src": ["ctfb-kids-cafe"]},
+      {"id": "summer", "label": "Summer meal sites", "share": 0.4, "src": ["ctfb-kitchen-history"]}
     ],
     "equipment": [
-      {"id": "kettle", "label": "Steam-jacketed kettles", "count": 3, "position": [29.0, 0, 2.0]},
+      {"id": "kettle", "label": "Tilt kettles", "count": 3, "position": [29.0, 0, 2.0]},
       {"id": "skillet", "label": "Tilt skillets", "count": 2, "position": [31.5, 0, 2.0]},
       {"id": "combi", "label": "Combi ovens", "count": 2, "position": [34.0, 0, 2.0]},
       {"id": "chiller", "label": "Blast chillers", "count": 2, "position": [36.5, 0, 5.0]},
@@ -100,14 +99,14 @@
     "src": ["ctfb-kitchen-volunteer", "ctfb-culinary", "ctfb-kids-cafe", "ctfb-kitchen-history"]
   },
   "references": [
-    {"id": "ctfb-impact-fy24", "title": "Central Texas Food Bank, 2023-2024 impact report (74 million lbs, 26.6 million lbs produce, 251 partner agencies)", "url": "https://www.centraltexasfoodbank.org/"},
+    {"id": "ctfb-impact-fy24", "title": "Central Texas Food Bank, 2023-2024 impact report (74 million lbs, 26.6 million lbs produce, 251 partner agencies, 21-county service area)", "url": "https://www.centraltexasfoodbank.org/media/985/download"},
     {"id": "ctfb-rename", "title": "Capital Area Food Bank of Texas renames to become Central Texas Food Bank (135,000 sq ft facility, 21 counties)", "url": "https://www.centraltexasfoodbank.org/press/capital-area-food-bank-texas-renames-become-central-texas-food-bank"},
     {"id": "cfs-processing", "title": "Central Texas Food System, Food processing and distribution (7,000+ pallets, 35,000+ sq ft cooler and freezer, 15 docks)", "url": "https://www.centraltxfoodsystem.org/food-processing-distribution"},
-    {"id": "ctfb-tour", "title": "Tour the Central Texas Food Bank (warehouse, cooler and freezer, product recovery room, production kitchen)", "url": "https://www.centraltexasfoodbank.org/tour-central-texas-food-bank"},
-    {"id": "ctfb-kitchen-volunteer", "title": "Volunteer in our Community Kitchen (4,200 sq ft production kitchen; kettles, combi ovens, blast chillers, tilt skillets)", "url": "https://www.centraltexasfoodbank.org/get-involved/volunteer/volunteer-our-community-kitchen"},
-    {"id": "ctfb-culinary", "title": "Central Texas Food Bank Culinary Training Program (12 weeks, hands-on in the community kitchen)", "url": "https://www.centraltexasfoodbank.org/kitchen"},
-    {"id": "ctfb-kids-cafe", "title": "Food Bank's after-school meals help Central Texas families (about 950 meals a day from the kitchen)", "url": "https://www.centraltexasfoodbank.org/news/food-banks-after-school-meals-help-central-texas-families"},
-    {"id": "ctfb-kitchen-history", "title": "Cooking with Purpose: A Recipe for Serving Central Texas (SFSP and CACFP meals from the kitchen)", "url": "https://www.centraltexasfoodbank.org/news/cooking-purpose-recipe-serving-central-texas"},
-    {"id": "fa-meal", "title": "Feeding America meal conversion (1.2 lbs of food per meal)", "url": "https://www.feedingamerica.org/"}
+    {"id": "ctfb-tour", "title": "Tour the Central Texas Food Bank (a closer look at warehouse and distribution operations)", "url": "https://www.centraltexasfoodbank.org/tour-central-texas-food-bank"},
+    {"id": "ctfb-kitchen-volunteer", "title": "Kitchen Magic, Edible Austin, 2017 (4,200 sq ft production kitchen; combi ovens, tilt skillets, tilt kettles, blast chillers)", "url": "https://edibleaustin.com/food/embracing-local/kitchen-magic/"},
+    {"id": "ctfb-culinary", "title": "Central Texas Food Bank Culinary Training Program (nine weeks, hands-on in the professional kitchen)", "url": "https://www.centraltexasfoodbank.org/kitchen"},
+    {"id": "ctfb-kids-cafe", "title": "Food Bank's after-school meals help Central Texas families, 2018 (about 950 meals a day from the kitchen)", "url": "https://www.centraltexasfoodbank.org/news/food-banks-after-school-meals-help-central-texas-families"},
+    {"id": "ctfb-kitchen-history", "title": "Cooking with Purpose: A Recipe for Serving Central Texas, 2025 (about 2,000 meals a day; summer meal sites)", "url": "https://www.centraltexasfoodbank.org/news/cooking-purpose-recipe-serving-central-texas"},
+    {"id": "fa-meal", "title": "Feeding America, How Feeding America turns $1 into at least 10 meals (each meal is roughly 1.2 lbs)", "url": "https://www.feedingamerica.org/ways-to-give/faq/about-our-claims"}
   ]
 }

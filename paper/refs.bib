@@ -1,6 +1,5 @@
 % Bibliography for "From Video to Digital Twin".
-% Every entry must be checked against the source before submission (see README.md).
-% Web entries carry the URL that was cited in docs/ARCHITECTURE.md or the README.
+% Every entry was checked against its primary source on 2026-10-26 (audit in paper/REFERENCE_AUDIT.md).
 
 @incollection{grieves2017digital,
   author    = {Grieves, Michael and Vickers, John},
@@ -50,7 +49,7 @@
   journal = {ACM Transactions on Graphics},
   volume  = {42},
   number  = {4},
-  pages   = {139},
+  pages   = {139:1--139:14},
   year    = {2023},
   doi       = {10.1145/3592433}
 }
@@ -58,7 +57,10 @@
 @inproceedings{mildenhall2020nerf,
   author    = {Mildenhall, Ben and Srinivasan, Pratul P. and Tancik, Matthew and Barron, Jonathan T. and Ramamoorthi, Ravi and Ng, Ren},
   title     = {{NeRF}: Representing Scenes as Neural Radiance Fields for View Synthesis},
-  booktitle = {European Conference on Computer Vision (ECCV)},
+  booktitle = {Computer Vision -- ECCV 2020},
+  series    = {Lecture Notes in Computer Science},
+  publisher = {Springer},
+  pages     = {405--421},
   year      = {2020},
   doi       = {10.1007/978-3-030-58452-8_24}
 }
@@ -67,117 +69,156 @@
   author    = {Sch{\"o}nberger, Johannes L. and Frahm, Jan-Michael},
   title     = {Structure-from-Motion Revisited},
   booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year      = {2016}
+  pages     = {4104--4113},
+  year      = {2016},
+  doi       = {10.1109/CVPR.2016.445}
 }
 
 @inproceedings{wang2024dust3r,
   author    = {Wang, Shuzhe and Leroy, Vincent and Cabon, Yohann and Chidlovskii, Boris and Revaud, Jerome},
   title     = {{DUSt3R}: Geometric {3D} Vision Made Easy},
   booktitle = {IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year      = {2024}
+  pages     = {20697--20709},
+  year      = {2024},
+  doi       = {10.1109/CVPR52733.2024.01956}
 }
 
 @inproceedings{ha2018world,
   author    = {Ha, David and Schmidhuber, J{\"u}rgen},
   title     = {Recurrent World Models Facilitate Policy Evolution},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  booktitle = {Advances in Neural Information Processing Systems 31 (NeurIPS 2018)},
   year      = {2018},
-  note      = {arXiv:1803.10122}
+  url       = {https://papers.nips.cc/paper/2018/hash/2de5d16682c3c35007e4e92982f1a2ba-Abstract.html}
 }
 
-@misc{brooks2024video,
-  author       = {Brooks, Tim and Peebles, Bill and others},
+@online{brooks2024video,
+  author       = {Brooks, Tim and Peebles, Bill and Holmes, Connor and others},
   title        = {Video generation models as world simulators},
-  howpublished = {OpenAI technical report},
-  year         = {2024}
+  organization = {OpenAI},
+  date         = {2024-02-15},
+  url          = {https://openai.com/index/video-generation-models-as-world-simulators/},
+  urldate      = {2026-10-26}
 }
 
 @online{worldlabs_marble,
   author       = {{World Labs}},
-  title        = {Marble {API} documentation: world generation and pricing},
+  title        = {World {API} quickstart},
   url          = {https://docs.worldlabs.ai/api},
-  urldate      = {2026-10-18}
+  urldate      = {2026-10-26}
+}
+
+@online{worldlabs_multiimage,
+  author       = {{World Labs}},
+  title        = {Multi-image prompt tips},
+  url          = {https://docs.worldlabs.ai/marble/create/prompt-guides/multi-image-prompt},
+  urldate      = {2026-10-26}
 }
 
 @online{worldlabs_spz,
   author       = {{World Labs}},
-  title        = {Rendering {SPZ}},
+  title        = {Rendering Marble {SPZ} files in third-party engines},
   url          = {https://docs.worldlabs.ai/api/rendering-spz.md},
-  urldate      = {2026-10-18}
+  urldate      = {2026-10-26}
 }
 
 @online{spz,
   author       = {{Niantic}},
   title        = {{SPZ}: a compressed file format for {3D} Gaussian splats},
-  url          = {https://github.com/nianticlabs/spz}
+  url          = {https://github.com/nianticlabs/spz},
+  urldate      = {2026-10-26}
 }
 
 @online{spark,
   author       = {{World Labs}},
-  title        = {Spark: a {3D} Gaussian splatting renderer for three.js},
-  url          = {https://github.com/sparkjsdev/spark}
+  title        = {Spark: an advanced {3D} Gaussian splatting renderer for three.js},
+  url          = {https://github.com/sparkjsdev/spark},
+  urldate      = {2026-10-26}
 }
 
-@misc{usdconvertgsplat,
-  title        = {usd-convert-gsplat, version 0.1.15},
-  howpublished = {Python package},
-  note         = {Converter from Gaussian-splat files to OpenUSD ParticleField3DGaussianSplat}
+@online{usdconvertgsplat,
+  author       = {{NVIDIA}},
+  title        = {usd-convert-gsplat 0.1.15: {NVIDIA} {3D} Gaussian Splat to {USD} Converter},
+  url          = {https://pypi.org/project/usd-convert-gsplat/},
+  urldate      = {2026-10-26}
 }
 
 @online{openusd,
-  author       = {{Pixar Animation Studios and the Alliance for OpenUSD}},
-  title        = {{OpenUSD}: Universal Scene Description},
-  url          = {https://openusd.org}
+  author       = {{Pixar Animation Studios}},
+  title        = {Introduction to {USD}},
+  url          = {https://openusd.org/release/intro.html},
+  urldate      = {2026-10-26}
+}
+
+@online{aousd,
+  author       = {{Alliance for OpenUSD}},
+  title        = {Alliance for {OpenUSD}},
+  url          = {https://aousd.org/},
+  urldate      = {2026-10-26}
 }
 
 @online{aousd2603,
   author       = {{Alliance for OpenUSD}},
-  title        = {{OpenUSD} v26.03 release},
-  url          = {https://aousd.org/blog/openusd-v26-03/}
+  title        = {Announcing {OpenUSD} v26.03: Key Features and Improvements},
+  url          = {https://aousd.org/blog/openusd-v26-03/},
+  date         = {2026-03-24},
+  urldate      = {2026-10-26}
 }
 
 @online{usd_gsplat_schema,
   author       = {{OpenUSD}},
   title        = {{ParticleField3DGaussianSplat} schema},
-  url          = {https://openusd.org/dev/user_guides/schemas/usdVol/ParticleField3DGaussianSplat.html}
+  url          = {https://openusd.org/dev/user_guides/schemas/usdVol/ParticleField3DGaussianSplat.html},
+  urldate      = {2026-10-26}
+}
+
+@online{usd_particle_position,
+  author       = {{OpenUSD}},
+  title        = {{ParticleFieldPositionAttributeAPI} schema},
+  url          = {https://openusd.org/dev/user_guides/schemas/usdVol/ParticleFieldPositionAttributeAPI.html},
+  urldate      = {2026-10-26}
 }
 
 @online{omniverse,
   author       = {{NVIDIA}},
-  title        = {{NVIDIA Omniverse}},
-  url          = {https://www.nvidia.com/en-us/omniverse/}
+  title        = {Develop Physical {AI} Applications: {NVIDIA Omniverse}},
+  url          = {https://www.nvidia.com/en-us/omniverse/},
+  urldate      = {2026-10-26}
 }
 
 @online{kit_app_template,
   author       = {{NVIDIA}},
   title        = {Omniverse {Kit} App Template},
-  url          = {https://github.com/NVIDIA-Omniverse/kit-app-template}
+  url          = {https://github.com/NVIDIA-Omniverse/kit-app-template},
+  urldate      = {2026-10-26}
 }
 
 @online{blender,
   author       = {{Blender Foundation}},
-  title        = {Blender 4.5 release notes: pipeline, assets and {I/O}},
-  url          = {https://developer.blender.org/docs/release_notes/4.5/pipeline_assets_io/}
+  title        = {Blender Python {API}},
+  url          = {https://docs.blender.org/api/current/index.html},
+  urldate      = {2026-10-26}
 }
 
 @online{awssam,
   author       = {{Amazon Web Services}},
   title        = {{AWS} Serverless Application Model ({SAM})},
-  url          = {https://aws.amazon.com/serverless/sam/}
+  url          = {https://aws.amazon.com/serverless/sam/},
+  urldate      = {2026-10-26}
 }
 
 @online{awsiotcore,
   author       = {{Amazon Web Services}},
   title        = {{AWS IoT Core}},
-  url          = {https://aws.amazon.com/iot-core/}
+  url          = {https://aws.amazon.com/iot-core/},
+  urldate      = {2026-10-26}
 }
 
 @online{kxxv2026ctfb,
   author       = {{25 News KXXV}},
-  title        = {Inside the {NEW} {Central Texas Food Bank}},
+  title        = {Inside the {NEW} {Central Texas Food Bank} {\textbar} See How Your Donation Changes Lives},
   url          = {https://www.youtube.com/watch?v=8sQmr7JqXkI},
-  year         = {2026},
-  note         = {Video, July 2026}
+  note         = {YouTube video},
+  urldate      = {2026-10-26}
 }
 
 @online{ctfb2016facility,
@@ -190,11 +231,11 @@
 }
 
 @online{kxxv2026waco,
-  author       = {{25 News KXXV}},
+  organization = {25 News KXXV},
   title        = {Ready to feed the need: inside {Central Texas Food Bank}'s new {Waco} mega facility},
+  author       = {Molineaux, Charles},
   url          = {https://www.kxxv.com/news/local-news/in-your-neighborhood/ready-to-feed-the-need-inside-central-texas-food-banks-new-waco-mega-facility},
-  year         = {2026},
-  urldate      = {2026-10-19}
+  urldate      = {2026-10-26}
 }
 
 @online{colmap,
@@ -207,7 +248,7 @@
 @online{ctfb_impact_fy24,
   author       = {{Central Texas Food Bank}},
   title        = {2023--2024 Impact Report},
-  url          = {https://www.centraltexasfoodbank.org/},
+  url          = {https://www.centraltexasfoodbank.org/media/985/download},
   urldate      = {2026-10-19}
 }
 
@@ -219,15 +260,18 @@
 }
 
 @online{ctfb_kitchen_volunteer,
-  author       = {{Central Texas Food Bank}},
-  title        = {Volunteer in Our Community Kitchen},
-  url          = {https://www.centraltexasfoodbank.org/get-involved/volunteer/volunteer-our-community-kitchen},
-  urldate      = {2026-10-19}
+  author       = {Granato, Kimberly},
+  title        = {Kitchen Magic},
+  organization = {Edible Austin},
+  date         = {2017-08-30},
+  url          = {https://edibleaustin.com/food/embracing-local/kitchen-magic/},
+  urldate      = {2026-10-26}
 }
 
 @online{ctfb_kids_cafe,
   author       = {{Central Texas Food Bank}},
-  title        = {Food Bank's After-School Meals Help Central Texas Families},
+  title        = {Food Bank's After School Meals Help Central Texas Families},
+  date         = {2018-10-04},
   url          = {https://www.centraltexasfoodbank.org/news/food-banks-after-school-meals-help-central-texas-families},
   urldate      = {2026-10-19}
 }
@@ -235,13 +279,14 @@
 @online{ctfb_kitchen_history,
   author       = {{Central Texas Food Bank}},
   title        = {Cooking with Purpose: A Recipe for Serving Central Texas},
+  date         = {2025-07-10},
   url          = {https://www.centraltexasfoodbank.org/news/cooking-purpose-recipe-serving-central-texas},
   urldate      = {2026-10-19}
 }
 
 @online{fa_meal,
   author       = {{Feeding America}},
-  title        = {Meal conversion: 1.2 pounds of food per meal},
-  url          = {https://www.feedingamerica.org/},
+  title        = {How {Feeding America} turns \$1 into at least 10 meals},
+  url          = {https://www.feedingamerica.org/ways-to-give/faq/about-our-claims},
   urldate      = {2026-10-19}
 }

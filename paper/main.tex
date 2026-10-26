@@ -125,12 +125,13 @@ edge. It makes a sparse walkthrough usable, but it also invents geometry.
 In parallel, Universal Scene Description (OpenUSD), originally from Pixar and
 now developed under the Alliance for OpenUSD, has become an open,
 vendor-neutral scene description with layered composition and typed schemas
-\cite{openusd}. Its 26.03 release added the
+\cite{openusd,aousd}. Its 26.03 release added the
 \code{ParticleField3DGaussianSplat} schema family
 \cite{aousd2603,usd_gsplat_schema}, so a splat reconstruction is no longer a
 viewer-specific file. It can sit in the same stage as sensors, equipment and
-annotations. NVIDIA Omniverse \cite{omniverse} is a USD-native platform for
-real-time RTX rendering and simulation. Its licensing is mixed: some
+annotations. NVIDIA Omniverse \cite{omniverse} is a set of libraries that bring
+OpenUSD data interoperability, RTX rendering and physics simulation into
+applications. Its licensing is mixed: some
 components are open source, while the Kit SDK is distributed under NVIDIA's
 own license terms: the Kit App Template states that its software and materials
 are governed by the NVIDIA Software License Agreement and the Product-Specific
@@ -551,11 +552,11 @@ operating rhythm for the twin to display, not a measurement of the food bank.
 Figure & Source \\
 \midrule
 74 million lb distributed per year, 26.6 million lb of it produce (fiscal year 2024) & \cite{ctfb_impact_fy24} \\
-251 partner agencies in 21 counties & \cite{ctfb_impact_fy24,ctfb2016facility} \\
+251 partner agencies in a 21-county service area & \cite{ctfb_impact_fy24} \\
 135{,}000\,sq\,ft facility & \cite{ctfb2016facility} \\
 More than 7{,}000 pallet positions, more than 35{,}000\,sq\,ft of cooler and freezer, 15 docks & \cite{cfs_processing} \\
 4{,}200\,sq\,ft production kitchen with kettles, combi ovens, blast chillers and tilt skillets & \cite{ctfb_kitchen_volunteer} \\
-About 950 kitchen meals per day for after-school, summer and child-care meal programs & \cite{ctfb_kids_cafe,ctfb_kitchen_history} \\
+About 950 kitchen meals per day for after-school meals (2018); about 2{,}000 a day by 2025, including summer meal sites & \cite{ctfb_kids_cafe,ctfb_kitchen_history} \\
 1.2\,lb of food per meal & \cite{fa_meal} \\
 \bottomrule
 \end{tabularx}
@@ -852,15 +853,15 @@ directional, not a quote.
 
 \begin{table}[t]
 \caption{Estimated cost of running the representative twin on real floor
-data, from public list prices on 19 October 2026. Excludes tax, installation
+data, from public list prices checked on 19 and 26 October 2026. Excludes tax, installation
 and staff time. Directional: enterprise discounts and quotas may differ.}
 \centering\small
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}Xrr@{}}
 \toprule
 Item & One-time & Monthly \\
 \midrule
-24 temperature sensors, 21 door sensors, 2 LoRaWAN gateways & \$1{,}860 & \\
-8 forklift beacons, 10 BLE gateways (area-level location) & \$830 & \\
+24 temperature sensors, 21 door sensors, 2 LoRaWAN gateways & \$1{,}850 & \\
+8 forklift beacons, 10 BLE gateways (area-level location) & \$840 & \\
 AWS: IoT Core, Lambda, API Gateway, DynamoDB, logs (20 viewers) & & \$12 \\
 Optional: Omniverse on a g6e.xlarge, 10\,h a week & & \$124 \\
 Measured: Omniverse trial, 7 runs, 94 instance-minutes\textsuperscript{a} & \$1.34 & \\
@@ -883,8 +884,8 @@ tasks available, and a project ceiling of 1{,}000 credits. All code, the AWS tem
 frames are in the project repository.
 
 \subsection{Frame extraction}
-World-model APIs accept only a few images (Marble's multi-image mode accepts at
-most eight with reconstruction enabled \cite{worldlabs_marble}). The ingest
+World-model APIs accept only a few images (Marble's Auto Layout multi-image mode
+accepts up to eight \cite{worldlabs_multiimage}). The ingest
 stage samples a window of the video and, for every interval of $N$ seconds,
 scores candidate frames with ffmpeg's blur detector and keeps the sharpest;
 interlaced frames are deinterlaced only when flagged. A hard cap of 40 frames
@@ -957,8 +958,9 @@ its room.
 The splat world is converted with \code{usd-convert-gsplat} 0.1.15
 \cite{usdconvertgsplat} into a
 \code{ParticleField3DGaussianSplat} prim.
-World Labs SPZ files use an OpenCV-style camera frame (Y down) in arbitrary
-units \cite{worldlabs_spz}. Leaving the splat payload untouched, we place it
+World Labs SPZ files use an OpenCV-style camera convention
+(\code{marble\_raw\_opencv}, Y down) in raw units that the world's metric scale
+factor converts to meters \cite{worldlabs_spz}. Leaving the splat payload untouched, we place it
 under a parent transform, as shown in Equation~\ref{eq:xform},
 \begin{equation} \label{eq:xform}
   M = R_x(180^\circ)\, T(0, -o, 0)\, S(s),
@@ -975,8 +977,9 @@ alignment the USDZ specification requires, so we convert to binary
 Conversion took 5.2\,s for the 270{,}423-splat world-model racking zone and
 3.9\,s for a 181{,}556-splat first version of the locally trained one on four
 CPU cores. The schema
-defines half-precision attributes that would roughly halve file size; the
-converter does not yet write them.
+family defines half-precision companions to its attributes, such as
+\code{positionsh} \cite{usd_particle_position}, that would roughly halve file
+size; the converter does not yet write them.
 
 \subsection{Cost controls for paid generation}
 World-model calls are the only paid, non-idempotent steps, so they are
