@@ -85,7 +85,10 @@ corrections needed to turn world-model output into a valid, metric Universal
 Scene Description (OpenUSD) asset using its native splat schema, and use that
 format as the only interface to a serverless data layer, a browser viewer,
 Blender and NVIDIA Omniverse. Omniverse rendered the modeled facility with
-RTX but drew the splat prims as blank grey. The findings suggest that today's
+RTX but drew the splat prims as blank grey. Because a sensor-fed twin brings
+operational technology (OT) into scope, we also give a zone-based OT security
+design in which the twin can read the floor but never write to it; only its
+read-only cloud controls are implemented. The findings suggest that today's
 models recover the observed parts of a real scene cheaply and at metric
 scale, while extrapolating unobserved space, the step a whole-building twin
 needs most, remains the open problem. The work is an exploration of these
@@ -179,7 +182,8 @@ only interfaces between reconstruction, data and rendering, with a serverless
 backend that has no standing cost; an operations layer that models
 inventory, flows, docks and a community kitchen behind the same API and as
 OpenUSD prims; cost controls that make paid world-model generation safe to
-run unattended; and a food bank as the test case. Food banks are logistics operations: when
+run unattended; an operational technology (OT) security design that keeps the
+twin read-only toward the floor; and a food bank as the test case. Food banks are logistics operations: when
 the Central Texas Food Bank moved into its 135,000-square-foot Austin
 facility in 2016, the new building held seven times the refrigeration and
 freezer capacity of the old one \cite{ctfb2016facility}, and its newer Waco
@@ -481,7 +485,10 @@ workstation or in continuous integration and publishes the OpenUSD twin to
 object storage; Step~2 connects floor sensors and the warehouse management
 system; Step~3 is the browser, Omniverse on an on-demand or Spot GPU
 instance that is stopped after each session, desktop tools and staff alerts.
-The cost-controls panel lists how each part bills only while it runs. Drawn in draw.io with the AWS architecture
+The cost-controls panel lists how each part bills only while it runs. Red
+dashed lines are OT trust boundaries (Purdue levels 0 to 2 on the floor and an
+OT DMZ at level 3.5); the twin has no write path to the floor, and the bottom
+panel separates the controls that are built from those that are design only. Drawn in draw.io with the AWS architecture
 icons; the source is in the repository's \code{paper/diagrams} folder.}
 \label{fig:aws}
 \end{sidewaysfigure}
@@ -858,6 +865,55 @@ quotas and policies it had. Enterprise accounts may differ through negotiated
 discounts, savings plans, quotas and region policies, so the figures are
 directional, not a quote.
 
+\subsection*{Operational technology security}
+Most security discussion around a cloud twin is about IT: the account, the
+API and the web front end. A twin fed by floor sensors also brings operational
+technology (OT) into scope: the sensors, the gateways that carry their data
+and the path from the floor to the cloud. We therefore designed the twin's OT
+boundary before any real device is connected (Figure~\ref{fig:aws}), following
+the zone-based segmentation and Purdue levels described in NIST SP 800-82
+Rev.~3 \cite{nist80082r3} and the zones-and-conduits model of the ISA/IEC 62443
+series \cite{isa62443,iec62443_overview}.
+
+The central decision is that the twin watches the floor and never drives it.
+The API exposes only \code{GET} routes, and in the design no cloud principal may
+publish to a device topic, so even a full compromise of the cloud account
+could mislead people but could not change a freezer setpoint. A twin that
+sends commands back would become part of the control system and would need
+far more assurance. For the same reason the design adds its own battery
+LoRaWAN sensors rather than tapping the refrigeration controllers, whose local
+alarms stay authoritative. Floor devices and gateways (Purdue levels 0 to 2)
+sit behind an OT DMZ (level 3.5) that allows only outbound TLS, and the only
+designed path toward the floor is a signed, human-approved firmware update.
+
+For a read-only twin the main OT risk is integrity rather than control. A
+falsified ``all normal'' reading could hide a cold-chain failure, and
+falsified alarms could train staff to ignore real ones. MITRE ATT\&CK for ICS
+lists such falsified telemetry as an unauthorized reporting message
+(T1692.002) \cite{mitre_t1692}, and NIST SP 800-82 notes that many field
+devices and protocols allow data to be replayed, modified or spoofed
+\cite{nist80082r3}. The design answers with one identity per device: an X.509
+certificate for each MQTT device, with an AWS IoT policy that lets a device
+connect only under its own registered thing name
+\cite{aws_iot_connect_policy} and certificates that can be revoked permanently
+\cite{aws_iot_revoke}, and per-device AES-128 session keys for LoRaWAN
+sensors. Readings would then pass plausibility, rate-of-change and data-age
+checks before they reach staff. One trust point should be stated plainly:
+AWS IoT Core for LoRaWAN decrypts sensor payloads in the cloud
+\cite{aws_lorawan_security}, so the cloud provider is inside the trust
+boundary for that data.
+
+What is built and what is designed must be kept apart. Implemented and
+deployed today are the cloud-side controls: the \code{GET}-only HTTPS API, its
+throttle of 5 requests per second (burst 10), a function role that can only
+write its own logs, seven-day log retention, and no IoT resources or device
+credentials in the account. Every device-side control above is a design,
+because the demonstration uses simulated telemetry and no real device exists.
+The target security levels are reasoned, not the result of an IEC 62443
+assessment, and the public API has no authentication because the data it
+serves is public and simulated; a deployment with real readings would add
+both.
+
 \begin{table}[t]
 \caption{Estimated cost of running the representative twin on real floor
 data, from public list prices checked on 19 and 26 October 2026. Excludes tax, installation
@@ -1201,7 +1257,7 @@ Serverless GPU & none; EC2 on demand or Spot & Container Apps serverless GPUs & 
 \centering
 \includegraphics[width=\linewidth]{arch_azure.pdf}
 \caption{The food bank twin on Microsoft Azure: an equivalent design, not
-deployed. Drawn in draw.io with the Azure icons.}
+deployed, with the same OT zones and trust boundaries as Figure~\ref{fig:aws}. Drawn in draw.io with the Azure icons.}
 \label{fig:azure}
 \end{sidewaysfigure}
 
@@ -1209,7 +1265,7 @@ deployed. Drawn in draw.io with the Azure icons.}
 \centering
 \includegraphics[width=\linewidth]{arch_gcp.pdf}
 \caption{The food bank twin on Google Cloud: an equivalent design, not
-deployed. Drawn in draw.io with the Google Cloud icons.}
+deployed, with the same OT zones and trust boundaries as Figure~\ref{fig:aws}. Drawn in draw.io with the Google Cloud icons.}
 \label{fig:gcp}
 \end{sidewaysfigure}
 

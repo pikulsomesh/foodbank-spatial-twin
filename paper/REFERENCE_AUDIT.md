@@ -45,6 +45,20 @@ Status key: **OK** verified as cited; **Fixed** source is real but the metadata 
 | ctfb_kitchen_history | Fixed | CTFB, 2025-07-10 (about 2,000 meals a day, summer meal site) | date |
 | fa_meal | Fixed | feedingamerica.org about-our-claims ("roughly 1.2 pounds" per meal) | real title and URL |
 
+### Added 2026-10-27 (OT security section)
+
+| Ref | Status | Evidence | Fix |
+|---|---|---|---|
+| nist80082r3 | OK | csrc.nist.gov landing page (authors, September 2023, DOI 10.6028/NIST.SP.800-82r3); the PDF text describes the Purdue model with a DMZ (Fig. 16) and data that can be replayed, modified or spoofed | new |
+| isa62443 | OK | isa.org series page | new |
+| iec62443_overview | OK | IEC SyC Smart Energy page: zones, conduits and four security levels | new; supports the zones-and-conduits sentence, which the ISA page does not state |
+| mitre_t1692 | OK | attack.mitre.org T1692 Unauthorized Message, sub-technique T1692.002 Reporting Message | new; the claim that it replaced T0856 could not be confirmed on the page and is not made |
+| aws_lorawan_security | OK | AWS docs: AES-128 CTR, "AWS IoT Core for LoRaWAN decrypts the binary message" | new |
+| aws_iot_connect_policy | OK | AWS docs: connect policy using `${iot:Connection.Thing.ThingName}` | new |
+| aws_iot_revoke | OK | AWS docs: a revoked certificate's status can't be changed | new |
+
+Not used: an original Purdue/PERA citation (Williams), which could not be pinned to a venue and DOI; NIST SP 800-82r3 is cited for the Purdue levels instead.
+
 ## Claims outside refs.bib
 
 | Where | Claim | Status | Fix |
