@@ -32,7 +32,7 @@ The assets that matter, in order: **food safety** (product held at the right tem
 | T8 | **Jamming or gateway outage** | Radio, uplink | Twin goes stale while looking current | Show data age on every value, alarm on missing heartbeats, keep local alarms |
 | T9 | **Over-permissive IoT policy** (any device can publish anywhere) | IoT Core | One device can forge readings for all others | Policy variables tie each certificate to its own topics; Device Defender audit flags overly permissive policies |
 
-MITRE ATT&CK for ICS describes T1 and T2 as adversary techniques: falsified reporting messages that hide the real process state or distract operators. ATT&CK v19 moved this from the old *Spoof Reporting Message* (T0856) to [*Unauthorized Message: Reporting Message* (T1692.002)](https://attack.mitre.org/techniques/T1692/); the detection advice is the same idea used here: watch for loss-of-communication and compare reports against independent data.
+MITRE ATT&CK for ICS describes T1 and T2 as adversary techniques: falsified reporting messages that hide the real process state or distract operators ([*Unauthorized Message*, T1692, sub-technique T1692.002 Reporting Message](https://attack.mitre.org/techniques/T1692/)). The defence used here follows the same idea: watch for loss of communication and compare reports against independent data.
 
 ## Zones and conduits
 
@@ -111,7 +111,7 @@ There is deliberately **no `iot:Subscribe` or `iot:Receive`** for sensors and BL
 
 - **[AWS IoT Device Defender](https://docs.aws.amazon.com/iot-device-defender/latest/devguide/what-is-device-defender.html)** for devices that connect to IoT Core as MQTT principals (BLE gateways, edge device). **Audit** checks the configuration, including overly permissive policies, certificates shared by several devices, conflicting client IDs and expiring certificates. **Detect** watches device behaviour (message counts and sizes, connection attempts, authorization failures) against rules or ML Detect baselines. **Mitigation actions** can, for example, move a device to a quarantine thing group or set its certificate inactive. LoRaWAN sensors are not MQTT principals, so for them the checks below do the work.
 - **Data plausibility in the ingest Lambda** (design): reject readings outside a physical range for the sensor, impossible rates of change (a freezer cannot move 20 °C in a minute), duplicate or out-of-order frame counts, and a door "closed" while the zone's temperature curve says it is open. Flag rather than silently drop, so an attack shows up as an alert.
-- **Heartbeat and data age.** Every reading carries its age; the twin greys out stale values; a missing heartbeat raises an alert. This is the defence against "frozen normal" (T1, T8), and it is the one MITRE recommends for spoofed reporting: watch for loss of communication.
+- **Heartbeat and data age.** Every reading carries its age; the twin greys out stale values; a missing heartbeat raises an alert. This is the defence against "frozen normal" (T1, T8), and it matches the general advice for spoofed reporting: watch for loss of communication.
 - **Independent ground truth.** Keep the refrigeration plant's own local alarm and manual temperature logs. The twin is a second opinion, never the only one.
 - **Account-level.** CloudTrail and CloudWatch alarms on IoT policy changes, certificate status changes and new devices.
 
@@ -164,7 +164,7 @@ The security layer adds little to the AWS bill. The real cost is installation di
 Checked 2026-10-27. Only claims that could be traced to these pages are made above.
 
 - NIST SP 800-82 Rev. 3, *Guide to Operational Technology (OT) Security*, September 2023: <https://csrc.nist.gov/pubs/sp/800/82/r3/final>. An initial public draft of Rev. 4 was published in September 2026 for comment; Rev. 3 remains the final version.
-- ISA/IEC 62443 series (zones and conduits, security levels; part 3-2 risk assessment and system design): <https://www.isa.org/standards-and-publications/isa-standards/isa-iec-62443-series-of-standards>; IEC overview: <https://syc-se.iec.ch/deliveries/cybersecurity-guidelines/security-standards-and-best-practices/iec-62443/>
+- ISA/IEC 62443 series: IEC overview, which defines zones and conduits and the security levels: <https://syc-se.iec.ch/deliveries/cybersecurity-guidelines/security-standards-and-best-practices/iec-62443/>; ISA series page: <https://www.isa.org/standards-and-publications/isa-standards/isa-iec-62443-series-of-standards>
 - MITRE ATT&CK for ICS, Unauthorized Message (T1692), Reporting Message sub-technique: <https://attack.mitre.org/techniques/T1692/>
 - AWS IoT Core: transport security <https://docs.aws.amazon.com/iot/latest/developerguide/transport-security.html>; revoking a client certificate <https://docs.aws.amazon.com/iot/latest/developerguide/revoke-ca-cert.html>; connect policy examples <https://docs.aws.amazon.com/iot/latest/developerguide/connect-policy.html>; fleet provisioning <https://docs.aws.amazon.com/iot/latest/developerguide/provision-wo-cert.html>
 - AWS IoT Core for LoRaWAN, data and transport security: <https://docs.aws.amazon.com/iot/latest/developerguide/connect-iot-lorawan-security.html>
