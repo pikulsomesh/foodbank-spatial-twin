@@ -28,7 +28,7 @@ jobs:
           python-version: "3.12"
       - name: Test the telemetry Lambda and the viewer's fallback simulator
         run: |
-          python -m pip install --quiet pytest
+          python -m pip install --quiet pytest pyyaml
           pytest -q tests
           node --test tests/*.test.mjs
       # Set the repository variable TWIN_API_URL (Settings > Secrets and variables > Actions >

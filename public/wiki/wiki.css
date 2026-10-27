@@ -92,3 +92,6 @@ figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
 @media (max-width: 700px) { .two { grid-template-columns: minmax(0, 1fr); } }
 
 footer.page { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); margin-top: 40px; padding-top: 12px; }
+
+/* long source URLs wrap instead of widening the page on phones */
+article li a{overflow-wrap:anywhere}
