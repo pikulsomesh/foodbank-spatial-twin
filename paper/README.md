@@ -1,6 +1,6 @@
 # Paper: From Video to Digital Twin
 
-**Title:** From Video to Digital Twin: Accelerating Spatial Twins with World Models and NVIDIA Omniverse
+**Title:** From Video to Digital Twin: An Exploratory Study of World Models and Gaussian Splatting on In-the-Wild Video
 **Author:** Somesh Mohapatra, Independent Researcher (pikulsomesh@gmail.com)
 
 `main.tex` follows the Research Future LaTeX template supplied by the author: `authblk` title block, line numbers, 1.5 spacing, `biblatex` with the `nejm` style, and the section order Introduction, Results, Discussion, Materials and Methods, then the back matter (Acknowledgments with the AI-use declaration, Author Contributions, Funding, Competing interests, Data Availability, Supplementary Materials).
@@ -59,3 +59,12 @@ The source video appears to be KXXV's tour of the Central Texas Food Bank's new 
 2. Somesh decided (2026-10-24) that no permission is sought: the Acknowledgments credit KXXV's public video tour as inspiration and say neither organization was involved. The video is publicly available, which is not the same as public domain; renders derived from its frames remain the author's call.
 3. The AI-use declaration in the Acknowledgments is confirmed by the author. AI tools cannot be listed as authors on arXiv or in most journals.
 4. For arXiv, suggested categories are primary `cs.CV`, cross-listed to `cs.GR` and `cs.CY`. A first-time submitter in a category may need an endorsement. Upload `main.tex`, `refs.bib`, the generated `main.bbl` and `figures/`. The line numbers are a journal-review convention; remove `\linenumbers` for the arXiv version if preferred.
+
+## arXiv submission
+
+- **Primary category:** cs.LG (Machine Learning). Optional cross-lists: cs.CV (Computer Vision) and cs.GR (Graphics).
+- **Framing:** an exploratory study of world models and Gaussian splatting on in-the-wild video, not an application paper. The food bank is the test case.
+- **Abstract:** paste [`arxiv_abstract.txt`](arxiv_abstract.txt), which is plain text with no LaTeX and is under arXiv's 1,920-character limit.
+- **Comments field:** "30 pages, 13 figures. Supplementary movies and code: https://github.com/pikulsomesh/foodbank-spatial-twin".
+- **Source upload:** `main.tex`, `refs.bib`, the generated `main.bbl`, and `figures/`. arXiv runs BibTeX, but including the `.bbl` keeps the build the same as here. The movies are too large for the source upload, so link them from the site rather than adding them as ancillary files.
+- **Before upload:** switch `\drafttrue` to `\draftfalse`, and consider removing `\linenumbers` for the preprint.

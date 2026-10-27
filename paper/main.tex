@@ -1,4 +1,4 @@
-% From Video to Digital Twin: Accelerating Spatial Twins with World Models and NVIDIA Omniverse
+% From Video to Digital Twin: An Exploratory Study of World Models and Gaussian Splatting on In-the-Wild Video
 % Built on the Research Future LaTeX template supplied by the author. Build: see paper/README.md.
 %
 % Drafting rule for this file: every number that has not been measured on a real
@@ -47,7 +47,7 @@ backend=bibtex]{biblatex}
 \addbibresource{refs.bib}
 
 %%%%%% Title %%%%%%
-\title{From Video to Digital Twin: Accelerating Spatial Twins with World Models and NVIDIA Omniverse}
+\title{From Video to Digital Twin: An Exploratory Study of World Models and Gaussian Splatting on In-the-Wild Video}
 
 %%%%%% Authors %%%%%%
 \author[1*]{Somesh Mohapatra}
@@ -68,30 +68,28 @@ backend=bibtex]{biblatex}
 
 %%%%%% Abstract %%%%%%
 \begin{abstract}
-Digital twins, virtual copies of a site kept in sync with its live data, help
-warehouses plan and catch failures, but building one usually starts from
-computer-aided design (CAD) drawings or laser scans, which puts twins out of reach for most non-profits. We show that
-publicly available video is enough to start one, with no CAD drawings, scans
-or site visit, through an open pipeline from video to world model to Blender
-to NVIDIA Omniverse. First, a world model, an AI system that infers 3D
-structure from images, estimates camera positions and
-real-world depth for a few frames, which are fused into a 3D
-Gaussian-splat scene. Second, the scene is connected to operational data through a serverless backend on Amazon Web Services.
-Third, a web browser shows the twin with its live data and Omniverse renders it.
-Universal Scene Description, an open 3D standard that now stores Gaussian
-splats natively, is the only interface between the steps. Applied to a
-representative Texas food bank, twenty frames of a news video captured three
-areas as about 747,000 splats for 200 world-model credits (20 US cents). Splat
-models trained locally from 49 to 72 frames each, at no credit cost, made these
-areas and a community kitchen photorealistic near the filmed path. Generating
-views of unfilmed areas failed on the provider's side twice, so the
-whole-building view is a facility model scripted in Blender and published in
-the same standard. The twin went from first commit to a deployed backend in
-seven days; the backend has billed \$0.00 so far, and real sensors for one
-facility are estimated at about US\$2,700 plus \$12 a month.
-Online video, world models and open standards can make a first facility twin
-a matter of days and dollars; filling in unseen space is
-the open step.
+Generative world models and 3D Gaussian Splatting promise to turn ordinary
+video into explorable 3D scenes, but little is reported on how they behave on
+uncurated, in-the-wild footage. We study what these models can and cannot
+recover when the only input is a publicly available news walkthrough of a food
+bank warehouse, with no drawings, scans or site visit, and we use the result
+as the geometry of a digital twin. A commercial world model given 20 frames
+recovered camera poses and metric depth for three areas, which we fused into
+about 747,000 Gaussian splats for 200 credits (20 US cents). Splat models
+optimized locally from 49 to 72 frames per area, at no credit cost, were
+photorealistic near the filmed path but degraded quickly away from it.
+Asking the world model to generate views of areas the video never showed
+failed on the provider's side twice, so unseen space was filled by a
+scripted Blender model instead. We describe the coordinate and packaging
+corrections needed to turn world-model output into a valid, metric Universal
+Scene Description (OpenUSD) asset using its native splat schema, and use that
+format as the only interface to a serverless data layer, a browser viewer,
+Blender and NVIDIA Omniverse. Omniverse rendered the modeled facility with
+RTX but drew the splat prims as blank grey. The findings suggest that today's
+models recover the observed parts of a real scene cheaply and at metric
+scale, while extrapolating unobserved space, the step a whole-building twin
+needs most, remains the open problem. The work is an exploration of these
+methods, not a deployed product.
 \end{abstract}
 
 %%%%%% Main Text %%%%%%
@@ -141,11 +139,15 @@ license.
 Surveys of digital twins identify geometry acquisition, data integration and
 interoperability as the recurring barriers \cite{tao2019digital,fuller2020digital}.
 This work addresses the first and third barriers directly and keeps the second
-deliberately thin. We ask whether these pieces can be composed into a twin that
-a small team can build from a news clip or other publicly available video,
-without CAD drawings, laser scans or a site visit, quickly and at very low
-cost. Our
-answer is a three-step pipeline (Figure~\ref{fig:overview}):
+deliberately thin. This paper is an exploratory study of the learning
+methods behind the first barrier. We ask three questions: what a world model
+and locally optimized Gaussian splats recover from uncurated, publicly
+available video with no CAD drawings, laser scans or site visit; whether the
+generative step can fill in space the camera never saw; and what it takes to
+carry the result into an open scene format that other tools can use. To
+answer them we compose existing models into a three-step pipeline
+(Figure~\ref{fig:overview}) and apply it to one realistic input, a news
+walkthrough of a food bank. The steps are:
 \begin{enumerate}
   \item \textbf{Video to digital twin with world models.} Blur-aware frame
         extraction feeds a world model that returns a Gaussian-splat world,
@@ -165,7 +167,11 @@ answer is a three-step pipeline (Figure~\ref{fig:overview}):
         the renderer is a deployment choice rather than an architectural one.
 \end{enumerate}
 
-The contributions are an open-source pipeline from walkthrough video to an
+We do not propose a new model; the contribution is an empirical account of
+how current models behave on in-the-wild input. It consists of a measured
+comparison of world-model reconstruction and locally optimized splats on the
+same footage, including where each fails; a report of the generative
+extrapolation step failing on this input; an open-source pipeline from walkthrough video to an
 OpenUSD Gaussian-splat twin, including the coordinate and
 packaging corrections needed to make world-model output a valid metric USD
 asset; an architecture in which OpenUSD and a small telemetry contract are the
@@ -173,9 +179,7 @@ only interfaces between reconstruction, data and rendering, with a serverless
 backend that has no standing cost; an operations layer that models
 inventory, flows, docks and a community kitchen behind the same API and as
 OpenUSD prims; cost controls that make paid world-model generation safe to
-run unattended; and a Tech-for-Good case study of a food
-bank, with an account of what the world model recovered, what it was asked
-to invent and where that step failed. Food banks are logistics operations: when
+run unattended; and a food bank as the test case. Food banks are logistics operations: when
 the Central Texas Food Bank moved into its 135,000-square-foot Austin
 facility in 2016, the new building held seven times the refrigeration and
 freezer capacity of the old one \cite{ctfb2016facility}, and its newer Waco
@@ -732,8 +736,11 @@ Omniverse GPU trial, 7 runs (min; USD) & 94; 1.34 & list price, terminated \\
 \end{table}
 
 \section{Discussion}
-A spatial digital twin does not have to start with a CAD model or a laser
-scanner. Every input to this one was publicly available: a broadcast news
+This study set out to learn what current world models and Gaussian splatting
+recover from in-the-wild video. The main finding is that the observed parts of
+a real scene come back cheaply and at metric scale, while unobserved space does
+not yet. A consequence is that a spatial digital twin does not have to start
+with a CAD model or a laser scanner. Every input to this one was publicly available: a broadcast news
 tour, published facility figures and open-source or pay-per-use tools. No
 drawing, scan or site visit was used. A short walkthrough video, a world model
 and OpenUSD's native splat schema produce a metric twin, Blender supplies the parts the camera never saw, and a serverless data
