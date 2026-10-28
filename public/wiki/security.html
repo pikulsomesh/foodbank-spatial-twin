@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>OT Security</title>
+<meta name="description" content="Threat model and reference design for the sensors, gateways and data path that feed the twin: zones, conduits, device identity, read-only twin.">
+<meta name="theme-color" content="#0f1720">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f1720'/%3E%3Cpath d='M6 24V13l10-6 10 6v11h-5v-7H11v7z' fill='%2357c7a5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+<!-- Generated page of the docs wiki; the engineering guides in docs/ hold the full detail. -->
+<header class="top">
+  <a class="brand" href="index.html"><i class="logo" aria-hidden="true"></i><span><b>Twin Docs</b><span>Video to world model to Blender to Omniverse</span></span></a>
+  <div class="pills">
+    <a class="pill" href="../">3D twin</a>
+    <a class="pill" href="../operations.html">Operations</a>
+    <a class="pill" href="https://github.com/pikulsomesh/foodbank-spatial-twin">GitHub</a>
+  </div>
+</header>
+<div class="layout">
+<nav class="side" aria-label="Docs"><ol><li><a href="index.html">Overview</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="security.html" aria-current="page">OT security</a></li><li><a href="data.html">Data on AWS</a></li><li><a href="visualize.html">Visualize</a></li><li><a href="omniverse.html">Omniverse learnings</a></li><li><a href="run.html">Run it</a></li><li><a href="cost.html">Cost</a></li><li><a href="provenance.html">Provenance</a></li></ol></nav>
+<article>
+<h1>OT security for sensors, gateways and the twin</h1>
+<p class="lede">The twin watches the floor; it never drives it. Device identity, zones and a one-way data path keep it that way.</p>
+<p>Most digital-twin security write-ups stop at the IT layer: the API, the website, the cloud account. The harder part of a real deployment is the <strong>operational technology (OT)</strong> underneath it: battery sensors in freezers, radio gateways bolted to steel racking, beacons on forklifts, and the refrigeration and dock equipment that keeps food safe. This page is the threat model and reference design for that layer, and how it plugs into the three-step pipeline (video to twin, data on AWS, Omniverse or the browser).</p>
+<div class="note warn">
+<p><strong>What is real and what is design.</strong> The demo has <strong>no real devices</strong>. Its telemetry is simulated by one Lambda function behind an HTTP API (<code>simulated: true</code> in every payload). Only the controls listed under <a href="#implemented-today-in-templateyaml">Implemented today</a> exist in <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/template.yaml"><code>template.yaml</code></a> and the CI workflow. Everything else on this page is a <strong>design</strong>, not built or tested. In the architecture diagrams, solid borders are implemented and dashed borders are design only; trust boundaries are drawn as red dashed lines. Costs are directional, from public list prices and what one individual AWS account could access.</p>
+</div>
+<figure><img src="img/arch_aws.png" alt="AWS architecture with OT zones, the OT DMZ and trust boundaries" loading="lazy"><figcaption>OT zones and trust boundaries on the AWS reference architecture. Solid: implemented; dashed: design only; red dashed: trust boundaries. <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/paper/diagrams/arch_aws.drawio">arch_aws.drawio</a></figcaption></figure>
+<h2 id="the-principle-the-twin-watches-it-does-not-drive">The principle: the twin watches, it does not drive</h2>
+<p>A food bank's process control already exists and already works: refrigeration controllers hold the freezer at temperature, dock door controllers open and close doors, forklift drivers move pallets. The twin adds <strong>monitoring</strong>: independent sensors, a picture of the building, and a view of what is happening.</p>
+<p>The design keeps it that way:</p>
+<ol>
+<li><strong>No write path from the cloud to the floor.</strong> The twin's API only reads. No IoT policy lets a cloud principal publish to a device command topic; no Device Shadow desired state is used; nothing in AWS can change a setpoint, open a door or stop a truck. If the whole AWS account were taken over, an attacker could lie to the people looking at the twin, but could not warm a freezer.</li>
+<li><strong>Add sensors, do not tap controllers.</strong> Temperature and door sensors are separate battery devices with their own radios, not connections into the refrigeration controller or building management system. The existing local alarms on the refrigeration plant stay in place and stay authoritative.</li>
+<li><strong>If controller data is ever wanted, read it at the edge and push it out.</strong> An edge gateway in its own zone polls the controller read-only and publishes outward over TLS. Nothing inbound crosses into the plant network.</li>
+</ol>
+<p>This is the main way a twin changes the attack surface. A <strong>read-only twin</strong> adds a new place where data can be <strong>faked or stolen</strong> (integrity and confidentiality), but not a new way to <strong>change the physical process</strong>. A twin that sends commands back (closed loop, "what-if" pushed to the floor, remote setpoint changes) turns the cloud into part of the control system, and would need the full OT treatment for the cloud side too: safety review, change control and a much higher security level for that conduit. This project deliberately stays read-only.</p>
+<h2 id="what-can-go-wrong-threat-model">What can go wrong (threat model)</h2>
+<p>The assets that matter, in order: <strong>food safety</strong> (product held at the right temperature), <strong>people</strong> (forklift traffic, dock doors), <strong>operational continuity</strong> (alerts reach staff), then <strong>data</strong> (inventory and location history).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Threat</th>
+<th>Where</th>
+<th>Consequence for a food bank</th>
+<th>Main controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>T1</td>
+<td><strong>Spoofed "all normal" readings</strong> hide a real freezer failure</td>
+<td>Sensor radio, gateway, MQTT, ingest</td>
+<td>Spoiled product discarded or, worse, distributed</td>
+<td>Per-device identity and keys, frame counters, plausibility checks, heartbeat-loss alarms, the refrigeration plant's own local alarm kept independent</td>
+</tr>
+<tr>
+<td>T2</td>
+<td><strong>False alarms</strong> flood staff</td>
+<td>Same</td>
+<td>Alarm fatigue, real excursion ignored</td>
+<td>Same, plus rate limits on alerts and cross-sensor correlation</td>
+</tr>
+<tr>
+<td>T3</td>
+<td><strong>Cloned or stolen device credential</strong></td>
+<td>A sensor or gateway taken off the wall</td>
+<td>Attacker injects data as a trusted device</td>
+<td>Unique per-device certificate or key, revocation, Device Defender audit for shared certificates and conflicting client IDs</td>
+</tr>
+<tr>
+<td>T4</td>
+<td><strong>Compromised gateway</strong> used to pivot into office IT or the plant network</td>
+<td>LoRaWAN or BLE gateway on the floor</td>
+<td>Ransomware or worse reaches systems that control things</td>
+<td>Gateways on their own VLAN or cellular backhaul, outbound only, no inbound ports, no route to the plant or office networks</td>
+</tr>
+<tr>
+<td>T5</td>
+<td><strong>Malicious firmware update</strong></td>
+<td>OTA path</td>
+<td>Every device of a model compromised at once</td>
+<td>Signed firmware verified on the device, update job started by a separate role with human approval</td>
+</tr>
+<tr>
+<td>T6</td>
+<td><strong>Cloud account takeover</strong></td>
+<td>AWS</td>
+<td>Twin lies, data leaks; no physical effect while the twin is read-only</td>
+<td>No write path to the floor, least-privilege IAM, separate accounts, logging</td>
+</tr>
+<tr>
+<td>T7</td>
+<td><strong>BLE beacon spoofing or replay</strong></td>
+<td>Forklift beacons</td>
+<td>Wrong truck location on the twin</td>
+<td>Treat BLE zone location as advisory, never as a safety input; telematics with authenticated devices where location matters</td>
+</tr>
+<tr>
+<td>T8</td>
+<td><strong>Jamming or gateway outage</strong></td>
+<td>Radio, uplink</td>
+<td>Twin goes stale while looking current</td>
+<td>Show data age on every value, alarm on missing heartbeats, keep local alarms</td>
+</tr>
+<tr>
+<td>T9</td>
+<td><strong>Over-permissive IoT policy</strong> (any device can publish anywhere)</td>
+<td>IoT Core</td>
+<td>One device can forge readings for all others</td>
+<td>Policy variables tie each certificate to its own topics; Device Defender audit flags overly permissive policies</td>
+</tr>
+</tbody>
+</table></div>
+<p>MITRE ATT&amp;CK for ICS describes T1 and T2 as adversary techniques: falsified reporting messages that hide the real process state or distract operators (<a href="https://attack.mitre.org/techniques/T1692/"><em>Unauthorized Message</em>, T1692, sub-technique T1692.002 Reporting Message</a>). The defence used here follows the same idea: watch for loss of communication and compare reports against independent data.</p>
+<h2 id="zones-and-conduits">Zones and conduits</h2>
+<p>The reference design splits the system into zones with a defined conduit between each pair, the model used by the ISA/IEC 62443 series (62443-3-2 partitions a system into zones and conduits and sets a target security level for each). It also lines up with the Purdue levels used in NIST SP 800-82 Rev. 3 to describe a segmented OT network. The security levels below are a reasoned target for a food bank, not an assessment carried out under the standard.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Zone</th>
+<th>Purdue level</th>
+<th>Contents</th>
+<th>Trust</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Z0 Plant control</strong> (out of scope, untouched)</td>
+<td>0 to 2</td>
+<td>Refrigeration controllers, compressors, dock door controllers, fire and access systems</td>
+<td>Not connected to the twin at all</td>
+</tr>
+<tr>
+<td><strong>Z1 Field devices</strong></td>
+<td>0 to 1</td>
+<td>LoRaWAN temperature and door sensors, BLE beacons on forklifts</td>
+<td>Physically exposed; trust the key, not the box</td>
+</tr>
+<tr>
+<td><strong>Z2 Edge</strong></td>
+<td>2</td>
+<td>LoRaWAN gateways, BLE-to-MQTT gateways, optional AWS IoT Greengrass edge device</td>
+<td>Physically exposed; holds credentials</td>
+</tr>
+<tr>
+<td><strong>Z3 OT DMZ</strong></td>
+<td>3.5</td>
+<td>Site firewall or cellular router for the edge zone</td>
+<td>Only outbound TLS allowed</td>
+</tr>
+<tr>
+<td><strong>Z4 Cloud ingest</strong></td>
+<td>cloud</td>
+<td>AWS IoT Core for LoRaWAN, IoT Core MQTT broker, rules, ingest Lambda, DynamoDB</td>
+<td>Accepts device data, never sends commands</td>
+</tr>
+<tr>
+<td><strong>Z5 Twin and viewers</strong></td>
+<td>cloud / IT</td>
+<td>HTTP API, read Lambda, S3 and CloudFront, browser, Omniverse on an EC2 GPU</td>
+<td>Read-only view</td>
+</tr>
+<tr>
+<td><strong>Z6 Business IT</strong></td>
+<td>4 to 5</td>
+<td>Warehouse management system, office network</td>
+<td>Exports pulled, never pushed into OT</td>
+</tr>
+<tr>
+<td><strong>Z7 Security management</strong></td>
+<td>cloud</td>
+<td>Provisioning, certificate authority, code signing, OTA jobs, Device Defender, CloudWatch</td>
+<td>Separate role and, ideally, a separate AWS account</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Conduit</th>
+<th>From to</th>
+<th>Protocol and protection</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C1</td>
+<td>Z1 to Z2, LoRa radio</td>
+<td>LoRaWAN, AES-128 per-device keys; payload encrypted on the device</td>
+<td>Uplink only for sensors</td>
+</tr>
+<tr>
+<td>C2</td>
+<td>Z1 to Z2, BLE radio</td>
+<td>BLE advertisements, <strong>not authenticated</strong></td>
+<td>Broadcast; advisory data only</td>
+</tr>
+<tr>
+<td>C3</td>
+<td>Z2 to Z4 via Z3</td>
+<td>LoRa Basics Station over TLS with gateway X.509 certificate; MQTT over TLS (port 8883 or 443) with per-device X.509 certificate</td>
+<td>Outbound from the site only</td>
+</tr>
+<tr>
+<td>C4</td>
+<td>Z6 to Z4</td>
+<td>WMS nightly export to S3 or read by a Lambda through the WMS API</td>
+<td>Pulled; no OT access</td>
+</tr>
+<tr>
+<td>C5</td>
+<td>Z4 to Z5</td>
+<td>DynamoDB read by the API Lambda</td>
+<td>One way into the view</td>
+</tr>
+<tr>
+<td>C6</td>
+<td>Z5 to users</td>
+<td>HTTPS only</td>
+<td>Read only (GET)</td>
+</tr>
+<tr>
+<td>C7</td>
+<td>Z7 to Z2</td>
+<td>Signed firmware over AWS IoT Jobs</td>
+<td>The only path toward the floor: change-controlled, human-approved, verified on the device</td>
+</tr>
+</tbody>
+</table></div>
+<p>The one-way rule is enforced in three places: the firewall (no inbound to the edge zone), IoT policies (devices may publish their own telemetry; no cloud role may publish to device topics), and the API (GET routes only). A hardware data diode is not needed at this risk level because the twin carries no commands, but it is the upgrade path if controller data (Z0) is ever read.</p>
+<h2 id="reference-design-by-layer">Reference design by layer</h2>
+<h3 id="device-identity-and-provisioning">Device identity and provisioning</h3>
+<ul>
+<li><strong>One identity per device, never shared.</strong> For MQTT devices (BLE gateways, an edge gateway), each gets its own X.509 client certificate, registered in AWS IoT Core. LoRaWAN sensors have their own per-device AES-128 root keys (AppKey) held by the device and AWS IoT Core for LoRaWAN; LoRaWAN gateways each have their own X.509 certificate for the Basics Station connection.</li>
+<li><strong>Provisioning.</strong> For a few dozen devices, register each certificate by hand or by script during installation. For a larger fleet, use <a href="https://docs.aws.amazon.com/iot/latest/developerguide/provision-wo-cert.html">AWS IoT fleet provisioning</a> with a <strong>pre-provisioning hook</strong> (a Lambda that checks each serial number against the installation list before a certificate is issued). Treat the claim certificate as sensitive and disable it after the install window. Just-in-time provisioning fits if devices arrive with certificates from your own registered CA.</li>
+<li><strong>Keys in hardware where the device allows it.</strong> An edge gateway running <a href="https://docs.aws.amazon.com/greengrass/v2/developerguide/hardware-security.html">AWS IoT Greengrass V2 can keep its private key in a TPM or HSM through PKCS#11</a> (Linux only). Most low-cost BLE gateways store keys in flash, which is why physical access and revocation matter.</li>
+<li><strong>Rotation and revocation.</strong> Track expiry with the Device Defender audit check for expiring certificates. A device that is lost, stolen or replaced has its certificate set to <strong>REVOKED</strong>; <a href="https://docs.aws.amazon.com/iot/latest/developerguide/revoke-ca-cert.html">a revoked certificate cannot be set back to active</a>. LoRaWAN session keys are refreshed through the join process.</li>
+</ul>
+<h3 id="least-privilege-iot-policies">Least-privilege IoT policies</h3>
+<p>Each device may connect only as itself and publish only to its own topic. AWS IoT policy variables make one policy work for every device: connect only with a client ID equal to the thing name bound to the certificate, and only while the thing is attached (<a href="https://docs.aws.amazon.com/iot/latest/developerguide/connect-policy.html">connect policy examples</a>, <a href="https://docs.aws.amazon.com/iot/latest/developerguide/thing-policy-variables.html">thing policy variables</a>):</p>
+<pre><code class="language-json">{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Action&quot;: &quot;iot:Connect&quot;,
+      &quot;Resource&quot;: &quot;arn:aws:iot:REGION:ACCOUNT:client/${iot:Connection.Thing.ThingName}&quot;,
+      &quot;Condition&quot;: { &quot;Bool&quot;: { &quot;iot:Connection.Thing.IsAttached&quot;: &quot;true&quot; } }
+    },
+    {
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Action&quot;: &quot;iot:Publish&quot;,
+      &quot;Resource&quot;: &quot;arn:aws:iot:REGION:ACCOUNT:topic/foodbank/site1/telemetry/${iot:Connection.Thing.ThingName}&quot;
+    }
+  ]
+}
+</code></pre>
+<p>There is deliberately <strong>no <code>iot:Subscribe</code> or <code>iot:Receive</code></strong> for sensors and BLE gateways: they never take instructions. Only an edge device that receives signed OTA jobs gets subscribe rights, and only on its own <code>$aws/things/&lt;name&gt;/jobs/</code> topics. The ingest rule reads <code>foodbank/site1/telemetry/+</code> and records the topic's thing name with each reading, so a device cannot claim to be another one. This policy is a sketch to be validated against the IoT policy documentation before use.</p>
+<h3 id="transport-security">Transport security</h3>
+<ul>
+<li>MQTT devices connect with <strong>TLS mutual authentication</strong> on port 8883 (or 443 with ALPN). AWS IoT Core <a href="https://docs.aws.amazon.com/iot/latest/developerguide/transport-security.html">supports TLS 1.2 and 1.3</a>; pick the default <code>IoTSecurityPolicy_TLS13_1_2_2022_10</code> or stricter in the domain configuration.</li>
+<li>LoRaWAN gateways reach AWS IoT Core for LoRaWAN through LoRa Basics Station over a TLS-protected WebSocket, authenticated with the gateway's X.509 certificate, and the CUPS endpoint can update the gateway's credentials (<a href="https://docs.aws.amazon.com/iot/latest/developerguide/connect-iot-lorawan-security.html">data and transport security</a>, <a href="https://docs.aws.amazon.com/iot-wireless/latest/developerguide/lorawan-onboard-gateway-add.html">adding a gateway</a>). Sensors encrypt their payload with AES-128 before it leaves the device, so a compromised gateway can drop or delay messages but cannot read or forge them without the device keys.</li>
+<li>Note the trust point: AWS IoT Core for LoRaWAN decrypts the payload and hands it to the rules engine, so the LoRaWAN application keys live in AWS. That is acceptable for temperature data; a site that wants to keep them on its own servers would use its own LoRaWAN network and application server instead.</li>
+</ul>
+<h3 id="gateways-edge-and-the-network">Gateways, edge and the network</h3>
+<ul>
+<li><strong>Segment.</strong> Put every gateway on its own VLAN (or its own cellular router), with a firewall rule that allows only outbound TCP 8883 and 443 to the AWS IoT endpoints and DNS and NTP, and <strong>no inbound ports</strong>. No route from the gateway VLAN to the office network or the refrigeration controllers. A cellular backhaul avoids the office network entirely.</li>
+<li><strong>Harden.</strong> Change default passwords, turn off unused services (local web UI, SSH) after setup, keep firmware current, log in only from the management network. Mount gateways out of reach and note their serial numbers.</li>
+<li><strong>Optional edge device (Greengrass).</strong> Only if the food bank later wants data from the refrigeration controllers or building management system: one hardened Linux box in Z2, key in a TPM, reading the controller with a read-only account (for example Modbus or BACnet reads only, never writes), and publishing outward. This is the only place the design touches Z0, and it reads.</li>
+</ul>
+<h3 id="monitoring-and-anomaly-detection">Monitoring and anomaly detection</h3>
+<ul>
+<li><strong><a href="https://docs.aws.amazon.com/iot-device-defender/latest/devguide/what-is-device-defender.html">AWS IoT Device Defender</a></strong> for devices that connect to IoT Core as MQTT principals (BLE gateways, edge device). <strong>Audit</strong> checks the configuration, including overly permissive policies, certificates shared by several devices, conflicting client IDs and expiring certificates. <strong>Detect</strong> watches device behaviour (message counts and sizes, connection attempts, authorization failures) against rules or ML Detect baselines. <strong>Mitigation actions</strong> can, for example, move a device to a quarantine thing group or set its certificate inactive. LoRaWAN sensors are not MQTT principals, so for them the checks below do the work.</li>
+<li><strong>Data plausibility in the ingest Lambda</strong> (design): reject readings outside a physical range for the sensor, impossible rates of change (a freezer cannot move 20 °C in a minute), duplicate or out-of-order frame counts, and a door "closed" while the zone's temperature curve says it is open. Flag rather than silently drop, so an attack shows up as an alert.</li>
+<li><strong>Heartbeat and data age.</strong> Every reading carries its age; the twin greys out stale values; a missing heartbeat raises an alert. This is the defence against "frozen normal" (T1, T8), and it matches the general advice for spoofed reporting: watch for loss of communication.</li>
+<li><strong>Independent ground truth.</strong> Keep the refrigeration plant's own local alarm and manual temperature logs. The twin is a second opinion, never the only one.</li>
+<li><strong>Account-level.</strong> CloudTrail and CloudWatch alarms on IoT policy changes, certificate status changes and new devices.</li>
+</ul>
+<h3 id="secure-updates-ota">Secure updates (OTA)</h3>
+<p>The only design path from the cloud toward a device is a firmware update, so it gets the strictest control: firmware signed with a dedicated signing profile (Code Signing for AWS IoT, or the vendor's own signing), <a href="https://docs.aws.amazon.com/freertos/latest/userguide/ota-manager.html">verified on the device before it is installed</a>, delivered by an AWS IoT Jobs document that only a separate deployment role can create, after a person approves it. Many off-the-shelf LoRaWAN sensors are updated by the vendor's tool rather than over the air; in that case the same rule applies to who may run the tool and which images are allowed.</p>
+<h3 id="twin-integrity">Twin integrity</h3>
+<ul>
+<li>The API returns <code>simulated: true</code> today. With real devices it becomes <code>false</code> and each reading also carries <code>device_id</code>, <code>received_at</code> and a <code>checks</code> field (passed, flagged), so the browser and Omniverse can show <strong>where a value came from and how old it is</strong>.</li>
+<li>Write access to the twin's scene (S3, OpenUSD files) is limited to the publishing pipeline; viewers read only. A tampered USD file is a misleading picture, not a physical effect, but the twin should still be versioned (S3 versioning, design) so a change can be traced.</li>
+</ul>
+<h2 id="implemented-today-in-templateyaml">Implemented today (in template.yaml)</h2>
+<p>Checked against <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/template.yaml"><code>template.yaml</code></a>, <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/src/telemetry/app.py"><code>src/telemetry/app.py</code></a> and <a href="https://github.com/pikulsomesh/foodbank-spatial-twin/blob/main/.github/workflows/pages.yml"><code>.github/workflows/pages.yml</code></a> on 2026-10-27. <code>tests/test_ot_boundary.py</code> checks the first four rows on every pull request.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Control</th>
+<th>How it is implemented</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Read-only API: no write method to anything</td>
+<td>The HTTP API has three routes, all <code>GET</code> (<code>/telemetry</code>, <code>/operations</code>, <code>/health</code>); CORS allows only <code>GET</code> and <code>OPTIONS</code>. The handler ignores request bodies and query strings</td>
+</tr>
+<tr>
+<td>No IoT resources and no device credentials exist</td>
+<td>The template declares no <code>AWS::IoT*</code> resources, certificates, policies or things</td>
+</tr>
+<tr>
+<td>Least-privilege function role</td>
+<td>The function declares no <code>Policies</code> or <code>Role</code>, so AWS SAM generates a role with only the basic Lambda execution permissions (write its own logs)</td>
+</tr>
+<tr>
+<td>Cost and abuse ceiling</td>
+<td>API throttling: 5 requests per second, burst 10 (<code>ThrottleRate</code>, <code>ThrottleBurst</code>)</td>
+</tr>
+<tr>
+<td>Encryption in transit for the API</td>
+<td>API Gateway <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/data-protection-encryption.html">exposes HTTPS endpoints only</a></td>
+</tr>
+<tr>
+<td>Fail fast</td>
+<td>128 MB, 3-second timeout, no VPC, no stored state</td>
+</tr>
+<tr>
+<td>Public data only in the public bucket</td>
+<td>S3 bucket policy grants <code>s3:GetObject</code> only; ACLs blocked (<code>BlockPublicAcls</code>, <code>IgnorePublicAcls</code>); the bucket holds only the viewer and twin assets</td>
+</tr>
+<tr>
+<td>Bounded logs</td>
+<td>CloudWatch log retention 7 days</td>
+</tr>
+<tr>
+<td>CI least privilege</td>
+<td>The Pages workflow runs with <code>contents: read</code>; only the deploy job gets <code>pages: write</code> and <code>id-token: write</code></td>
+</tr>
+<tr>
+<td>Honest data</td>
+<td>Every payload says <code>simulated: true</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Known gaps in what is deployed: the S3 website endpoint serves HTTP only (the public site is served over HTTPS from GitHub Pages instead); the API has no authentication because its data is public and simulated; there is no WAF. With real data, the API would sit behind CloudFront with authentication (for example Amazon Cognito or IAM) before anything non-public is exposed.</p>
+<h2 id="design-only-not-built">Design only (not built)</h2>
+<p>Everything in <a href="#reference-design-by-layer">Reference design by layer</a>: devices, certificates, provisioning, IoT policies, network segmentation, the edge device, Device Defender, plausibility checks, signed OTA, S3 versioning, separate AWS accounts. These are dashed in the diagrams.</p>
+<h2 id="cost-of-the-security-layer-directional">Cost of the security layer (directional)</h2>
+<p>For the real-floor case in <a href="cost.html">COST_ESTIMATE.md</a> (24 temperature and 21 door sensors, 2 LoRaWAN gateways, 10 BLE gateways, 8 beacons):</p>
+<ul>
+<li><strong>Certificates and IoT policies:</strong> no charge in AWS IoT Core itself; device certificates issued by AWS IoT Core cost nothing extra. A private CA (AWS Private CA) is optional at this size and is priced per CA per month, so check its pricing page before choosing it.</li>
+<li><strong>Device Defender:</strong> billed per active device principal per month for Audit and per metric datapoint for Detect, with no minimum fee (<a href="https://aws.amazon.com/iot-device-defender/pricing/">pricing</a>). At about a dozen MQTT principals this should be cents to a few dollars a month; we could not confirm the current us-east-1 rates, so check the pricing page.</li>
+<li><strong>Plausibility checks:</strong> run inside the existing ingest Lambda; no extra service.</li>
+<li><strong>Network:</strong> a VLAN on the existing switch and firewall is configuration, not hardware. A separate cellular router for the gateways is a few hundred dollars plus a data plan.</li>
+<li><strong>Hardware security:</strong> an edge device with a TPM is only needed if controller data is ever read.</li>
+</ul>
+<p>The security layer adds little to the AWS bill. The real cost is installation discipline: unique credentials per device, a record of what is installed where, and someone who reviews alerts.</p>
+<h2 id="standards-and-sources">Standards and sources</h2>
+<p>Checked 2026-10-27. Only claims that could be traced to these pages are made above.</p>
+<ul>
+<li>NIST SP 800-82 Rev. 3, <em>Guide to Operational Technology (OT) Security</em>, September 2023: <a href="https://csrc.nist.gov/pubs/sp/800/82/r3/final">https://csrc.nist.gov/pubs/sp/800/82/r3/final</a>. An initial public draft of Rev. 4 was published in September 2026 for comment; Rev. 3 remains the final version.</li>
+<li>ISA/IEC 62443 series: IEC overview, which defines zones and conduits and the security levels: <a href="https://syc-se.iec.ch/deliveries/cybersecurity-guidelines/security-standards-and-best-practices/iec-62443/">https://syc-se.iec.ch/deliveries/cybersecurity-guidelines/security-standards-and-best-practices/iec-62443/</a>; ISA series page: <a href="https://www.isa.org/standards-and-publications/isa-standards/isa-iec-62443-series-of-standards">https://www.isa.org/standards-and-publications/isa-standards/isa-iec-62443-series-of-standards</a></li>
+<li>MITRE ATT&amp;CK for ICS, Unauthorized Message (T1692), Reporting Message sub-technique: <a href="https://attack.mitre.org/techniques/T1692/">https://attack.mitre.org/techniques/T1692/</a></li>
+<li>AWS IoT Core: transport security <a href="https://docs.aws.amazon.com/iot/latest/developerguide/transport-security.html">https://docs.aws.amazon.com/iot/latest/developerguide/transport-security.html</a>; revoking a client certificate <a href="https://docs.aws.amazon.com/iot/latest/developerguide/revoke-ca-cert.html">https://docs.aws.amazon.com/iot/latest/developerguide/revoke-ca-cert.html</a>; connect policy examples <a href="https://docs.aws.amazon.com/iot/latest/developerguide/connect-policy.html">https://docs.aws.amazon.com/iot/latest/developerguide/connect-policy.html</a>; fleet provisioning <a href="https://docs.aws.amazon.com/iot/latest/developerguide/provision-wo-cert.html">https://docs.aws.amazon.com/iot/latest/developerguide/provision-wo-cert.html</a></li>
+<li>AWS IoT Core for LoRaWAN, data and transport security: <a href="https://docs.aws.amazon.com/iot/latest/developerguide/connect-iot-lorawan-security.html">https://docs.aws.amazon.com/iot/latest/developerguide/connect-iot-lorawan-security.html</a></li>
+<li>AWS IoT Device Defender: <a href="https://docs.aws.amazon.com/iot-device-defender/latest/devguide/what-is-device-defender.html">https://docs.aws.amazon.com/iot-device-defender/latest/devguide/what-is-device-defender.html</a>; mitigation actions <a href="https://docs.aws.amazon.com/iot-device-defender/latest/devguide/dd-mitigation-actions.html">https://docs.aws.amazon.com/iot-device-defender/latest/devguide/dd-mitigation-actions.html</a></li>
+<li>AWS IoT Greengrass V2 hardware security integration: <a href="https://docs.aws.amazon.com/greengrass/v2/developerguide/hardware-security.html">https://docs.aws.amazon.com/greengrass/v2/developerguide/hardware-security.html</a></li>
+<li>FreeRTOS OTA Update Manager (signed updates): <a href="https://docs.aws.amazon.com/freertos/latest/userguide/ota-manager.html">https://docs.aws.amazon.com/freertos/latest/userguide/ota-manager.html</a></li>
+<li>API Gateway data encryption (HTTPS only): <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/data-protection-encryption.html">https://docs.aws.amazon.com/apigateway/latest/developerguide/data-protection-encryption.html</a></li>
+<li>LoRa Alliance, LoRaWAN security FAQ: <a href="https://lora-alliance.org/wp-content/uploads/2020/11/la_faq_security_0220_v1.2_0.pdf">https://lora-alliance.org/wp-content/uploads/2020/11/la_faq_security_0220_v1.2_0.pdf</a></li>
+<li>Azure and Google Cloud equivalents used in the design-only diagrams: Microsoft Defender for IoT (agentless OT network monitoring) <a href="https://learn.microsoft.com/en-us/azure/defender-for-iot/organizations/overview">https://learn.microsoft.com/en-us/azure/defender-for-iot/organizations/overview</a>; Azure IoT Hub Device Provisioning Service X.509 attestation <a href="https://learn.microsoft.com/azure/iot-dps/concepts-x509-attestation">https://learn.microsoft.com/azure/iot-dps/concepts-x509-attestation</a>; Google Cloud Certificate Authority Service <a href="https://docs.cloud.google.com/certificate-authority-service/docs/ca-service-overview">https://docs.cloud.google.com/certificate-authority-service/docs/ca-service-overview</a></li>
+</ul>
+<footer class="page">Representative food bank inspired by the Central Texas Food Bank; not affiliated with or endorsed by it. Costs are directional. Source: <a href="https://github.com/pikulsomesh/foodbank-spatial-twin">github.com/pikulsomesh/foodbank-spatial-twin</a>.</footer>
+</article>
+</div>
+</body>
+</html>
