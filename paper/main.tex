@@ -13,7 +13,7 @@
 \usepackage{subcaption}
 \usepackage{amsmath}
 \usepackage{lineno}
-\linenumbers
+% \linenumbers % uncomment for a review copy with line numbers
 
 % Additions to the template: tables, the architecture diagram, colored placeholders, links.
 \usepackage{booktabs}
@@ -29,7 +29,7 @@
 % \TBD{...}: a value or passage that needs a real measurement or decision.
 % Change \drafttrue to \draftfalse to check that none remain (the build then stops at any \TBD).
 \newif\ifdraft
-\drafttrue
+\draftfalse
 \ifdraft
   \newcommand{\TBD}[1]{\textcolor{red!70!black}{\textbf{[TBD: #1]}}}
 \else
@@ -1192,6 +1192,10 @@ files (SPZ), the composed USD site and the per-zone placements are in the same
 repository.
 
 \section*{Supplementary Materials}
+Movies S1 to S3 are available at
+\url{https://pikulsomesh.github.io/foodbank-spatial-twin/paper/}
+(\code{movie\_S1.mp4}, \code{movie\_S2.mp4} and \code{movie\_S3.mp4}).
+
 Movie S1. A 22\,s overview of the pipeline, 1080\,$\times$\,1350: the public
 news tour that inspired the twin, a world-model splat capture, the pipeline
 diagram, three NVIDIA Omniverse RTX shots of the modeled facility (Movie~S3),

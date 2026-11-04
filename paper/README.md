@@ -66,5 +66,5 @@ The source video appears to be KXXV's tour of the Central Texas Food Bank's new 
 - **Framing:** an exploratory study of world models and Gaussian splatting on in-the-wild video, not an application paper. The food bank is the test case.
 - **Abstract:** paste [`arxiv_abstract.txt`](arxiv_abstract.txt), which is plain text with no LaTeX and is under arXiv's 1,920-character limit.
 - **Comments field:** "31 pages, 13 figures. Supplementary movies and code: https://github.com/pikulsomesh/foodbank-spatial-twin".
-- **Source upload:** `main.tex`, `refs.bib`, the generated `main.bbl`, and `figures/`. arXiv runs BibTeX, but including the `.bbl` keeps the build the same as here. The movies are too large for the source upload, so link them from the site rather than adding them as ancillary files.
-- **Before upload:** switch `\drafttrue` to `\draftfalse`, and consider removing `\linenumbers` for the preprint.
+- **Source upload:** run `paper/make_arxiv_bundle.sh` and upload the resulting `arxiv-submission.zip` (about 2 MB). It holds `main.tex`, `refs.bib`, the generated `main.bbl`, the figures `main.tex` includes, and `00README.json`. That file pins TeX Live 2023: this build writes biblatex bbl format 3.2, and arXiv's default TeX Live 2025 accepts only format 3.3. If the arXiv form asks for a TeX Live version, keep 2023. The movies are linked from the site in the Supplementary Materials, not uploaded.
+- **Already set in `main.tex`:** line numbers off and `\draftfalse`. To get line numbers back for a review copy, uncomment `\linenumbers`.
