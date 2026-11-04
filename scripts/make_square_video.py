@@ -231,8 +231,7 @@ def end_segment(seconds=5.0):
                 d.rectangle((80, y + 8, 86, y + 92), fill=RED + (int(255 * a),))
             yy = fade_text(img, (108, y), head, font(36, "SemiBold"), INK, t, 0.3 + 0.25 * i, S - 200)
             y = fade_text(img, (108, yy), sub, font(24), GRAY, t, 0.35 + 0.25 * i, S - 200) + 36
-        yy = fade_text(img, (80, y + 10), "Link in the post", font(26, "SemiBold"), RED, t, 0.9, S - 160)
-        fade_text(img, (80, yy + 4), "Blog: someshmohapatra.in/writing/foodbank-spatial-twin", font(24, "Medium"), INK, t, 1.0, S - 160)
+        fade_text(img, (80, y + 10), "Link in the post", font(26, "SemiBold"), RED, t, 0.9, S - 160)
         fade_text(img, (80, 880), "Representative food bank, not a replica of any building. All data simulated; "
                   "only the read-only side is built.", font(19, "Medium"), GRAY, t, 1.0, S - 160, 1.35)
         fade_text(img, (80, 960), TM, font(15), GRAY, t, 1.0, S - 160, 1.35)
