@@ -1,0 +1,3 @@
+[train] holding out 6 cameras for evaluation: f_0020.jpg, f_0030.jpg, f_0038.jpg, f_0067.jpg, f_0079.jpg, f_0091.jpg
+[train] 43 cameras, 8,716 SfM points, extent 9.13, device cpu, width 480px
+[train] done in 76.9 min: 121,818 splats -> build/eval/market-full/trained.ply

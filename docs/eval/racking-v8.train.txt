@@ -1,0 +1,3 @@
+[train] holding out 9 cameras for evaluation: f_0121.jpg, f_0132.jpg, f_0184.jpg, f_0239.jpg, f_0247.jpg, f_0272.jpg, f_0283.jpg, f_0304.jpg, f_0325.jpg
+[train] 8 cameras, 5,233 SfM points, extent 5.96, device cpu, width 480px
+[train] done in 55.5 min: 142,124 splats -> build/eval/racking-v8/trained.ply

@@ -18,13 +18,14 @@ The content is organised around the project's three steps: video to twin with a 
 | `figures/racking_preview.jpg`, `site_preview.jpg` | Figure 3, Spark renders of the world-model zones, from PR 2 |
 | `figures/photoreal_before_after.jpg` | Figure 4, world-model capture vs. locally trained 3DGS, from PR 6 |
 | `figures/photoreal_four_zones.jpg` | Figure 5, the four locally trained zones in the browser, from PR 6 |
-| `figures/arch_aws.pdf` (`.png`) | Figure 6, the AWS architecture (draw.io) |
-| `figures/twin_alignment.jpg` | Figure 7, alignment check of the composed stage, from PR 8 |
-| `figures/facility_cycles.jpg`, `before_after_phone.jpg` | Figure 8, the modeled facility and the phone before/after, from PR 9 |
-| `figures/facility_desktop.jpg` | Figure 9, the browser viewer on the modeled facility, from PR 9 |
-| `figures/splat_vs_blender.jpg` | Figure 10, CPU splat renderer vs. Blender Cycles, from PR 5 |
-| `figures/omniverse_clips.jpg` | Figure 11, frames from the Omniverse RTX clips (EC2 g5.xlarge, run 7 of the GPU trial) |
-| `figures/arch_azure.pdf`, `arch_gcp.pdf` (`.png`) | Figures 12 and 13 (appendix), the Azure and Google Cloud designs |
+| `figures/heldout_racking.jpg` | Figure 6, held-out frame f_0184 of the racking aisle: frame, full trainer, 8 frames, no fill or carving (`build/eval/*/renders/`) |
+| `figures/arch_aws.pdf` (`.png`) | Figure 7, the AWS architecture (draw.io) |
+| `figures/twin_alignment.jpg` | Figure 8, alignment check of the composed stage, from PR 8 |
+| `figures/facility_cycles.jpg`, `before_after_phone.jpg` | Figure 9, the modeled facility and the phone before/after, from PR 9 |
+| `figures/facility_desktop.jpg` | Figure 10, the browser viewer on the modeled facility, from PR 9 |
+| `figures/splat_vs_blender.jpg` | Figure 11, CPU splat renderer vs. Blender Cycles, from PR 5 |
+| `figures/omniverse_clips.jpg` | Figure 12, frames from the Omniverse RTX clips (EC2 g5.xlarge, run 7 of the GPU trial) |
+| `figures/arch_azure.pdf`, `arch_gcp.pdf` (`.png`) | Figures 13 and 14 (appendix), the Azure and Google Cloud designs |
 | `diagrams/arch_*.drawio`, `diagrams/make_diagrams.py`, `diagrams/gcp_icons.json` | Editable draw.io sources and the script that writes them |
 
 The diagrams are generated, then exported with draw.io desktop (26.2.15, run headless with `xvfb-run`); the commands are in the docstring of `diagrams/make_diagrams.py`. Edit the `.drawio` files in draw.io directly for one-off changes, or the script to change all three clouds together.
@@ -58,7 +59,7 @@ The source video appears to be KXXV's tour of the Central Texas Food Bank's new 
 1. Verify every entry in `refs.bib`, especially `ctfb_impact_fy24` and `fa_meal`, which point at home pages rather than the specific report pages, against its source (authors, venue, pages, DOI), and add access dates to the web entries that lack one.
 2. Somesh decided (2026-10-24) that no permission is sought: the Acknowledgments credit KXXV's public video tour as inspiration and say neither organization was involved. The video is publicly available, which is not the same as public domain; renders derived from its frames remain the author's call.
 3. The AI-use declaration in the Acknowledgments is confirmed by the author. AI tools cannot be listed as authors on arXiv or in most journals.
-4. For arXiv, suggested categories are primary `cs.CV`, cross-listed to `cs.GR` and `cs.CY`. A first-time submitter in a category may need an endorsement. Upload `main.tex`, `refs.bib`, the generated `main.bbl` and `figures/`. The line numbers are a journal-review convention; remove `\linenumbers` for the arXiv version if preferred.
+4. For arXiv, see the next section (cs.LG primary, CC BY 4.0, line numbers already off).
 
 ## arXiv submission
 
@@ -66,6 +67,6 @@ The source video appears to be KXXV's tour of the Central Texas Food Bank's new 
 - **Primary category:** cs.LG (Machine Learning). Optional cross-lists: cs.CV (Computer Vision) and cs.GR (Graphics).
 - **Framing:** an exploratory study of world models and Gaussian splatting on in-the-wild video, not an application paper. The food bank is the test case.
 - **Abstract:** paste [`arxiv_abstract.txt`](arxiv_abstract.txt), which is plain text with no LaTeX and is under arXiv's 1,920-character limit.
-- **Comments field:** "31 pages, 13 figures. Supplementary movies and code: https://github.com/pikulsomesh/foodbank-spatial-twin".
+- **Comments field:** "35 pages, 14 figures. Supplementary movies and code: https://github.com/pikulsomesh/foodbank-spatial-twin".
 - **Source upload:** run `paper/make_arxiv_bundle.sh` and upload the resulting `arxiv-submission.zip` (about 2 MB). It holds `main.tex`, `refs.bib`, the generated `main.bbl`, the figures `main.tex` includes, and `00README.json`. That file pins TeX Live 2023: this build writes biblatex bbl format 3.2, and arXiv's default TeX Live 2025 accepts only format 3.3. If the arXiv form asks for a TeX Live version, keep 2023. The movies are linked from the site in the Supplementary Materials, not uploaded.
 - **Already set in `main.tex`:** line numbers off and `\draftfalse`. To get line numbers back for a review copy, uncomment `\linenumbers`.

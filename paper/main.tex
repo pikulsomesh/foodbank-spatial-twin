@@ -70,29 +70,30 @@ backend=bibtex]{biblatex}
 \begin{abstract}
 Generative world models and 3D Gaussian Splatting promise to turn ordinary
 video into explorable 3D scenes, but little is reported on how they behave on
-uncurated, in-the-wild footage. We study what these models can and cannot
-recover when the only input is a publicly available news walkthrough of a food
-bank warehouse, with no drawings, scans or site visit, and we use the result
-as the geometry of a digital twin. A commercial world model given 20 frames
-recovered camera poses and metric depth for three areas, which we fused into
-about 747,000 Gaussian splats for 200 credits (20 US cents). Splat models
-optimized locally from 49 to 72 frames per area, at no credit cost, were
-photorealistic near the filmed path but degraded quickly away from it.
-Asking the world model to generate views of areas the video never showed
-failed on the provider's side twice, so unseen space was filled by a
-scripted Blender model instead. We describe the coordinate and packaging
-corrections needed to turn world-model output into a valid, metric Universal
-Scene Description (OpenUSD) asset using its native splat schema, and use that
-format as the only interface to a serverless data layer, a browser viewer,
-Blender and NVIDIA Omniverse. Omniverse rendered the modeled facility with
-RTX but drew the splat prims as blank grey. Because a sensor-fed twin brings
-operational technology (OT) into scope, we also give a zone-based OT security
-design in which the twin can read the floor but never write to it; only its
-read-only cloud controls are implemented. The findings suggest that today's
-models recover the observed parts of a real scene cheaply and at metric
-scale, while extrapolating unobserved space, the step a whole-building twin
-needs most, remains the open problem. The work is an exploration of these
-methods, not a deployed product.
+uncurated, in-the-wild footage. We study what these models recover when the
+only input is a publicly available news walkthrough of a food bank warehouse,
+with presenters walking through every shot and no drawings, scans or site
+visit, and we use the result as the geometry of a digital twin. A commercial
+world model given 20 frames recovered camera poses and metric depth for three
+areas, which we fused into about 747,000 Gaussian splats for 200 credits (20
+US cents). Splat models optimized locally on a CPU, at no credit cost, were
+photorealistic near the filmed path but degraded quickly away from it. On
+held-out frames, scored in pixels not covered by people, they reached 21.2 and
+23.1 dB PSNR from 64 and 43 training frames, and lost 3.8 and 5.4 dB when
+given only the 8 frames a world model accepts. Removing the trainer's background fill and person-hull
+carving raised held-out PSNR, showing that cleaning the space behind moving
+people costs fidelity in observed pixels while its gain lies where no ground
+truth exists. Asking the world model to generate views of areas the video
+never showed failed on the provider's side twice, so extrapolation could not
+be evaluated and unseen space was filled by a scripted model instead. We also
+describe the corrections needed to turn world-model output into a valid,
+metric Universal Scene Description (OpenUSD) asset with its native splat
+schema, which serves as the only
+interface to a data layer, a browser viewer, Blender and NVIDIA Omniverse. The
+findings suggest that today's models recover the observed parts of a real
+scene cheaply and at metric scale, while few-view fidelity and extrapolating
+unobserved space remain open. The work is an exploration of these methods,
+not a deployed product.
 \end{abstract}
 
 %%%%%% Main Text %%%%%%
@@ -396,11 +397,13 @@ The same route was then run on the sorting room, the client market and the
 community kitchen, which the world model never captured (Table~\ref{tab:photoreal}).
 The four zones hold 105{,}899 to 161{,}425 splats in 1.6 to 2.5\,MB SPZ files
 and 6.9 to 10.6\,MB USDZ packages, with the same contract as the world-model
-zones, and cost 0 credits. Two changes to the trainer made the difference
-between a usable zone and a hazy one. The presenters walk with the camera, so
-the space behind them is masked in nearly every frame; the trainer now fills
-the masked pixels with background warped in from frames where they had moved,
-and every 250 steps it removes splats that sit inside their visual hull. The
+zones, and cost 0 credits. Two changes to the trainer address the
+presenters, who walk with the camera, so the space behind them is masked in
+nearly every frame: the trainer fills the masked pixels with background warped
+in from frames where they had moved, and every 250 steps it removes splats
+that sit inside their visual hull. By eye they turn the haze where the
+presenters stood into a soft blur; on held-out frames they cost fidelity in
+the pixels that were observed (Table~\ref{tab:heldout}). The
 sorting room, white walls over a grey floor, needed exhaustive feature
 matching before structure from motion would converge. In the browser, all four
 zones sit in the representative building, the kitchen in its annex
@@ -450,7 +453,85 @@ the camera did not look.}
 \label{fig:photoreal4}
 \end{figure}
 
-@@EVALSECTION@@
+\subsection{On held-out frames, fewer frames cost 4 to 5\,dB and the person handling costs fidelity in observed pixels}
+To measure rather than judge by eye, two zones were re-reconstructed with
+every eighth posed frame held out (Table~\ref{tab:heldout}): 9 of 73 frames in
+the racking aisle and 6 of 49 in the client market. Each run trained on the
+remaining frames and rendered the held-out cameras, and PSNR, SSIM and LPIPS
+were computed against the video frame inside the unmasked pixels only, about
+half of each frame (52\% and 55\%), so that the presenters, whom the trainer is
+meant to remove, are not scored. Three variants were compared per zone: the
+trainer as used for the twin (all remaining frames, background fill and hull
+carving); the same trainer given 8 frames evenly spaced among them, the
+number the world model received for the racking aisle; and the trainer
+without background fill and hull carving, as an ablation of the two changes
+described above.
+
+\begin{table}[t]
+\caption{Held-out novel-view scores, mean over the held-out frames of each
+zone, computed in unmasked pixels only. Higher PSNR and SSIM and lower LPIPS
+are better. Each row is one training run of 3{,}000 steps at 480 pixels wide on
+four CPU cores; per-frame scores are in the repository.}
+\centering\small
+\begin{tabular}{@{}llrrrrrr@{}}
+\toprule
+Zone & Variant & Train & Test & PSNR (dB) & SSIM & LPIPS & Splats \\
+\midrule
+Racking aisle & full trainer & 64 & 9 & 21.16 & 0.799 & 0.094 & 149{,}063 \\
+ & 8 training frames & 8 & 9 & 17.34 & 0.632 & 0.144 & 142{,}124 \\
+ & no fill, no carving & 64 & 9 & 23.64 & 0.893 & 0.041 & 189{,}057 \\
+\midrule
+Client market & full trainer & 43 & 6 & 23.10 & 0.815 & 0.127 & 121{,}818 \\
+ & 8 training frames & 8 & 6 & 17.69 & 0.660 & 0.161 & 123{,}703 \\
+ & no fill, no carving & 43 & 6 & 23.64 & 0.837 & 0.101 & 163{,}666 \\
+\bottomrule
+\end{tabular}
+\label{tab:heldout}
+\end{table}
+
+Frame count is the largest effect. With 8 training frames instead of 64 or 43,
+held-out PSNR fell by 3.8\,dB in the racking aisle and 5.4\,dB in the market,
+and SSIM by 0.17 and 0.16. This is the regime the world model works in, and it
+is where a learned prior has the most room to help; the 8-frame run is
+therefore the matched-input baseline for the world-model capture, which could
+not be scored on these frames itself because its estimated camera poses were
+not stored and recovering them would have needed further paid calls. The
+8-frame baseline is also optimistic: its camera poses and initial points come
+from structure from motion over all frames of the zone, including the held-out
+ones, which 8 frames alone would not reliably provide.
+
+The ablation went the other way from what the visual inspection suggested.
+Without background fill and hull carving, held-out PSNR was
+2.5\,dB higher in the racking aisle and 0.5\,dB in the
+market (Table~\ref{tab:heldout}). The two changes turn the region where the presenters
+stood into a soft blur rather than streaks and dark fragments
+(Figure~\ref{fig:heldout}), but those regions are masked in the held-out frames too, so no ground truth exists
+for them and their gain cannot be measured this way; what the metric does
+show is the cost, in observed pixels, of training against a synthesized
+background plate and of deleting splats that a few frames placed inside the
+people's silhouettes. A fair score for the cleaned regions would need frames
+of the same spot without the presenters, which this video does not contain.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{heldout_racking.jpg}
+\caption{Held-out frame f\_0184 of the racking aisle, which no run trained on.
+Top left: the video frame, with the masked pixels that are not scored shown in
+grey. Top right: the full trainer (PSNR 19.97\,dB in unmasked pixels). Bottom
+left: the same trainer from 8 frames. Bottom right: without background fill
+and hull carving, where the region the presenters covered holds streaks and
+dark fragments instead of a soft blur. That region is not scored.}
+\label{fig:heldout}
+\end{figure}
+
+Three limitations of this protocol should be kept in view. LPIPS is computed on
+the whole frame after the masked pixels are copied from the video into the
+render, so it is diluted by roughly half and is comparable only between rows
+of the same zone. The runs use 3{,}000 steps at 480 pixels, half the steps of
+the documented zones, to fit the evaluation on a CPU. And the structure from
+motion that initializes every run saw the held-out frames, so the scores
+measure the splat optimization, not the pose estimation.
+
 
 \subsection{World-model output becomes a valid, metric OpenUSD asset}
 Converting the splat world to OpenUSD required four corrections, described in
@@ -552,9 +633,10 @@ implemented; designed content is kept in its own model and layer so it cannot
 be mistaken for a capture. Scale comes from the world model's metric
 estimate rather than a survey, so absolute dimensions should be checked
 against at least one known measurement before the twin informs layout
-decisions. Nor did we measure fidelity on held-out frames: the zones were
-judged by eye from their source cameras, so a quantitative comparison of the
-world-model and locally trained captures remains to be done. People, motion blur, reflective steel and repetitive racking remain
+decisions. Held-out scores exist only for the locally trained zones: the
+world-model capture could not be scored on the same frames because its
+camera poses were not stored, so the comparison between the two rests on the
+8-frame local baseline and on inspection by eye. People, motion blur, reflective steel and repetitive racking remain
 hard inputs; masking people before reconstruction would help, and the world
 model's API exposes masked inputs that we have not yet evaluated.
 
@@ -578,10 +660,13 @@ space filmed when empty, and a facility's permission obtained before a
 reconstruction is published. The next steps are a first real data connector,
 most cheaply temperature loggers publishing over MQTT to AWS IoT Core
 \cite{awsiotcore}, a person-aware frame picker, and training the locally reconstructed zones at full resolution on a GPU. The
-first comparison with a conventional splat reconstruction already shows the
-division of labor: the world model gives metric scale and usable geometry from
-eight frames, while local training needs about nine times as many frames and a
-scale assumption but delivers photorealism.
+comparison with a conventional splat reconstruction shows the division of
+labor: the world model gives metric scale and usable geometry from eight
+frames, while local training needs a scale assumption and, on held-out frames,
+loses 4 to 5\,dB of PSNR when cut from 43 or 64 frames to 8
+(Table~\ref{tab:heldout}). Few-frame reconstruction is where a learned prior
+has the most to add, and scoring a world model on the same held-out frames is
+the most direct next experiment.
 
 \section{Materials and Methods}
 
@@ -666,6 +751,23 @@ camera frustums and within 80\,m of the path, and writes the same SPZ, USDZ
 and index files as the world-model zones; the composed twin crops each zone to
 its room.
 
+\subsection{Held-out evaluation}
+For the racking aisle and the client market, frames were extracted and masked
+as above and posed with COLMAP 3.9.1, which registered 73 and 49 frames. The
+posed frames were sorted by name and every eighth one (index $i \bmod 8 = 4$)
+was held out: f\_0121, f\_0132, f\_0184, f\_0239, f\_0247, f\_0272,
+f\_0283, f\_0304 and f\_0325 for the racking aisle, and f\_0020, f\_0030,
+f\_0038, f\_0067, f\_0079 and f\_0091 for the market. The 8-frame variant
+keeps 8 of the remaining frames at evenly spaced indices. Every run trains for
+3{,}000 steps at 480 pixels wide with seed 0, at most 48 splats per pixel and
+200{,}000 splats in total, on four CPU cores; the ablation sets the background
+plate weight to 0 and disables hull carving. Training took 53 to 96\,min per
+run. The held-out cameras are rendered from the trained splats at the same
+resolution. PSNR and SSIM are computed over the unmasked pixels, using the
+person and graphic masks without their background plate; LPIPS (AlexNet) is
+computed on the full frame after the masked pixels of the render are replaced
+by the video frame's.
+
 \subsection{Conversion to OpenUSD}
 The splat world is converted with \code{usd-convert-gsplat} 0.1.15
 \cite{usdconvertgsplat} into a
@@ -694,12 +796,17 @@ family defines half-precision companions to its attributes, such as
 size; the converter does not yet write them.
 
 \subsection{Statistical Analysis}
-This is a single case study, and every value reported is a single measurement:
+This is a single case study, and every value reported is a single measurement unless stated:
 counts and file sizes from the committed files, times from one wall-clock run on
 a four-core CPU machine, and costs from rate cards or list prices. No repeated
-runs, hypothesis tests or confidence intervals are reported. The weekday ranges
+runs are reported except where stated. The weekday ranges
 of the operations model are the minimum, median and maximum over 40 simulated
-@@STATS@@
+weekdays from one deterministic run. The held-out evaluation
+(Table~\ref{tab:heldout}) reports the mean over 9 or 6 held-out frames of one
+training run per row; no hypothesis tests or confidence intervals are
+computed, and differences of a few tenths of a decibel should not be read as
+effects. Telemetry latency is the median and 95th percentile of 1{,}000
+client-side requests (Appendix~\ref{app:system}).
 
 \subsection{Animal and Human Studies}
 No human subjects research was performed. The input is a publicly broadcast
