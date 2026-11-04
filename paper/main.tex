@@ -13,7 +13,7 @@
 \usepackage{subcaption}
 \usepackage{amsmath}
 \usepackage{lineno}
-\linenumbers
+% \linenumbers % uncomment for a review copy with line numbers
 
 % Additions to the template: tables, the architecture diagram, colored placeholders, links.
 \usepackage{booktabs}
@@ -29,7 +29,7 @@
 % \TBD{...}: a value or passage that needs a real measurement or decision.
 % Change \drafttrue to \draftfalse to check that none remain (the build then stops at any \TBD).
 \newif\ifdraft
-\drafttrue
+\draftfalse
 \ifdraft
   \newcommand{\TBD}[1]{\textcolor{red!70!black}{\textbf{[TBD: #1]}}}
 \else
@@ -70,29 +70,30 @@ backend=bibtex]{biblatex}
 \begin{abstract}
 Generative world models and 3D Gaussian Splatting promise to turn ordinary
 video into explorable 3D scenes, but little is reported on how they behave on
-uncurated, in-the-wild footage. We study what these models can and cannot
-recover when the only input is a publicly available news walkthrough of a food
-bank warehouse, with no drawings, scans or site visit, and we use the result
-as the geometry of a digital twin. A commercial world model given 20 frames
-recovered camera poses and metric depth for three areas, which we fused into
-about 747,000 Gaussian splats for 200 credits (20 US cents). Splat models
-optimized locally from 49 to 72 frames per area, at no credit cost, were
-photorealistic near the filmed path but degraded quickly away from it.
-Asking the world model to generate views of areas the video never showed
-failed on the provider's side twice, so unseen space was filled by a
-scripted Blender model instead. We describe the coordinate and packaging
-corrections needed to turn world-model output into a valid, metric Universal
-Scene Description (OpenUSD) asset using its native splat schema, and use that
-format as the only interface to a serverless data layer, a browser viewer,
-Blender and NVIDIA Omniverse. Omniverse rendered the modeled facility with
-RTX but drew the splat prims as blank grey. Because a sensor-fed twin brings
-operational technology (OT) into scope, we also give a zone-based OT security
-design in which the twin can read the floor but never write to it; only its
-read-only cloud controls are implemented. The findings suggest that today's
-models recover the observed parts of a real scene cheaply and at metric
-scale, while extrapolating unobserved space, the step a whole-building twin
-needs most, remains the open problem. The work is an exploration of these
-methods, not a deployed product.
+uncurated, in-the-wild footage. We study what these models recover when the
+only input is a publicly available news walkthrough of a food bank warehouse,
+with presenters walking through every shot and no drawings, scans or site
+visit, and we use the result as the geometry of a digital twin. A commercial
+world model given 20 frames recovered camera poses and metric depth for three
+areas, which we fused into about 747,000 Gaussian splats for 200 credits (20
+US cents). Splat models optimized locally on a CPU, at no credit cost, were
+photorealistic near the filmed path but degraded quickly away from it. On
+held-out frames, scored in pixels not covered by people, they reached 21.2 and
+23.1 dB PSNR from 64 and 43 training frames, and lost 3.8 and 5.4 dB when
+given only the 8 frames a world model accepts. Removing the trainer's background fill and person-hull
+carving raised held-out PSNR, showing that cleaning the space behind moving
+people costs fidelity in observed pixels while its gain lies where no ground
+truth exists. Asking the world model to generate views of areas the video
+never showed failed on the provider's side twice, so extrapolation could not
+be evaluated and unseen space was filled by a scripted model instead. We also
+describe the corrections needed to turn world-model output into a valid,
+metric Universal Scene Description (OpenUSD) asset with its native splat
+schema, which serves as the only
+interface to a data layer, a browser viewer, Blender and NVIDIA Omniverse. The
+findings suggest that today's models recover the observed parts of a real
+scene cheaply and at metric scale, while few-view fidelity and extrapolating
+unobserved space remain open. The work is an exploration of these methods,
+not a deployed product.
 \end{abstract}
 
 %%%%%% Main Text %%%%%%
@@ -122,6 +123,26 @@ coherent, explorable 3D world and fill in regions the input never covered.
 World Labs' Marble \cite{worldlabs_marble} exposes this capability through an
 API that returns Gaussian-splat worlds. For a twin, generation has a double
 edge. It makes a sparse walkthrough usable, but it also invents geometry.
+
+Three lines of recent work bear directly on footage like ours. First,
+feed-forward geometry models predict poses and dense geometry from a handful of
+unposed images: DUSt3R \cite{wang2024dust3r}, MASt3R \cite{leroy2024mast3r} and
+VGGT \cite{wang2025vggt}. Sparse-view splatting methods such as FSGS
+\cite{zhu2023fsgs} and InstantSplat \cite{fan2024instantsplat} build on such
+priors to train Gaussian splats from a few views. Second, in-the-wild
+reconstruction handles transient content, from appearance embeddings and
+transient masks for radiance fields (NeRF in the Wild \cite{martinbrualla2020nerfw})
+to distractor-robust splatting (WildGaussians \cite{kulhanek2024wildgaussians},
+SpotLessSplats \cite{sabour2024spotless}); the presenters who walk with the
+camera in our video are exactly such transients. Third, generative models
+synthesize unobserved views: multi-view diffusion (CAT3D \cite{gao2024cat3d}),
+video diffusion conditioned on a point cloud (ViewCrafter \cite{yu2024viewcrafter})
+and interactive world models trained on video (Genie \cite{bruce2024genie}).
+Faster and anti-aliased radiance fields \cite{muller2022instantngp,barron2022mipnerf360}
+set the evaluation conventions we follow: novel-view metrics on held-out frames.
+We do not benchmark these methods; we use a commercial world model and a
+standard 3DGS objective as representatives and measure what they recover from
+one uncurated video.
 
 In parallel, Universal Scene Description (OpenUSD), originally from Pixar and
 now developed under the Alliance for OpenUSD, has become an open,
@@ -171,19 +192,16 @@ walkthrough of a food bank. The steps are:
 \end{enumerate}
 
 We do not propose a new model; the contribution is an empirical account of
-how current models behave on in-the-wild input. It consists of a measured
-comparison of world-model reconstruction and locally optimized splats on the
-same footage, including where each fails; a report of the generative
-extrapolation step failing on this input; an open-source pipeline from walkthrough video to an
-OpenUSD Gaussian-splat twin, including the coordinate and
-packaging corrections needed to make world-model output a valid metric USD
-asset; an architecture in which OpenUSD and a small telemetry contract are the
-only interfaces between reconstruction, data and rendering, with a serverless
-backend that has no standing cost; an operations layer that models
-inventory, flows, docks and a community kitchen behind the same API and as
-OpenUSD prims; cost controls that make paid world-model generation safe to
-run unattended; an operational technology (OT) security design that keeps the
-twin read-only toward the floor; and a food bank as the test case. Food banks are logistics operations: when
+how current models behave on in-the-wild input. It has three parts: held-out
+novel-view scores for Gaussian splats trained on the footage, with the number
+of input frames and the handling of people who walk with the camera varied
+(Table~\ref{tab:heldout}); a qualitative comparison with a world-model capture
+from eight frames, including where each fails; and a report that the
+world model's generative step could not be evaluated because it failed on
+the provider's side. The engineering needed to use the result (coordinate and
+packaging fixes that make world-model output a valid metric OpenUSD asset, a
+data backend, viewers and an operational technology security design) is
+summarized in Results and detailed in Appendix~\ref{app:system}. Food banks are logistics operations: when
 the Central Texas Food Bank moved into its 135,000-square-foot Austin
 facility in 2016, the new building held seven times the refrigeration and
 freezer capacity of the old one \cite{ctfb2016facility}, and its newer Waco
@@ -215,7 +233,7 @@ browser and Blender coexist (Figure~\ref{fig:overview}).
 \begin{figure}[t]
 \centering
 \input{figures/overview.tikz}
-\caption{The Auto-Twin pipeline. The open contract is the only
+\caption{The pipeline. The open contract is the only
 interface between steps: the OpenUSD stage (with the SPZ it was converted from
 and a metadata file) and the telemetry JSON. Any box can be replaced without
 changing the others.}
@@ -352,7 +370,7 @@ exactly where generated views are meant to go.
   \includegraphics[width=\linewidth]{site_preview.jpg}
   \caption{\label{fig:resultsB}}
 \end{subfigure}
-\caption{The fused twin rendered in Spark 0.1.10. (\subref{fig:resultsA}) The
+\caption{The fused twin rendered in Spark 0.1.10, the viewer version at the time of capture (the current viewer uses Spark 2.2). (\subref{fig:resultsA}) The
 racking aisle from two viewpoints: red racking, a wrapped pallet and the
 donation bin are recovered where the camera looked, and the rest of the aisle
 is empty. (\subref{fig:resultsB}) Top: the three zones placed on one site plan
@@ -379,11 +397,13 @@ The same route was then run on the sorting room, the client market and the
 community kitchen, which the world model never captured (Table~\ref{tab:photoreal}).
 The four zones hold 105{,}899 to 161{,}425 splats in 1.6 to 2.5\,MB SPZ files
 and 6.9 to 10.6\,MB USDZ packages, with the same contract as the world-model
-zones, and cost 0 credits. Two changes to the trainer made the difference
-between a usable zone and a hazy one. The presenters walk with the camera, so
-the space behind them is masked in nearly every frame; the trainer now fills
-the masked pixels with background warped in from frames where they had moved,
-and every 250 steps it removes splats that sit inside their visual hull. The
+zones, and cost 0 credits. Two changes to the trainer address the
+presenters, who walk with the camera, so the space behind them is masked in
+nearly every frame: the trainer fills the masked pixels with background warped
+in from frames where they had moved, and every 250 steps it removes splats
+that sit inside their visual hull. By eye they turn the haze where the
+presenters stood into a soft blur; on held-out frames they cost fidelity in
+the pixels that were observed (Table~\ref{tab:heldout}). The
 sorting room, white walls over a grey floor, needed exhaustive feature
 matching before structure from motion would converge. In the browser, all four
 zones sit in the representative building, the kitchen in its annex
@@ -433,6 +453,93 @@ the camera did not look.}
 \label{fig:photoreal4}
 \end{figure}
 
+\subsection{On held-out frames, fewer frames cost 4 to 5\,dB and the person handling costs fidelity in observed pixels}
+To measure rather than judge by eye, two zones were re-reconstructed with
+every eighth posed frame held out (Table~\ref{tab:heldout}): 9 of 73 frames in
+the racking aisle and 6 of 49 in the client market. Each run trained on the
+remaining frames and rendered the held-out cameras, and PSNR, SSIM and LPIPS
+were computed against the video frame inside the unmasked pixels only, about
+half of each frame (52\% and 55\%), so that the presenters, whom the trainer is
+meant to remove, are not scored. Three variants were compared per zone: the
+trainer as used for the twin (all remaining frames, background fill and hull
+carving); the same trainer given 8 frames evenly spaced among them, the
+number the world model received for the racking aisle; and the trainer
+without background fill and hull carving, as an ablation of the two changes
+described above.
+
+\begin{table}[t]
+\caption{Held-out novel-view scores, mean over the held-out frames of each
+zone, computed in unmasked pixels only. Higher PSNR and SSIM and lower LPIPS
+are better. Each row is one training run of 3{,}000 steps at 480 pixels wide on
+four CPU cores; per-frame scores are in the repository.}
+\centering\small
+\begin{tabular}{@{}llrrrrrr@{}}
+\toprule
+Zone & Variant & Train & Test & PSNR (dB) & SSIM & LPIPS & Splats \\
+\midrule
+Racking aisle & full trainer & 64 & 9 & 21.16 & 0.799 & 0.094 & 149{,}063 \\
+ & 8 training frames & 8 & 9 & 17.34 & 0.632 & 0.144 & 142{,}124 \\
+ & no fill, no carving & 64 & 9 & 23.64 & 0.893 & 0.041 & 189{,}057 \\
+\midrule
+Client market & full trainer & 43 & 6 & 23.10 & 0.815 & 0.127 & 121{,}818 \\
+ & 8 training frames & 8 & 6 & 17.69 & 0.660 & 0.161 & 123{,}703 \\
+ & no fill, no carving & 43 & 6 & 23.64 & 0.837 & 0.101 & 163{,}666 \\
+\bottomrule
+\end{tabular}
+\label{tab:heldout}
+\end{table}
+
+Frame count is the largest effect. With 8 training frames instead of 64 or 43,
+held-out PSNR fell by 3.8\,dB in the racking aisle and 5.4\,dB in the market,
+and SSIM by 0.17 and 0.16. This is the regime the world model works in, and it
+is where a learned prior has the most room to help; the 8-frame run is
+therefore the matched-input baseline for the world-model capture, which could
+not be scored on these frames itself because its estimated camera poses were
+not stored and recovering them would have needed further paid calls. The
+8-frame baseline is also optimistic: its camera poses and initial points come
+from structure from motion over all frames of the zone, including the held-out
+ones, which 8 frames alone would not reliably provide.
+
+The ablation went the other way from what the visual inspection suggested.
+Without background fill and hull carving, held-out PSNR was
+2.5\,dB higher in the racking aisle and 0.5\,dB in the
+market (Table~\ref{tab:heldout}). The two changes turn the region where the presenters
+stood into a soft blur rather than streaks and dark fragments
+(Figure~\ref{fig:heldout}), but those regions are masked in the held-out frames too, so no ground truth exists
+for them and their gain cannot be measured this way; what the metric does
+show is the cost, in observed pixels, of training against a synthesized
+background plate and of deleting splats that a few frames placed inside the
+people's silhouettes. A fair score for the cleaned regions would need frames
+of the same spot without the presenters, which this video does not contain.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{heldout_racking.jpg}
+\caption{Held-out frame f\_0184 of the racking aisle, which no run trained on.
+Top left: the video frame, with the masked pixels that are not scored shown in
+grey. Top right: the full trainer (PSNR 19.97\,dB in unmasked pixels). Bottom
+left: the same trainer from 8 frames. Bottom right: without background fill
+and hull carving, where the region the presenters covered holds streaks and
+dark fragments instead of a soft blur. That region is not scored.}
+\label{fig:heldout}
+\end{figure}
+
+To gauge run-to-run variation, the full-trainer runs were repeated with a
+second random seed. Held-out PSNR changed by 0.13\,dB in the racking aisle
+(21.16 to 21.29) and 0.05\,dB in the market (23.10 to 23.15), SSIM by at
+most 0.008 and LPIPS by at most 0.007, so the frame-count and ablation
+differences above are one to two orders of magnitude larger than the seed
+spread. Two seeds give a range, not a confidence interval.
+
+Three limitations of this protocol should be kept in view. LPIPS is computed on
+the whole frame after the masked pixels are copied from the video into the
+render, so it is diluted by roughly half and is comparable only between rows
+of the same zone. The runs use 3{,}000 steps at 480 pixels, half the steps of
+the documented zones, to fit the evaluation on a CPU. And the structure from
+motion that initializes every run saw the held-out frames, so the scores
+measure the splat optimization, not the pose estimation.
+
+
 \subsection{World-model output becomes a valid, metric OpenUSD asset}
 Converting the splat world to OpenUSD required four corrections, described in
 Materials and Methods: a coordinate transform from the world model's camera
@@ -450,7 +557,340 @@ which each zone is a separately referenced layer with its own placement, so a
 zone can be re-captured without touching the others; the packaged site is
 48.5\,MB for about 747{,}000 splats.
 
-\subsection{Live data reaches the twin at near-zero standing cost}
+\subsection{The same artifacts drive a browser, Blender and Omniverse}
+The reconstruction step's output is consumed unchanged by the rest of the
+system, which we summarize here and detail in Appendix~\ref{app:system}. A
+serverless backend on AWS serves simulated cold-chain telemetry and an
+operations model in the twin's metric frame; a facility model scripted in
+Blender supplies the building around the captured zones; a browser viewer
+renders the captures with Spark \cite{spark}; and NVIDIA Omniverse rendered the
+modeled facility on a rented GPU but drew the splat prims blank grey
+(Appendix~\ref{app:system}). None of these parts learns anything; they are
+included to show that a world-model capture can be used as an ordinary,
+metric OpenUSD asset by other tools.
+
+
+\subsection{Summary of measurements}
+Table~\ref{tab:results} collects the cost, time and fidelity measurements, the
+three properties that decide whether a small operator can adopt the approach.
+
+\begin{table}[t]
+\caption{Measurements for the twin. All values are single measurements; fusion time was not recorded. Held-out novel-view scores are in Table~\ref{tab:heldout}.}
+\centering\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Quantity (unit) & Value & How measured \\
+\midrule
+Input frames used & 20 (8 + 6 + 6) & hand-picked from 40 per zone \\
+Frame extraction, racking window (s) & 88 & wall clock, 4 CPU cores \\
+World-model cost, posing (credits; USD) & 200; 0.20 & 10 credits per frame, rate card \\
+World-model cost, failed generation (credits) & 0 to 800 & billing of failures unknown \\
+Splats, racking / sorting / market & 270k / 282k / 195k & fused files \\
+SPZ size, racking / sorting / market (MB) & 2.1 / 2.2 / 1.6 & committed files \\
+USDZ size, racking / site (MB) & 17.5 / 48.5 & committed files \\
+World-model generation time (min) & n/a & both runs failed \\
+SPZ to USDZ, 270k / 182k splats (s) & 5.2 / 3.9 & wall clock, 4 cores \\
+Locally trained zones (credits) & 0 & four zones, Table~\ref{tab:photoreal} \\
+Modeled facility, GLB / USDZ (MB) & 1.8 / 1.6 & committed files \\
+Telemetry latency, p50 / p95 (ms) & 67 / 78 & cloud client, 1{,}000 requests \\
+AWS cost, October 2026 to date (USD) & 0.00 & Cost Explorer, demo traffic \\
+Browser download, default / captures (MB) & 2.7 / 60 & headless Chromium \\
+Browser frame rate, no GPU (fps) & 1.1 / 0.5 & software WebGL, a floor \\
+Omniverse offline render, 96 frames (s) & 18.6 to 49.4 & A10G, 720p, 8 subframes \\
+Omniverse GPU trial, 7 runs (min; USD) & 94; 1.34 & list price, terminated \\
+\bottomrule
+\end{tabular}
+\label{tab:results}
+\end{table}
+
+\section{Discussion}
+This study set out to learn what current world models and Gaussian splatting
+recover from in-the-wild video. The main finding is that the observed parts of
+a real scene come back cheaply and at metric scale, while unobserved space does
+not yet. A consequence is that a spatial digital twin does not have to start
+with a CAD model or a laser scanner. Every input to this one was publicly available: a broadcast news
+tour, published facility figures and open-source or pay-per-use tools. No
+drawing, scan or site visit was used. A short walkthrough video, a world model
+and OpenUSD's native splat schema produce a metric twin, Blender supplies the parts the camera never saw, and a serverless data
+layer connects it to the systems an operator already has for almost no
+standing cost. One author, working with AI coding assistants, went from the
+first commit to a deployed backend in seven days (19 to 25 October 2026). That
+speed comes from composing existing technologies through open interfaces,
+not from new models. Keeping OpenUSD and a small JSON contract as the only interfaces makes
+each step replaceable as world models, data platforms and renderers improve,
+and lets an organization choose a renderer by hardware, cost and license
+posture: OpenUSD is open source, Blender is GPL, and Omniverse combines open
+components with NVIDIA-licensed runtime pieces. On a public interview video, 20 frames and
+200 credits of world-model calls produced a three-zone OpenUSD twin that the
+browser renders with live telemetry.
+
+The main limitation in the current results is coverage. Twenty frames from an
+interview walkthrough recover the parts of three zones the camera pointed at,
+not whole rooms, and the generative step that should fill the rest failed on
+the provider's side. Until it works, the whole-building view is a designed
+model, which explains the operation well but is not a reconstruction; the
+honest summary is that video and world models gave the twin its photographs
+of real places, while its map is drawn. A second limitation is that generated is not measured. A world model completes
+what the camera did not see. That is useful for a planning or communication
+twin and unsafe if someone reads a generated aisle as the real one. Generated
+regions should be marked in the stage, for example with an attribute on splats
+or a separate USD layer, so renderers can show them differently.
+No generated regions exist in the twin yet, so no such marking has been
+implemented; designed content is kept in its own model and layer so it cannot
+be mistaken for a capture. Scale comes from the world model's metric
+estimate rather than a survey, so absolute dimensions should be checked
+against at least one known measurement before the twin informs layout
+decisions. Held-out scores exist only for the locally trained zones: the
+world-model capture could not be scored on the same frames because its
+camera poses were not stored, so the comparison between the two rests on the
+8-frame local baseline and on inspection by eye. People, motion blur, reflective steel and repetitive racking remain
+hard inputs; masking people before reconstruction would help, and the world
+model's API exposes masked inputs that we have not yet evaluated.
+
+The twin is also a composite by design. Its captured geometry comes from a
+video that appears to show the food bank's Waco hub, its operating volumes
+come from published figures for the 135{,}000\,sq\,ft Austin facility, the
+rest of the building is designed, and the data is simulated. That makes it a
+fair picture of what a Texas food bank's twin looks like, but not a record of
+any one site, and its provenance (Table~\ref{tab:provenance}) should travel
+with every image of it. A twin of a real facility would replace each designed
+or simulated row with a capture or a live feed from that facility. Keeping these sources in one frame is what lets the twin be
+used at all: one USD stage composes the modeled facility, the captured zones
+(by reference, placed by the same configuration as the browser) and the
+operations layer, and cropping is a non-destructive opacity override, so the
+capture library is never copied. A new capture or a new data feed therefore changes one layer rather
+than the whole stage.
+
+Applying the approach also needs care outside the software. Walkthrough
+videos capture staff, volunteers and clients, so faces should be removed or the
+space filmed when empty, and a facility's permission obtained before a
+reconstruction is published. The next steps are a first real data connector,
+most cheaply temperature loggers publishing over MQTT to AWS IoT Core
+\cite{awsiotcore}, a person-aware frame picker, and training the locally reconstructed zones at full resolution on a GPU. The
+comparison with a conventional splat reconstruction shows the division of
+labor: the world model gives metric scale and usable geometry from eight
+frames, while local training needs a scale assumption and, on held-out frames,
+loses 4 to 5\,dB of PSNR when cut from 43 or 64 frames to 8
+(Table~\ref{tab:heldout}). Few-frame reconstruction is where a learned prior
+has the most to add, and scoring a world model on the same held-out frames is
+the most direct next experiment.
+
+\section{Materials and Methods}
+
+\subsection{Experimental Design}
+The study asks what a world model and locally optimized Gaussian splats
+recover from one uncurated public video, and what that costs
+(Table~\ref{tab:results}); the twin is the test case that makes the
+question concrete.
+The design was fixed before any paid call: one zone first (the racking aisle,
+eight frames), then two more zones with six frames each, the lowest-cost API
+tasks available, and a project ceiling of 1{,}000 credits. All code, the AWS template and the input
+frames are in the project repository.
+
+\subsection{Frame extraction}
+World-model APIs accept only a few images (Marble's Auto Layout multi-image mode
+accepts up to eight \cite{worldlabs_multiimage}). The ingest
+stage samples a window of the video and, for every interval of $N$ seconds,
+scores candidate frames with ffmpeg's blur detector and keeps the sharpest;
+interlaced frames are deinterlaced only when flagged. A hard cap of 40 frames
+bounds storage and upload. For the case study, frames were taken from
+5:05--7:45 at one per 4\,s with the bottom 264 pixels cropped to remove the
+broadcast graphic, giving 40 candidates at 1920\,$\times$\,816 in 88\,s of wall-clock time on
+four CPU cores for the 160\,s window; all inputs
+share one resolution, which reconstruction requires. The automatic picker
+splits the pool into eight equal segments and keeps the frame with the highest
+Laplacian variance in each; for the case study it was replaced by hand
+selection as described in Results. A text prompt described the space and asked
+for no people.
+
+\subsection{World-model reconstruction}
+The pipeline implements two routes on the World Labs platform. The first, a
+multi-image request to Marble that returns a finished Gaussian-splat world in
+SPZ format \cite{spz} with a metric scale factor and ground-plane offset
+\cite{worldlabs_spz}, needs a Marble v1 key and was not available to the
+account used here. The reported twin was built with the second route, through
+the Marble 2 developer API, in three stages. In the pose stage,
+\code{images2PosedRGBD} returns a camera pose, metric depth and confidence for
+each input frame (10 credits per frame on the rate card of 19 October 2026,
+where 1{,}000 credits cost US\$1). In the generate stage, \code{atlasGenerate}
+is asked for new posed RGB-D views from target cameras around the zone, with
+the masked presenters excluded from its context (50 credits per view); this is
+the step in which the world model extrapolates unseen space, and it failed in
+both attempts (Results). In the free, local fuse stage, every RGB-D view is
+unprojected, the most confident sample per 1\,cm voxel is kept, masked pixels
+are dropped, and the points are written as isotropic Gaussians with spherical
+harmonics of degree 0, as PLY and SPZ version 2. The floor is taken, in order
+of preference, from a dense 5\,cm horizontal slab of points, from the world
+model's ground plane, or from a fixed 1.5\,m below the cameras. A site stage
+then places each zone on a plan in meters (racking at the origin, sorting at
+$+26$\,m and the market at $-24$\,m on $x$) and writes one USD stage that
+references each zone's layer. This plan is a library layout, not a survey;
+the composed twin re-places the zones as described in Appendix~\ref{app:system}.
+
+\subsection{Locally trained zones}
+The photoreal route uses no paid service. Frames from a zone's segment of the
+video are extracted at 4 to 6 frames per second and 960 pixels wide. People are
+masked with a DeepLab v3 segmentation model run through MediaPipe, the masks
+are grown by 35 pixels and unioned with neighboring frames, and the broadcast
+graphic is masked by a fixed box. Under the masks, a background plate is built
+from pixels warped by homography from frames up to 15\,s away in which the
+presenters had moved, with a blurred inpaint where no frame saw the
+background. Frames are kept if they are not in the
+blurriest 20\%, at least 35\% of their pixels are unmasked, and the median
+optical flow since the last kept frame is at least 14 pixels. COLMAP 3.9
+estimates poses with masked SIFT features on the CPU, with sequential matching,
+or exhaustive matching and a 3$^\circ$ initial triangulation angle for the
+low-texture sorting room. The trainer implements
+3D Gaussian Splatting \cite{kerbl20233d} in plain PyTorch with a sparse
+per-pixel rasterizer, so that it runs without a GPU (about 1\,s per step at
+480 pixels on four cores): elliptical weighted average projection, front-to-back
+compositing, an L1 plus 0.2 D-SSIM loss that sees the background plate at 0.3
+weight under the masks, visual-hull carving every 250 steps (a splat is removed
+when its center falls on a presenter mask in more than half of the five or
+more frames that see it), adaptive cloning, splitting and pruning, and opacity
+resets every 3{,}000 steps, at half resolution for the first quarter of the
+steps. The documented run trains each zone for 6{,}000 steps, roughly 1.7\,h
+at the rate above; per-zone wall-clock times were not recorded. Export levels
+the scene to the mean camera up direction, takes the floor from the lowest
+well-supported band of structure-from-motion points below the cameras, scales
+so that the cameras sit 1.6\,m above it, keeps splats inside at least six
+camera frustums and within 80\,m of the path, and writes the same SPZ, USDZ
+and index files as the world-model zones; the composed twin crops each zone to
+its room.
+
+\subsection{Held-out evaluation}
+For the racking aisle and the client market, frames were extracted and masked
+as above and posed with COLMAP 3.9.1, which registered 73 and 49 frames. The
+posed frames were sorted by name and every eighth one (index $i \bmod 8 = 4$)
+was held out: f\_0121, f\_0132, f\_0184, f\_0239, f\_0247, f\_0272,
+f\_0283, f\_0304 and f\_0325 for the racking aisle, and f\_0020, f\_0030,
+f\_0038, f\_0067, f\_0079 and f\_0091 for the market. The 8-frame variant
+keeps 8 of the remaining frames at evenly spaced indices. Every run trains for
+3{,}000 steps at 480 pixels wide with seed 0, at most 48 splats per pixel and
+200{,}000 splats in total, on four CPU cores; the ablation sets the background
+plate weight to 0 and disables hull carving. Training took 53 to 96\,min per
+run. The held-out cameras are rendered from the trained splats at the same
+resolution. PSNR and SSIM are computed over the unmasked pixels, using the
+person and graphic masks without their background plate; LPIPS (AlexNet) is
+computed on the full frame after the masked pixels of the render are replaced
+by the video frame's.
+
+\subsection{Conversion to OpenUSD}
+The splat world is converted with \code{usd-convert-gsplat} 0.1.15
+\cite{usdconvertgsplat} into a
+\code{ParticleField3DGaussianSplat} prim.
+World Labs SPZ files use an OpenCV-style camera convention
+(\code{marble\_raw\_opencv}, Y down) in raw units that the world's metric scale
+factor converts to meters \cite{worldlabs_spz}. Leaving the splat payload untouched, we place it
+under a parent transform, as shown in Equation~\ref{eq:xform},
+\begin{equation} \label{eq:xform}
+  M = R_x(180^\circ)\, T(0, -o, 0)\, S(s),
+\end{equation}
+where $s$ is the world's metric scale factor and $o$ its ground-plane offset,
+and set the stage to Y-up with \code{metersPerUnit}\,=\,1. With synthetic
+input the ground lands at exactly $y=0$. A typed \code{Xform} that references
+the splat would override the referenced prim's schema type, so the pipeline
+authors \code{/World/FoodBank} as the transforming \code{Xform} and
+\code{/World/FoodBank/Splat} as an untyped prim carrying the reference. The
+converter's direct USDZ output is an ASCII layer zipped without the 64-byte
+alignment the USDZ specification requires, so we convert to binary
+\code{.usdc} and package with OpenUSD's \code{UsdUtils.CreateNewUsdzPackage}.
+Conversion took 5.2\,s for the 270{,}423-splat world-model racking zone and
+3.9\,s for a 181{,}556-splat first version of the locally trained one on four
+CPU cores. The schema
+family defines half-precision companions to its attributes, such as
+\code{positionsh} \cite{usd_particle_position}, that would roughly halve file
+size; the converter does not yet write them.
+
+\subsection{Statistical Analysis}
+This is a single case study, and every value reported is a single measurement unless stated:
+counts and file sizes from the committed files, times from one wall-clock run on
+a four-core CPU machine, and costs from rate cards or list prices. No repeated
+runs are reported except where stated. The weekday ranges
+of the operations model are the minimum, median and maximum over 40 simulated
+weekdays from one deterministic run. The held-out evaluation
+(Table~\ref{tab:heldout}) reports the mean over 9 or 6 held-out frames of one
+training run per row, with the two full-trainer rows repeated with a second
+seed; no hypothesis tests or confidence intervals are
+computed, and differences of a few tenths of a decibel should not be read as
+effects. Telemetry latency is the median and 95th percentile of 1{,}000
+client-side requests (Appendix~\ref{app:system}).
+
+\subsection{Animal and Human Studies}
+No human subjects research was performed. The input is a publicly broadcast
+news video; people who appear in it were excluded from input frames where
+possible and the world model was prompted to omit them. The video is used as
+published by its broadcaster; the twin is a representative facility inspired
+by it, not a record of the building.
+
+\section*{Acknowledgments}
+
+\subsection*{General}
+This project was inspired by 25 News KXXV's public video tour of the Central
+Texas Food Bank's new facility \cite{kxxv2026ctfb,kxxv2026waco} and by the
+food bank's published account of its work. Neither organization was involved
+in or endorsed this study. During the preparation of this work, the author used Claude
+(Anthropic) in order to write and test the pipeline software and to draft the
+manuscript. After using this tool, the author reviewed and edited the content
+as needed and takes full responsibility for the content of the publication.
+
+\subsection*{Author Contributions}
+S. Mohapatra conceived the idea, designed the study, conducted the
+experiments and wrote the manuscript.
+
+\subsection*{Funding}
+This research received no specific funding.
+
+\subsection*{Competing interests}
+The author declares that there is no conflict of interest regarding the
+publication of this article.
+
+\subsection*{Data Availability}
+Code, the AWS template, the operations master data and the case-study input
+frames are available at
+\url{https://github.com/pikulsomesh/foodbank-spatial-twin}. The source video
+is publicly available from its publisher \cite{kxxv2026ctfb}. The fused zone
+files (SPZ), the composed USD site and the per-zone placements are in the same
+repository. The code is released under the MIT License. The held-out
+evaluation is reproduced by \code{scripts/splat\_train.py --holdout 8} and
+\code{scripts/splat\_eval.py}, and its per-frame scores are in
+\code{docs/eval/}.
+
+\section*{Supplementary Materials}
+Movies S1 to S3 are available at
+\url{https://pikulsomesh.github.io/foodbank-spatial-twin/paper/}
+(\code{movie\_S1.mp4}, \code{movie\_S2.mp4} and \code{movie\_S3.mp4}).
+
+Movie S1. A 22\,s overview of the pipeline, 1080\,$\times$\,1350: the public
+news tour that inspired the twin, a world-model splat capture, the pipeline
+diagram, three NVIDIA Omniverse RTX shots of the modeled facility (Movie~S3),
+the browser twin with simulated telemetry, and an end card. Omniverse shots are
+labeled as such.
+
+Movie S2. A 24\,s 1080p flythrough of the OpenUSD stage, rendered with the CPU
+Gaussian-splat renderer.
+
+Movie S3. Three 4\,s NVIDIA Omniverse RTX clips of the modeled facility
+(facility orbit, racking aisle, forklift chase), 1280\,$\times$\,720 at 24 frames per
+second, rendered headless on an EC2 g5.xlarge; the forklift follows a scripted
+path.
+
+Data file S1. Commands to reproduce the pipeline end to end, in three files in
+the repository's \code{docs} folder: \code{CTFB\_WAREHOUSE\_RUN.md}
+(world-model zones), \code{PHOTOREAL.md} (locally trained zones) and
+\code{RENDERING.md} (CPU, Blender and Omniverse renders), with
+\code{scripts/build\_facility.py} for the modeled facility.
+
+Data file S2. The architecture diagrams as editable draw.io files
+(\code{paper/diagrams}).
+
+\appendix
+\section{System details}
+\label{app:system}
+This appendix holds the system parts of the study that do not bear on the learning questions: the data backend, the operations model, the modeled facility, the viewers and renderers, cost and operational technology security.
+
+\subsection{Results}
+\subsubsection{Live data reaches the twin at near-zero standing cost}
 The reference backend serves simulated cold-chain telemetry for three zones
 (freezer, cooler and dry storage, with setpoints of $-18^\circ$C, $3^\circ$C
 and $21^\circ$C) and one forklift on a closed path from the dock through the
@@ -461,7 +901,7 @@ described next. No real data connector is deployed yet, so all telemetry in
 this paper is simulated. Figure~\ref{fig:aws} shows the AWS pattern: the
 services in the repository's template today (object storage, the HTTP API and
 its function, logs and access roles) and the real-floor path
-that the Discussion prices, in which sensors and the warehouse management
+that this appendix prices, in which sensors and the warehouse management
 system feed the same API. Appendix~\ref{app:clouds} gives equivalent designs
 on Microsoft Azure and Google Cloud. The stack was deployed on 25 October 2026
 to us-east-2, because the account's organization policy blocks the function,
@@ -493,7 +933,7 @@ icons; the source is in the repository's \code{paper/diagrams} folder.}
 \label{fig:aws}
 \end{sidewaysfigure}
 
-\subsection{An operations layer turns the geometry into a working food bank}
+\subsubsection{An operations layer turns the geometry into a working food bank}
 The captured zones show what the building looks like; an operations layer
 models what it does, and it follows the same three steps. In the twin's metric
 frame, eight operational areas (receiving, product recovery or sorting,
@@ -574,7 +1014,7 @@ About 950 kitchen meals per day for after-school meals (2018); about 2{,}000 a d
 \label{tab:published}
 \end{table}
 
-\subsection{A modeled facility gives the whole-building view the captures cannot}
+\subsubsection{A modeled facility gives the whole-building view the captures cannot}
 The captures answer \emph{what does this aisle look like}, but only from near
 the camera path: from an overview they break into fragments, and a phone
 screen showed the twin as debris over a grey massing model
@@ -618,7 +1058,7 @@ simulated telemetry.}
 \label{fig:facility}
 \end{figure}
 
-\subsection{The browser shows the twin with live telemetry}
+\subsubsection{The browser shows the twin with live telemetry}
 The public demo at \url{https://pikulsomesh.github.io/foodbank-spatial-twin/}
 opens on the modeled facility, drawn with three.js, with labels for the
 freezer, cooler, dry storage and kitchen walk-in temperatures, the forklift's
@@ -647,7 +1087,7 @@ views; the panel links to the captured zones.}
 \label{fig:browser}
 \end{figure}
 
-\subsection{The OpenUSD stage renders outside the browser}
+\subsubsection{The OpenUSD stage renders outside the browser}
 Two renderers read \code{site.usdz} directly on a four-core CPU machine with
 no GPU, from the same list of six camera shots (Figure~\ref{fig:usdrenders}). A
 Gaussian-splat renderer written for this work walks the stage for every splat
@@ -709,107 +1149,8 @@ because this Kit version draws them blank.}
 \label{fig:omniverse}
 \end{figure}
 
-\subsection{Summary of measurements}
-Table~\ref{tab:results} collects the cost, time and fidelity measurements, the
-three properties that decide whether a small operator can adopt the approach.
 
-\begin{table}[t]
-\caption{Measurements for the twin. All values are single measurements; fusion time was not recorded, and no hold-out fidelity was measured (see Discussion).}
-\centering\small
-\begin{tabular}{@{}lll@{}}
-\toprule
-Quantity (unit) & Value & How measured \\
-\midrule
-Input frames used & 20 (8 + 6 + 6) & hand-picked from 40 per zone \\
-Frame extraction, racking window (s) & 88 & wall clock, 4 CPU cores \\
-World-model cost, posing (credits; USD) & 200; 0.20 & 10 credits per frame, rate card \\
-World-model cost, failed generation (credits) & 0 to 800 & billing of failures unknown \\
-Splats, racking / sorting / market & 270k / 282k / 195k & fused files \\
-SPZ size, racking / sorting / market (MB) & 2.1 / 2.2 / 1.6 & committed files \\
-USDZ size, racking / site (MB) & 17.5 / 48.5 & committed files \\
-World-model generation time (min) & n/a & both runs failed \\
-SPZ to USDZ, 270k / 182k splats (s) & 5.2 / 3.9 & wall clock, 4 cores \\
-Locally trained zones (credits) & 0 & four zones, Table~\ref{tab:photoreal} \\
-Modeled facility, GLB / USDZ (MB) & 1.8 / 1.6 & committed files \\
-Telemetry latency, p50 / p95 (ms) & 67 / 78 & cloud client, 1{,}000 requests \\
-AWS cost, October 2026 to date (USD) & 0.00 & Cost Explorer, demo traffic \\
-Browser download, default / captures (MB) & 2.7 / 60 & headless Chromium \\
-Browser frame rate, no GPU (fps) & 1.1 / 0.5 & software WebGL, a floor \\
-Omniverse offline render, 96 frames (s) & 18.6 to 49.4 & A10G, 720p, 8 subframes \\
-Omniverse GPU trial, 7 runs (min; USD) & 94; 1.34 & list price, terminated \\
-\bottomrule
-\end{tabular}
-\label{tab:results}
-\end{table}
-
-\section{Discussion}
-This study set out to learn what current world models and Gaussian splatting
-recover from in-the-wild video. The main finding is that the observed parts of
-a real scene come back cheaply and at metric scale, while unobserved space does
-not yet. A consequence is that a spatial digital twin does not have to start
-with a CAD model or a laser scanner. Every input to this one was publicly available: a broadcast news
-tour, published facility figures and open-source or pay-per-use tools. No
-drawing, scan or site visit was used. A short walkthrough video, a world model
-and OpenUSD's native splat schema produce a metric twin, Blender supplies the parts the camera never saw, and a serverless data
-layer connects it to the systems an operator already has for almost no
-standing cost. One author, working with AI coding assistants, went from the
-first commit to a deployed backend in seven days (19 to 25 October 2026). That
-speed comes from composing existing technologies through open interfaces,
-not from new models. Keeping OpenUSD and a small JSON contract as the only interfaces makes
-each step replaceable as world models, data platforms and renderers improve,
-and lets an organization choose a renderer by hardware, cost and license
-posture: OpenUSD is open source, Blender is GPL, and Omniverse combines open
-components with NVIDIA-licensed runtime pieces. On a public interview video, 20 frames and
-200 credits of world-model calls produced a three-zone OpenUSD twin that the
-browser renders with live telemetry.
-
-The main limitation in the current results is coverage. Twenty frames from an
-interview walkthrough recover the parts of three zones the camera pointed at,
-not whole rooms, and the generative step that should fill the rest failed on
-the provider's side. Until it works, the whole-building view is a designed
-model, which explains the operation well but is not a reconstruction; the
-honest summary is that video and world models gave the twin its photographs
-of real places, while its map is drawn. A second limitation is that generated is not measured. A world model completes
-what the camera did not see. That is useful for a planning or communication
-twin and unsafe if someone reads a generated aisle as the real one. Generated
-regions should be marked in the stage, for example with an attribute on splats
-or a separate USD layer, so renderers can show them differently.
-No generated regions exist in the twin yet, so no such marking has been
-implemented; designed content is kept in its own model and layer so it cannot
-be mistaken for a capture. Scale comes from the world model's metric
-estimate rather than a survey, so absolute dimensions should be checked
-against at least one known measurement before the twin informs layout
-decisions. Nor did we measure fidelity on held-out frames: the zones were
-judged by eye from their source cameras, so a quantitative comparison of the
-world-model and locally trained captures remains to be done. People, motion blur, reflective steel and repetitive racking remain
-hard inputs; masking people before reconstruction would help, and the world
-model's API exposes masked inputs that we have not yet evaluated.
-
-The twin is also a composite by design. Its captured geometry comes from a
-video that appears to show the food bank's Waco hub, its operating volumes
-come from published figures for the 135{,}000\,sq\,ft Austin facility, the
-rest of the building is designed, and the data is simulated. That makes it a
-fair picture of what a Texas food bank's twin looks like, but not a record of
-any one site, and its provenance (Table~\ref{tab:provenance}) should travel
-with every image of it. A twin of a real facility would replace each designed
-or simulated row with a capture or a live feed from that facility. Keeping these sources in one frame is what lets the twin be
-used at all: one USD stage composes the modeled facility, the captured zones
-(by reference, placed by the same configuration as the browser) and the
-operations layer, and cropping is a non-destructive opacity override, so the
-capture library is never copied. A new capture or a new data feed therefore changes one layer rather
-than the whole stage.
-
-Applying the approach also needs care outside the software. Walkthrough
-videos capture staff, volunteers and clients, so faces should be removed or the
-space filmed when empty, and a facility's permission obtained before a
-reconstruction is published. The next steps are a first real data connector,
-most cheaply temperature loggers publishing over MQTT to AWS IoT Core
-\cite{awsiotcore}, a person-aware frame picker, and training the locally reconstructed zones at full resolution on a GPU. The
-first comparison with a conventional splat reconstruction already shows the
-division of labor: the world model gives metric scale and usable geometry from
-eight frames, while local training needs about nine times as many frames and a
-scale assumption but delivers photorealism.
-
+\subsection{Cost and operational technology security}
 What would it cost to run the twin on real floor data? We priced one
 representative 135{,}000\,sq\,ft facility from list prices on 19 October 2026
 (Table~\ref{tab:costest}); this is an estimate under stated assumptions, not
@@ -834,7 +1175,7 @@ cold job; ten GPU-hours a week would be about \$35 a month on a g6.xlarge or
 tools (twelve zones, with world-model poses and generated views, one GPU-hour of
 splat training per zone and ten hours of Omniverse review), the cloud spend from
 video to deployed twin would be about \$25 to \$50 at list prices, before staff
-time; the assumptions are in \code{docs/COST\_ESTIMATE.md}. Assumptions, unit prices and sources are in the repository's
+time; the assumptions, unit prices and sources are in the repository's
 \code{docs/COST\_ESTIMATE.md}.
 
 The same principle, paying only while something runs, extends to every part of
@@ -865,7 +1206,7 @@ quotas and policies it had. Enterprise accounts may differ through negotiated
 discounts, savings plans, quotas and region policies, so the figures are
 directional, not a quote.
 
-\subsection*{Operational technology security}
+\subsubsection*{Operational technology security}
 Most security discussion around a cloud twin is about IT: the account, the
 API and the web front end. A twin fed by floor sensors also brings operational
 technology (OT) into scope: the sensors, the gateways that carry their data
@@ -936,115 +1277,8 @@ Optional: forklift telematics, 8 vehicles & & \$200--400 \\
 \label{tab:costest}
 \end{table}
 
-\section{Materials and Methods}
-
-\subsection{Experimental Design}
-The objective was to build a working twin of a food bank from a public video
-and to measure cost, time and fidelity at each step (Table~\ref{tab:results}).
-The design was fixed before any paid call: one zone first (the racking aisle,
-eight frames), then two more zones with six frames each, the lowest-cost API
-tasks available, and a project ceiling of 1{,}000 credits. All code, the AWS template and the input
-frames are in the project repository.
-
-\subsection{Frame extraction}
-World-model APIs accept only a few images (Marble's Auto Layout multi-image mode
-accepts up to eight \cite{worldlabs_multiimage}). The ingest
-stage samples a window of the video and, for every interval of $N$ seconds,
-scores candidate frames with ffmpeg's blur detector and keeps the sharpest;
-interlaced frames are deinterlaced only when flagged. A hard cap of 40 frames
-bounds storage and upload. For the case study, frames were taken from
-5:05--7:45 at one per 4\,s with the bottom 264 pixels cropped to remove the
-broadcast graphic, giving 40 candidates at 1920\,$\times$\,816 in 88\,s of wall-clock time on
-four CPU cores for the 160\,s window; all inputs
-share one resolution, which reconstruction requires. The automatic picker
-splits the pool into eight equal segments and keeps the frame with the highest
-Laplacian variance in each; for the case study it was replaced by hand
-selection as described in Results. A text prompt described the space and asked
-for no people.
-
-\subsection{World-model reconstruction}
-The pipeline implements two routes on the World Labs platform. The first, a
-multi-image request to Marble that returns a finished Gaussian-splat world in
-SPZ format \cite{spz} with a metric scale factor and ground-plane offset
-\cite{worldlabs_spz}, needs a Marble v1 key and was not available to the
-account used here. The reported twin was built with the second route, through
-the Marble 2 developer API, in three stages. In the pose stage,
-\code{images2PosedRGBD} returns a camera pose, metric depth and confidence for
-each input frame (10 credits per frame on the rate card of 19 October 2026,
-where 1{,}000 credits cost US\$1). In the generate stage, \code{atlasGenerate}
-is asked for new posed RGB-D views from target cameras around the zone, with
-the masked presenters excluded from its context (50 credits per view); this is
-the step in which the world model extrapolates unseen space, and it failed in
-both attempts (Results). In the free, local fuse stage, every RGB-D view is
-unprojected, the most confident sample per 1\,cm voxel is kept, masked pixels
-are dropped, and the points are written as isotropic Gaussians with spherical
-harmonics of degree 0, as PLY and SPZ version 2. The floor is taken, in order
-of preference, from a dense 5\,cm horizontal slab of points, from the world
-model's ground plane, or from a fixed 1.5\,m below the cameras. A site stage
-then places each zone on a plan in meters (racking at the origin, sorting at
-$+26$\,m and the market at $-24$\,m on $x$) and writes one USD stage that
-references each zone's layer. This plan is a library layout, not a survey;
-the composed twin re-places the zones as described under Visualization.
-
-\subsection{Locally trained zones}
-The photoreal route uses no paid service. Frames from a zone's segment of the
-video are extracted at 4 to 6 frames per second and 960 pixels wide. People are
-masked with a DeepLab v3 segmentation model run through MediaPipe, the masks
-are grown by 35 pixels and unioned with neighboring frames, and the broadcast
-graphic is masked by a fixed box. Under the masks, a background plate is built
-from pixels warped by homography from frames up to 15\,s away in which the
-presenters had moved, with a blurred inpaint where no frame saw the
-background. Frames are kept if they are not in the
-blurriest 20\%, at least 35\% of their pixels are unmasked, and the median
-optical flow since the last kept frame is at least 14 pixels. COLMAP 3.9
-estimates poses with masked SIFT features on the CPU, with sequential matching,
-or exhaustive matching and a 3$^\circ$ initial triangulation angle for the
-low-texture sorting room. The trainer implements
-3D Gaussian Splatting \cite{kerbl20233d} in plain PyTorch with a sparse
-per-pixel rasterizer, so that it runs without a GPU (about 1\,s per step at
-480 pixels on four cores): elliptical weighted average projection, front-to-back
-compositing, an L1 plus 0.2 D-SSIM loss that sees the background plate at 0.3
-weight under the masks, visual-hull carving every 250 steps (a splat is removed
-when its center falls on a presenter mask in more than half of the five or
-more frames that see it), adaptive cloning, splitting and pruning, and opacity
-resets every 3{,}000 steps, at half resolution for the first quarter of the
-steps. The documented run trains each zone for 6{,}000 steps, roughly 1.7\,h
-at the rate above; per-zone wall-clock times were not recorded. Export levels
-the scene to the mean camera up direction, takes the floor from the lowest
-well-supported band of structure-from-motion points below the cameras, scales
-so that the cameras sit 1.6\,m above it, keeps splats inside at least six
-camera frustums and within 80\,m of the path, and writes the same SPZ, USDZ
-and index files as the world-model zones; the composed twin crops each zone to
-its room.
-
-\subsection{Conversion to OpenUSD}
-The splat world is converted with \code{usd-convert-gsplat} 0.1.15
-\cite{usdconvertgsplat} into a
-\code{ParticleField3DGaussianSplat} prim.
-World Labs SPZ files use an OpenCV-style camera convention
-(\code{marble\_raw\_opencv}, Y down) in raw units that the world's metric scale
-factor converts to meters \cite{worldlabs_spz}. Leaving the splat payload untouched, we place it
-under a parent transform, as shown in Equation~\ref{eq:xform},
-\begin{equation} \label{eq:xform}
-  M = R_x(180^\circ)\, T(0, -o, 0)\, S(s),
-\end{equation}
-where $s$ is the world's metric scale factor and $o$ its ground-plane offset,
-and set the stage to Y-up with \code{metersPerUnit}\,=\,1. With synthetic
-input the ground lands at exactly $y=0$. A typed \code{Xform} that references
-the splat would override the referenced prim's schema type, so the pipeline
-authors \code{/World/FoodBank} as the transforming \code{Xform} and
-\code{/World/FoodBank/Splat} as an untyped prim carrying the reference. The
-converter's direct USDZ output is an ASCII layer zipped without the 64-byte
-alignment the USDZ specification requires, so we convert to binary
-\code{.usdc} and package with OpenUSD's \code{UsdUtils.CreateNewUsdzPackage}.
-Conversion took 5.2\,s for the 270{,}423-splat world-model racking zone and
-3.9\,s for a 181{,}556-splat first version of the locally trained one on four
-CPU cores. The schema
-family defines half-precision companions to its attributes, such as
-\code{positionsh} \cite{usd_particle_position}, that would roughly halve file
-size; the converter does not yet write them.
-
-\subsection{Cost controls for paid generation}
+\subsection{Methods}
+\subsubsection{Cost controls for paid generation}
 World-model calls are the only paid, non-idempotent steps, so they are
 guarded in code. On the Marble 2 route, each paid stage records its operation
 identifier before waiting and sends an idempotency key derived from the request
@@ -1062,7 +1296,7 @@ against a local mock of the API covering a 429 retry, a 503 during polling,
 resume in flight with exactly one generation across three runs, reuse,
 refusal of non-draft models and ledger accounting.
 
-\subsection{Serverless data backend}
+\subsubsection{Serverless data backend}
 The backend is one AWS Serverless Application Model template \cite{awssam}: an
 S3 bucket serving the twin assets and web viewer; a Python 3.12 Lambda
 function on arm64 with 128\,MB of memory and a 3\,s timeout behind an HTTP API
@@ -1080,7 +1314,7 @@ modeled cold rooms by construction. Each capture's placement and crop box are
 set by hand in a configuration file; their residual error against the real
 building is not measured, because no survey exists.
 
-\subsection{Operations model}
+\subsubsection{Operations model}
 The master data lists areas with footprints and positions in meters, six
 inventory families with a home temperature zone, pallet weight, shelf life and
 days-of-supply target, five inbound source types and four outbound channels
@@ -1097,7 +1331,7 @@ Python and JavaScript payloads agree, that stock carries over midnight and that
 Sunday is closed. The weekday ranges in Results were computed by evaluating the
 model at the end of each day from 1 September to 26 October 2026.
 
-\subsection{Visualization}
+\subsubsection{Visualization}
 The modeled facility is built by \code{scripts/build\_facility.py} with the
 \code{bpy} module of Blender on Python 3.13, without a display. Footprints
 come from the operations master data; materials use small procedural textures
@@ -1141,81 +1375,7 @@ Appendix~\ref{app:clouds}) are generated as draw.io files by
 \code{paper/diagrams/make\_diagrams.py} with the AWS, Azure and Google Cloud
 icon libraries of draw.io 26.2.15 and exported to PDF with draw.io desktop.
 
-\subsection{Statistical Analysis}
-This is a single case study, and every value reported is a single measurement:
-counts and file sizes from the committed files, times from one wall-clock run on
-a four-core CPU machine, and costs from rate cards or list prices. No repeated
-runs, hypothesis tests or confidence intervals are reported. The weekday ranges
-of the operations model are the minimum, median and maximum over 40 simulated
-weekdays from one deterministic run. No fidelity metric on held-out frames was
-computed; when it is, frames from each extraction window that were not used for
-training should be posed against the reconstruction and compared in observed
-regions only, because generated content has no ground truth. Telemetry latency,
-once the backend is deployed, will be reported as the 50th and 95th
-percentiles of 1{,}000 client-side requests.
 
-\subsection{Animal and Human Studies}
-No human subjects research was performed. The input is a publicly broadcast
-news video; people who appear in it were excluded from input frames where
-possible and the world model was prompted to omit them. The video is used as
-published by its broadcaster; the twin is a representative facility inspired
-by it, not a record of the building.
-
-\section*{Acknowledgments}
-
-\subsection*{General}
-This project was inspired by 25 News KXXV's public video tour of the Central
-Texas Food Bank's new facility \cite{kxxv2026ctfb,kxxv2026waco} and by the
-food bank's published account of its work. Neither organization was involved
-in or endorsed this study. During the preparation of this work, the author used Claude
-(Anthropic) in order to write and test the pipeline software and to draft the
-manuscript. After using this tool, the author reviewed and edited the content
-as needed and takes full responsibility for the content of the publication.
-
-\subsection*{Author Contributions}
-S. Mohapatra conceived the idea, designed the study, conducted the
-experiments and wrote the manuscript.
-
-\subsection*{Funding}
-This research received no specific funding.
-
-\subsection*{Competing interests}
-The author declares that there is no conflict of interest regarding the
-publication of this article.
-
-\subsection*{Data Availability}
-Code, the AWS template, the operations master data and the case-study input
-frames are available at
-\url{https://github.com/pikulsomesh/foodbank-spatial-twin}. The source video
-is publicly available from its publisher \cite{kxxv2026ctfb}. The fused zone
-files (SPZ), the composed USD site and the per-zone placements are in the same
-repository.
-
-\section*{Supplementary Materials}
-Movie S1. A 22\,s overview of the pipeline, 1080\,$\times$\,1350: the public
-news tour that inspired the twin, a world-model splat capture, the pipeline
-diagram, three NVIDIA Omniverse RTX shots of the modeled facility (Movie~S3),
-the browser twin with simulated telemetry, and an end card. Omniverse shots are
-labeled as such.
-
-Movie S2. A 24\,s 1080p flythrough of the OpenUSD stage, rendered with the CPU
-Gaussian-splat renderer.
-
-Movie S3. Three 4\,s NVIDIA Omniverse RTX clips of the modeled facility
-(facility orbit, racking aisle, forklift chase), 1280\,$\times$\,720 at 24 frames per
-second, rendered headless on an EC2 g5.xlarge; the forklift follows a scripted
-path.
-
-Data file S1. Commands to reproduce the pipeline end to end, in three files in
-the repository's \code{docs} folder: \code{CTFB\_WAREHOUSE\_RUN.md}
-(world-model zones), \code{PHOTOREAL.md} (locally trained zones) and
-\code{RENDERING.md} (CPU, Blender and Omniverse renders), with
-\code{scripts/build\_facility.py} for the modeled facility.
-
-Data file S2. The architecture diagrams as editable draw.io files
-(\code{paper/diagrams}).
-
-\appendix
 \section{Equivalent designs on Microsoft Azure and Google Cloud}
 \label{app:clouds}
 Nothing in the pipeline depends on AWS: the OpenUSD twin is files, and the API
