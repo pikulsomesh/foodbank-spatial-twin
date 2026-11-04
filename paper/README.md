@@ -62,6 +62,7 @@ The source video appears to be KXXV's tour of the Central Texas Food Bank's new 
 
 ## arXiv submission
 
+- **License to select on arXiv:** CC BY 4.0 (Creative Commons Attribution 4.0) for the paper. arXiv does not offer MIT for papers; the code in this repository is MIT (see `LICENSE`).
 - **Primary category:** cs.LG (Machine Learning). Optional cross-lists: cs.CV (Computer Vision) and cs.GR (Graphics).
 - **Framing:** an exploratory study of world models and Gaussian splatting on in-the-wild video, not an application paper. The food bank is the test case.
 - **Abstract:** paste [`arxiv_abstract.txt`](arxiv_abstract.txt), which is plain text with no LaTeX and is under arXiv's 1,920-character limit.

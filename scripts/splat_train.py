@@ -466,14 +466,31 @@ def hull_mask(P: dict, views, min_views: int = 5, frac: float = 0.5):
         return (seen >= min_views) & (hit / seen.clamp(min=1) > frac)
 
 
+def split_views(cams: list[dict], holdout: int, train_views: int = 0):
+    """Held-out evaluation split: every holdout-th camera (by name, from the middle
+    of the first block) is kept out of training; train_views > 0 then keeps that
+    many evenly spaced cameras of the rest. Returns (train, test)."""
+    if holdout <= 1:
+        test, rest = [], list(cams)
+    else:
+        test = [c for i, c in enumerate(cams) if i % holdout == holdout // 2]
+        rest = [c for i, c in enumerate(cams) if i % holdout != holdout // 2]
+    if train_views and train_views < len(rest):
+        idx = np.linspace(0, len(rest) - 1, train_views).round().astype(int)
+        rest = [rest[i] for i in sorted(set(idx))]
+    return rest, test
+
+
 def train(args) -> None:
     import torch
-    torch.manual_seed(0)
-    np.random.seed(0)
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
     if args.threads:
         torch.set_num_threads(args.threads)
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
-    cams = read_colmap(args.scene / "model")
+    cams, test = split_views(read_colmap(args.scene / "model"), args.holdout, args.train_views)
+    if test:
+        log(f"holding out {len(test)} cameras for evaluation: {', '.join(c['name'] for c in test)}")
     xyz, rgb = read_points(args.scene / "model")
     centres = np.stack([c["centre"] for c in cams])
     extent = float(np.linalg.norm(centres - centres.mean(0), axis=1).max() * 1.1) or 1.0
@@ -595,6 +612,11 @@ def main(argv=None) -> int:
                     help="remove Gaussians inside the people's visual hull while training")
     ap.add_argument("--carve-every", type=int, default=250)
     ap.add_argument("--cpu", action="store_true", help="ignore a GPU even if one is present")
+    ap.add_argument("--holdout", type=int, default=0,
+                    help="keep every Nth camera out of training for scripts/splat_eval.py (0 = train on all)")
+    ap.add_argument("--train-views", type=int, default=0,
+                    help="train on this many evenly spaced cameras of the rest (0 = all)")
+    ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args(argv)
     train(args)
     return 0
