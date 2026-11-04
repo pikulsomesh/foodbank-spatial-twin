@@ -524,6 +524,13 @@ dark fragments instead of a soft blur. That region is not scored.}
 \label{fig:heldout}
 \end{figure}
 
+To gauge run-to-run variation, the full-trainer runs were repeated with a
+second random seed. Held-out PSNR changed by 0.13\,dB in the racking aisle
+(21.16 to 21.29) and 0.05\,dB in the market (23.10 to 23.15), SSIM by at
+most 0.008 and LPIPS by at most 0.007, so the frame-count and ablation
+differences above are one to two orders of magnitude larger than the seed
+spread. Two seeds give a range, not a confidence interval.
+
 Three limitations of this protocol should be kept in view. LPIPS is computed on
 the whole frame after the masked pixels are copied from the video into the
 render, so it is diluted by roughly half and is comparable only between rows
@@ -803,7 +810,8 @@ runs are reported except where stated. The weekday ranges
 of the operations model are the minimum, median and maximum over 40 simulated
 weekdays from one deterministic run. The held-out evaluation
 (Table~\ref{tab:heldout}) reports the mean over 9 or 6 held-out frames of one
-training run per row; no hypothesis tests or confidence intervals are
+training run per row, with the two full-trainer rows repeated with a second
+seed; no hypothesis tests or confidence intervals are
 computed, and differences of a few tenths of a decibel should not be read as
 effects. Telemetry latency is the median and 95th percentile of 1{,}000
 client-side requests (Appendix~\ref{app:system}).
