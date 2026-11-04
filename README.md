@@ -12,6 +12,8 @@ It was built in seven days (2026-10-19 to 2026-10-25) for **$0.20 of confirmed w
 
 **Paper:** [PDF](https://pikulsomesh.github.io/foodbank-spatial-twin/paper/from-video-to-digital-twin.pdf) (see [Paper](#paper)).
 
+**Square video (1:1, 44 s):** [foodbank-twin-square.mp4](https://pikulsomesh.github.io/foodbank-spatial-twin/media/foodbank-twin-square.mp4), covering the source video, the world model, Omniverse, the AWS pattern with OT zones, and the simulated live view. It is built by `scripts/make_square_video.py` from the clip library.
+
 **Pitch video:** [full cut (23 s)](https://pikulsomesh.github.io/foodbank-spatial-twin/media/foodbank-twin-pitch-long.mp4) · [short cut (16 s)](https://pikulsomesh.github.io/foodbank-spatial-twin/media/foodbank-twin-pitch-16s.mp4) (files in [public/media/](public/media/)). The Omniverse shots in it are real RTX renders of the Blender-modeled facility; the splats are shown in the browser viewer, not in Omniverse.
 
 > **What this is, honestly.** The twin is a **representative food bank inspired by the Central Texas Food Bank**, not a model of any one site. The source video is a publicly available tour of the Central Texas Food Bank's new Waco facility by 25 News KXXV (["Inside the NEW Central Texas Food Bank"](https://www.youtube.com/watch?v=8sQmr7JqXkI), 27 July 2026); neither KXXV nor the Central Texas Food Bank was involved in this work or has endorsed it. Every part of the twin is labeled as captured, designed, published, estimated or simulated (see [Provenance](#provenance)). Cost figures are directional: they come from public list prices and what one individual AWS account could access, and enterprise discounts, quotas and policies may differ.
